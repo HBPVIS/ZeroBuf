@@ -9,5 +9,5 @@ set(CTEST_NIGHTLY_START_TIME "00:00:00 CET")
 
 set(CTEST_DROP_METHOD "http")
 set(CTEST_DROP_SITE "my.cdash.org")
-set(CTEST_DROP_LOCATION "/submit.php?project=ZeroEQ")
+set(CTEST_DROP_LOCATION "/submit.php?project=ZeroBuf")
 set(CTEST_DROP_SITE_CDASH TRUE)

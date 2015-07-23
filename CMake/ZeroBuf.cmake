@@ -1,5 +1,5 @@
 set(ZEROBUF_VERSION 0.1)
-set(ZEROBUF_REPO_URL https://github.com/HBPVIS/zerobuf.git)
+set(ZEROBUF_REPO_URL https://github.com/HBPVIS/ZeroBuf.git)
 set(ZEROBUF_DEPENDS hbpvis REQUIRED Servus )
 set(ZEROBUF_OPTIONAL ON)
 set(ZEROBUF_BOOST_COMPONENTS "unit_test_framework")
