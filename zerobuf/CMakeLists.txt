@@ -9,12 +9,12 @@ set(ZEROBUF_PUBLIC_HEADERS
   NonMovingBaseAllocator.h
   NonMovingSubAllocator.h
   Vector.h
+  Types.h
   jsoncpp/json/json-forwards.h
-  jsoncpp/json/json.h
-  types.h
   )
 
 set(ZEROBUF_HEADERS
+  jsoncpp/json/json.h
   )
 
 set(ZEROBUF_SOURCES
@@ -31,7 +31,7 @@ set_source_files_properties(jsoncpp/jsoncpp.cpp PROPERTIES COMPILE_FLAGS
 
 set(ZEROBUF_LINK_LIBRARIES ${SERVUS_LIBRARIES})
 set(PROJECT_INCLUDE_NAME zerobuf)
-set(ZEROBUF_OMIT_PROJECT_HEADER ON)
+set(ZEROBUF_OMIT_LIBRARY_HEADER ON)
 common_library(zerobuf)
 
 install(FILES bin/zerobufCxx.py DESTINATION bin COMPONENT bin)

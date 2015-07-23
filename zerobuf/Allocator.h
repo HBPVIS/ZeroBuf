@@ -7,8 +7,7 @@
 #ifndef ZEROBUF_ALLOCATOR_H
 #define ZEROBUF_ALLOCATOR_H
 
-#include <zerobuf/types.h>
-#include <zerobuf/api.h>
+#include <zerobuf/Types.h>
 
 namespace zerobuf
 {
@@ -24,14 +23,17 @@ public:
     Allocator() {}
     virtual ~Allocator() {}
 
-    ZEROBUF_API virtual uint8_t* getData() = 0;
-    ZEROBUF_API virtual const uint8_t* getData() const = 0;
-    ZEROBUF_API virtual size_t getSize() const = 0;
-    ZEROBUF_API virtual void copyBuffer( const void* data, size_t size ) = 0;
+    virtual uint8_t* getData() = 0;
+    virtual const uint8_t* getData() const = 0;
+    virtual size_t getSize() const = 0;
+    virtual void copyBuffer( const void* data, size_t size ) = 0;
 
-    /** Update allocation of the dynamic elem #index to have newSize bytes. Updates the offset and size fields in the static section as needed. Does not copy the old data to the new location. @return the pointer to the elem at the new place. */
-    ZEROBUF_API virtual uint8_t* updateAllocation( size_t index,
-                                               size_t newSize ) = 0;
+    /** Update allocation of the dynamic elem #index to have newSize bytes.
+     * Updates the offset and size fields in the static section as needed.
+     * Does not copy the old data to the new location.
+     * @return the pointer to the elem at the new place.
+     */
+    virtual uint8_t* updateAllocation( size_t index,  size_t newSize ) = 0;
 
     template< class T > T* getItemPtr( const size_t offset )
         { return reinterpret_cast< T* >( getData() + offset ); }

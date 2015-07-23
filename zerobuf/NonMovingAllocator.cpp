@@ -3,13 +3,11 @@
  *                     Stefan.Eilemann@epfl.ch
  *                     grigori.chevtchenko@epfl.ch
  */
-#include <cstring>
 
 #include "NonMovingAllocator.h"
 #include <zerobuf/version.h>
 
-#include <map>
-#include <cassert>
+#include <cstring>
 
 namespace zerobuf
 {

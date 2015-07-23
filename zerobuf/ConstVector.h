@@ -6,7 +6,7 @@
 #ifndef ZEROBUF_CONSTVECTOR_H
 #define ZEROBUF_CONSTVECTOR_H
 
-#include <zerobuf/BaseVector.h>
+#include <zerobuf/BaseVector.h> // base class
 
 namespace zerobuf
 {
@@ -24,13 +24,13 @@ class ConstVector : public BaseVector< const Allocator, T, I >
 
 public:
     ConstVector( const Allocator* alloc );
-    virtual ~ConstVector() {}
+    ~ConstVector() {}
 
 private:
     ConstVector();
-    virtual void _resize( size_t )
+    void _resize( size_t )
         { throw std::runtime_error( "Cannot resize const vector" ); }
-    virtual void copyBuffer( uint8_t*, size_t )
+    void copyBuffer( uint8_t*, size_t )
         { throw std::runtime_error( "Cannot copy into const vector" ); }
 };
 

@@ -4,7 +4,7 @@
  */
 
 #include "Zerobuf.h"
-#include <zerobuf/Allocator.h>
+#include "Allocator.h"
 #include <zerobuf/jsoncpp/json/json.h>
 #include <iostream>
 
@@ -31,7 +31,7 @@ void Zerobuf::setZerobufData( const void* data, size_t size )
     if( _alloc )
         _alloc->copyBuffer( data, size );
     else
-        std::cerr << "Con't copy data into empty zerobuf" << std::endl;
+        std::cerr << "Can't copy data into empty zerobuf" << std::endl;
 }
 
 Zerobuf& Zerobuf::operator = ( const Zerobuf& rhs )

@@ -7,7 +7,8 @@
 #ifndef ZEROBUF_NONMOVINGALLOCATOR_H
 #define ZEROBUF_NONMOVINGALLOCATOR_H
 
-#include <zerobuf/NonMovingBaseAllocator.h>
+#include <zerobuf/api.h>
+#include <zerobuf/NonMovingBaseAllocator.h> // base class
 
 namespace zerobuf
 {
@@ -17,20 +18,20 @@ class NonMovingAllocator : public NonMovingBaseAllocator
 public:
     ZEROBUF_API NonMovingAllocator( size_t staticSize, size_t numDynamic );
     ZEROBUF_API NonMovingAllocator( const NonMovingAllocator& from );
-    ZEROBUF_API virtual ~NonMovingAllocator();
+    ZEROBUF_API ~NonMovingAllocator();
 
     ZEROBUF_API NonMovingAllocator& operator = ( const NonMovingAllocator& rhs );
 
-    virtual uint8_t* getData() { return _data; }
-    virtual const uint8_t* getData() const { return _data; }
-    virtual size_t getSize() const { return _size; }
-    ZEROBUF_API virtual void copyBuffer( const void* data, size_t size );
+    uint8_t* getData() final { return _data; }
+    const uint8_t* getData() const final { return _data; }
+    size_t getSize() const final { return _size; }
+    ZEROBUF_API void copyBuffer( const void* data, size_t size ) final;
 
 private:
     uint8_t* _data;
     size_t _size;
 
-    virtual void _resize( size_t newSize );
+    void _resize( size_t newSize ) final;
 };
 }
 #endif

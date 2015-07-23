@@ -6,7 +6,7 @@
 #ifndef ZEROBUF_BASEVECTOR_H
 #define ZEROBUF_BASEVECTOR_H
 
-#include <zerobuf/types.h>
+#include <zerobuf/Types.h>
 
 namespace zerobuf
 {
@@ -37,7 +37,7 @@ protected:
     A* _parent;
 
     BaseVector();
-    virtual size_t _getSize() const { return _parent->getDynamicSize( I ); }
+    size_t _getSize() const { return _parent->getDynamicSize( I ); }
 };
 
 // Implementation

@@ -6,7 +6,7 @@
 #ifndef ZEROBUF_VECTOR_H
 #define ZEROBUF_VECTOR_H
 
-#include <zerobuf/BaseVector.h>
+#include <zerobuf/BaseVector.h> // base class
 
 namespace zerobuf
 {
@@ -23,16 +23,16 @@ class Vector : public BaseVector< Allocator, T, I >
 
 public:
     Vector( Allocator* alloc );
-    virtual ~Vector() {}
+    ~Vector() {}
 
     void push_back( const T& value );
     T* data() { return Super::_parent->template getDynamic< T >( I ); }
 
 private:
     Vector();
-    virtual void _resize( const size_t size )
+    void _resize( const size_t size )
         { Super::_parent->updateAllocation( I, size ); }
-    virtual void copyBuffer( uint8_t* data, size_t size );
+    void copyBuffer( uint8_t* data, size_t size );
 };
 
 // Implementation

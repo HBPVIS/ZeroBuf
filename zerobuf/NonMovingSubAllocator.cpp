@@ -3,10 +3,11 @@
  *                     Stefan.Eilemann@epfl.ch
  *                     grigori.chevtchenko@epfl.ch
  */
-#include <cstring>
 
 #include "NonMovingSubAllocator.h"
 #include <zerobuf/version.h>
+
+#include <cstring>
 
 namespace zerobuf
 {
@@ -53,7 +54,7 @@ const uint8_t* NonMovingSubAllocator::getData() const
     return _parent->getDynamic< const uint8_t >( _index );
 }
 
-void NonMovingSubAllocator::copyBuffer( const void* data, size_t size )
+void NonMovingSubAllocator::copyBuffer( const void* data, const size_t size )
 {
     void* to = _parent->updateAllocation( _index, size );
     _size = size;

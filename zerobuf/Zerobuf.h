@@ -8,7 +8,7 @@
 #define ZEROBUF_ZEROBUF_H
 
 #include <zerobuf/api.h>
-#include <zerobuf/types.h>
+#include <zerobuf/Types.h>
 #include <zerobuf/jsoncpp/json/json-forwards.h>
 
 namespace zerobuf
@@ -23,7 +23,7 @@ class Zerobuf
 {
 public:
     virtual servus::uint128_t getZerobufType() const = 0;
-    virtual void notifyUpdated() {};
+    virtual void notifyUpdated() {}
 
     ZEROBUF_API const void* getZerobufData() const;
     ZEROBUF_API size_t getZerobufSize() const;
