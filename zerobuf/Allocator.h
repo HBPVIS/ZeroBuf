@@ -1,13 +1,14 @@
 
 /* Copyright (c) 2015, Human Brain Project
  *                     Stefan.Eilemann@epfl.ch
+ *                     grigori.chevtchenko@epfl.ch
  */
 
 #ifndef ZEROBUF_ALLOCATOR_H
 #define ZEROBUF_ALLOCATOR_H
 
 #include <zerobuf/types.h>
-#include <zeq/api.h>
+#include <zerobuf/api.h>
 
 namespace zerobuf
 {
@@ -23,13 +24,13 @@ public:
     Allocator() {}
     virtual ~Allocator() {}
 
-    ZEQ_API virtual uint8_t* getData() = 0;
-    ZEQ_API virtual const uint8_t* getData() const = 0;
-    ZEQ_API virtual size_t getSize() const = 0;
-    ZEQ_API virtual void copyBuffer( const void* data, size_t size ) = 0;
+    ZEROBUF_API virtual uint8_t* getData() = 0;
+    ZEROBUF_API virtual const uint8_t* getData() const = 0;
+    ZEROBUF_API virtual size_t getSize() const = 0;
+    ZEROBUF_API virtual void copyBuffer( const void* data, size_t size ) = 0;
 
     /** Update allocation of the dynamic elem #index to have newSize bytes. Updates the offset and size fields in the static section as needed. Does not copy the old data to the new location. @return the pointer to the elem at the new place. */
-    ZEQ_API virtual uint8_t* updateAllocation( size_t index,
+    ZEROBUF_API virtual uint8_t* updateAllocation( size_t index,
                                                size_t newSize ) = 0;
 
     template< class T > T* getItemPtr( const size_t offset )

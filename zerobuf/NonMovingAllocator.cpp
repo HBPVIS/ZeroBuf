@@ -1,10 +1,12 @@
 
 /* Copyright (c) 2015, Human Brain Project
  *                     Stefan.Eilemann@epfl.ch
+ *                     grigori.chevtchenko@epfl.ch
  */
+#include <cstring>
 
 #include "NonMovingAllocator.h"
-#include <zeq/version.h>
+#include <zerobuf/version.h>
 
 #include <map>
 #include <cassert>
@@ -19,7 +21,7 @@ NonMovingAllocator::NonMovingAllocator( const size_t staticSize,
     , _size( staticSize )
 {
     uint32_t& version = getItem< uint32_t >( 0 );
-    version = ZEQ_VERSION_ABI;
+    version = ZEROBUF_VERSION_ABI;
 }
 
 NonMovingAllocator::NonMovingAllocator( const NonMovingAllocator& from )

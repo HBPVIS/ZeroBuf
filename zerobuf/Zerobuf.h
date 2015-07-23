@@ -1,12 +1,13 @@
 
 /* Copyright (c) 2015, Human Brain Project
  *                     Stefan.Eilemann@epfl.ch
+ *                     grigori.chevtchenko@epfl.ch
  */
 
 #ifndef ZEROBUF_ZEROBUF_H
 #define ZEROBUF_ZEROBUF_H
 
-#include <zeq/api.h>
+#include <zerobuf/api.h>
 #include <zerobuf/types.h>
 #include <zerobuf/jsoncpp/json/json-forwards.h>
 
@@ -24,20 +25,20 @@ public:
     virtual servus::uint128_t getZerobufType() const = 0;
     virtual void notifyUpdated() {};
 
-    ZEQ_API const void* getZerobufData() const;
-    ZEQ_API size_t getZerobufSize() const;
-    ZEQ_API void setZerobufData( const void* data, size_t size );
+    ZEROBUF_API const void* getZerobufData() const;
+    ZEROBUF_API size_t getZerobufSize() const;
+    ZEROBUF_API void setZerobufData( const void* data, size_t size );
 
 protected:
     Zerobuf() : _alloc( 0 ) {}
     explicit Zerobuf( Allocator* alloc ) : _alloc( alloc ) {}
-    ZEQ_API virtual ~Zerobuf();
+    ZEROBUF_API virtual ~Zerobuf();
 
-    ZEQ_API Zerobuf& operator = ( const Zerobuf& rhs );
+    ZEROBUF_API Zerobuf& operator = ( const Zerobuf& rhs );
     Allocator* getAllocator() { return _alloc; }
     const Allocator* getAllocator() const { return _alloc; }
 
-    ZEQ_API bool _parseJSON( const std::string&, Json::Value& );
+    ZEROBUF_API bool _parseJSON( const std::string&, Json::Value& );
 
 private:
     Allocator* const _alloc;

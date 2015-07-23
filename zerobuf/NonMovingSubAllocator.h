@@ -1,6 +1,7 @@
 
 /* Copyright (c) 2015, Human Brain Project
  *                     Stefan.Eilemann@epfl.ch
+ *                     grigori.chevtchenko@epfl.ch
  */
 
 #ifndef ZEROBUF_NONMOVINGSUBALLOCATOR_H
@@ -14,18 +15,18 @@ namespace zerobuf
 class NonMovingSubAllocator : public NonMovingBaseAllocator
 {
 public:
-    ZEQ_API NonMovingSubAllocator( NonMovingBaseAllocator* parent,
+    ZEROBUF_API NonMovingSubAllocator( NonMovingBaseAllocator* parent,
                                    size_t index, size_t numDynamic,
                                    size_t staticSize );
-    ZEQ_API NonMovingSubAllocator( const NonMovingSubAllocator& from );
-    ZEQ_API virtual ~NonMovingSubAllocator();
+    ZEROBUF_API NonMovingSubAllocator( const NonMovingSubAllocator& from );
+    ZEROBUF_API virtual ~NonMovingSubAllocator();
 
-    ZEQ_API NonMovingSubAllocator& operator = ( const NonMovingSubAllocator& );
+    ZEROBUF_API NonMovingSubAllocator& operator = ( const NonMovingSubAllocator& );
 
-    ZEQ_API virtual uint8_t* getData();
-    ZEQ_API virtual const uint8_t* getData() const;
+    ZEROBUF_API virtual uint8_t* getData();
+    ZEROBUF_API virtual const uint8_t* getData() const;
     virtual size_t getSize() const { return _size; }
-    ZEQ_API virtual void copyBuffer( const void* data, size_t size );
+    ZEROBUF_API virtual void copyBuffer( const void* data, size_t size );
 
 private:
     NonMovingBaseAllocator* _parent;

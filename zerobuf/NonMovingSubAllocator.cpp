@@ -1,10 +1,12 @@
 
 /* Copyright (c) 2015, Human Brain Project
  *                     Stefan.Eilemann@epfl.ch
+ *                     grigori.chevtchenko@epfl.ch
  */
+#include <cstring>
 
 #include "NonMovingSubAllocator.h"
-#include <zeq/version.h>
+#include <zerobuf/version.h>
 
 namespace zerobuf
 {
@@ -64,7 +66,7 @@ void NonMovingSubAllocator::_resize( const size_t newSize )
     if( _size == 0 )
     {
         uint32_t& version = getItem< uint32_t >( 0 );
-        version = ZEQ_VERSION_ABI;
+        version = ZEROBUF_VERSION_ABI;
     }
     _size = newSize;
 }
