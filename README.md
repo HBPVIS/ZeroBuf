@@ -27,8 +27,8 @@ shortcomings:
 * Data UUID (16b)
 * fixed-elem PODs: stored in-order at start of array
 * dynamic arrays/std::vector, std::string:
-** offset (8b), size (8b) stored in place
-** data at offset after all items at 4b boundary
+    * offset (8b), size (8b) stored in place
+    * data at offset after all items at 4b boundary
 * static arrays: data in place
 * arrays: returned as ptr, iter, copied std::vector
 * getter/setter generated with hard-coded offsets
