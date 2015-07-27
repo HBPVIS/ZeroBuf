@@ -7,7 +7,6 @@
 #define ZEROBUF_TYPES_H
 
 #include <servus/types.h>
-#include <servus/uint128_t.h>
 
 /**
  * ZeroBuf is a replacement for FlatBuffers/protobuf.
