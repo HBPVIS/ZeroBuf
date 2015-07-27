@@ -55,10 +55,10 @@ void Vector< T, I >::push_back( const T& value )
 }
 
 template< class T, size_t I > inline
-void Vector< T, I >::copyBuffer( uint8_t* data, size_t size )
+void Vector< T, I >::copyBuffer( uint8_t* data_, size_t size )
 {
     void* to = Super::_parent->updateAllocation( I, size );
-    ::memcpy( to, data, size );
+    ::memcpy( to, data_, size );
 }
 
 }

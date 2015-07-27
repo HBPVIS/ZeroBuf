@@ -22,6 +22,7 @@ common_package(Servus REQUIRED)
 common_package_post()
 
 add_subdirectory(zerobuf)
+add_subdirectory(tests)
 
 set(DOXYGEN_MAINPAGE_MD README.md)
 set(DOXYGEN_EXTRA_INPUT ${PROJECT_SOURCE_DIR}/README.md)

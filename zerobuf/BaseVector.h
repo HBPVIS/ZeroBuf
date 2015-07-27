@@ -8,6 +8,11 @@
 
 #include <zerobuf/Types.h>
 
+#include <cstring> // memcmp
+#include <stdexcept> // std::runtime_error
+#include <typeinfo> // typeid
+#include <ostream>
+
 namespace zerobuf
 {
 /*
@@ -28,7 +33,7 @@ public:
 
     bool empty() const { return _getSize() == 0; }
     uint64_t size() const { return _getSize() / sizeof(T); }
-    const T* data() const { return _parent->template getDynamic< T >( I ); }
+    const T* data() const { return _parent->template getDynamic< const T >( I ); }
 
     bool operator == ( const BaseVector& rhs ) const;
     bool operator != ( const BaseVector& rhs ) const;
@@ -52,17 +57,18 @@ const T& BaseVector< A, T, I >::operator[] ( const size_t index ) const
     if( index >= size( ))
         throw std::runtime_error( "Vector out of bounds read" );
 
-    const T* data = _parent->template getDynamic< const T >( I );
-    return data[ index ];
+    return data()[ index ];
 }
 
 template< class A, class T, size_t I > inline
 bool BaseVector< A, T, I >::operator == ( const BaseVector& rhs ) const
 {
-    const size_t size = _getSize();
-    if( size == 0 || size != rhs._getSize( ))
+    if( this == &rhs )
+        return true;
+    const size_t size_ = _getSize();
+    if( size_ == 0 || size_ != rhs._getSize( ))
         return false;
-    return ::memcmp( data(), rhs.data(), size ) == 0;
+    return ::memcmp( data(), rhs.data(), size_ ) == 0;
 }
 
 template< class A, class T, size_t I > inline
