@@ -4,9 +4,13 @@
  */
 
 #include "Zerobuf.h"
+
+#include "detail/JsonSerialization.h"
 #include "Allocator.h"
-#include <zerobuf/jsoncpp/json/json.h>
+#include "Schema.h"
+
 #include <iostream>
+
 
 namespace zerobuf
 {
@@ -34,17 +38,36 @@ void Zerobuf::setZerobufData( const void* data, size_t size )
         std::cerr << "Can't copy data into empty zerobuf" << std::endl;
 }
 
+std::string Zerobuf::toJSON() const
+{
+    Json::Value rootJSON;
+    for( const auto& valueSchema : getSchema().fields )
+        addValueToJSON( rootJSON, valueSchema )
+    return rootJSON.toStyledString();
+}
+
+void Zerobuf::fromJSON( const std::string& json )
+{
+    Json::Value rootJSON;
+    Json::Reader reader;
+    reader.parse( json, rootJSON );
+
+    for( const auto& valueSchema : getSchema().fields )
+        getValueFromJSON( rootJSON, valueSchema )
+}
+
+void Zerobuf::_setZerobufArray( const void* data, const size_t size,
+                                const size_t arrayNum )
+{
+    void* array = _alloc->updateAllocation( arrayNum, size );
+    ::memcpy( array, data, size );
+}
+
 Zerobuf& Zerobuf::operator = ( const Zerobuf& rhs )
 {
     if( this != &rhs )
         _alloc->copyBuffer( rhs._alloc->getData(), rhs._alloc->getSize( ));
     return *this;
-}
-
-bool Zerobuf::_parseJSON( const std::string& input, Json::Value& output )
-{
-    Json::Reader reader;
-    return reader.parse( input, output );
 }
 
 }

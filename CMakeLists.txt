@@ -4,7 +4,8 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 
 project(ZeroBuf)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake
-    ${CMAKE_SOURCE_DIR}/CMake/common)
+  ${PROJECT_SOURCE_DIR}/zerobuf/share/zerobuf/CMake
+  ${CMAKE_SOURCE_DIR}/CMake/common)
 include(GitExternal)
 
 set(VERSION_MAJOR "0")
@@ -18,7 +19,7 @@ set(COMMON_PROJECT_DOMAIN eu.humanbrainproject)
 set(ZEROBUF_DESCRIPTION "ZeroBuf is a replacement for FlatBuffers")
 set(ZEROBUF_DEPENDENT_LIBRARIES Servus)
 
-common_package(Boost REQUIRED COMPONENTS unit_test_framework)
+common_package(Boost COMPONENTS unit_test_framework)
 common_package(Servus REQUIRED)
 common_package_post()
 

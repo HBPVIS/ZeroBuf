@@ -14,50 +14,54 @@ namespace zerobuf
  * Non-const vector
  *
  * @param T element type
- * @param I Index of the vector in the parent allocator dynamic storage
  */
-template< class T, size_t I >
-class Vector : public BaseVector< Allocator, T, I >
+template< class T >
+class Vector : public BaseVector< Allocator, T >
 {
-    typedef BaseVector< Allocator, T, I > Super;
+    typedef BaseVector< Allocator, T > Super;
 
 public:
-    Vector( Allocator* alloc );
+    /**
+     * @param alloc The parent allocator that contains the data.
+     * @param index Index of the vector in the parent allocator dynamic storage
+     */
+    Vector( Allocator* alloc, size_t index );
     ~Vector() {}
 
     void push_back( const T& value );
-    T* data() { return Super::_parent->template getDynamic< T >( I ); }
+    T* data()
+        { return Super::_parent->template getDynamic< T >( Super::_index ); }
 
 private:
     Vector();
     void _resize( const size_t size )
-        { Super::_parent->updateAllocation( I, size ); }
+        { Super::_parent->updateAllocation( Super::_index, size ); }
     void copyBuffer( uint8_t* data, size_t size );
 };
 
 // Implementation
-template< class T, size_t I > inline
-Vector< T, I >::Vector( Allocator* alloc )
-    : BaseVector< Allocator, T, I >( alloc )
+template< class T > inline
+Vector< T >::Vector( Allocator* alloc, const size_t index )
+    : BaseVector< Allocator, T >( alloc, index )
 {}
 
-template< class T, size_t I > inline
-void Vector< T, I >::push_back( const T& value )
+template< class T > inline
+void Vector< T >::push_back( const T& value )
 {
     const size_t size = Super::_getSize();
     const T* oldPtr = data();
     T* newPtr = reinterpret_cast< T* >(
-        Super::_parent->updateAllocation( I, size + sizeof( T )));
+        Super::_parent->updateAllocation( Super::_index, size + sizeof( T )));
     if( oldPtr != newPtr )
         ::memcpy( newPtr, oldPtr, size );
 
     newPtr[ size / sizeof(T) ] = value;
 }
 
-template< class T, size_t I > inline
-void Vector< T, I >::copyBuffer( uint8_t* data_, size_t size )
+template< class T > inline
+void Vector< T >::copyBuffer( uint8_t* data_, size_t size )
 {
-    void* to = Super::_parent->updateAllocation( I, size );
+    void* to = Super::_parent->updateAllocation( Super::_index, size );
     ::memcpy( to, data_, size );
 }
 

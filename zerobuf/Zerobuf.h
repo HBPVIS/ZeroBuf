@@ -9,7 +9,7 @@
 
 #include <zerobuf/api.h>
 #include <zerobuf/Types.h>
-#include <zerobuf/jsoncpp/json/json-forwards.h>
+#include <servus/uint128_t.h>
 
 namespace zerobuf
 {
@@ -23,11 +23,18 @@ class Zerobuf
 {
 public:
     virtual servus::uint128_t getZerobufType() const = 0;
+    virtual Schema getSchema() const = 0;
     virtual void notifyUpdated() {}
 
     ZEROBUF_API const void* getZerobufData() const;
     ZEROBUF_API size_t getZerobufSize() const;
     ZEROBUF_API void setZerobufData( const void* data, size_t size );
+
+    ZEROBUF_API std::string toJSON() const;
+    ZEROBUF_API void fromJSON( const std::string& json );
+
+    /* @internal */
+    const Allocator* getAllocator() const { return _alloc; }
 
 protected:
     Zerobuf() : _alloc( 0 ) {}
@@ -36,14 +43,14 @@ protected:
 
     ZEROBUF_API Zerobuf& operator = ( const Zerobuf& rhs );
     Allocator* getAllocator() { return _alloc; }
-    const Allocator* getAllocator() const { return _alloc; }
 
-    ZEROBUF_API bool _parseJSON( const std::string&, Json::Value& );
+    void _setZerobufArray( const void* data, const size_t size,
+                           const size_t arrayNum );
 
 private:
     Allocator* const _alloc;
 
-    explicit Zerobuf( const Zerobuf& );
+    Zerobuf( const Zerobuf& );
 };
 
 }

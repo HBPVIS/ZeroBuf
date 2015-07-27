@@ -1,0 +1,63 @@
+
+namespace test;
+
+table TestJSON {
+  intvalue: int;
+  uintvalue: uint;
+  floatvalue: float;
+  doublevalue: double;
+  bytevalue: byte;
+  shortvalue: short;
+  ubytevalue: ubyte;
+  ushortvalue: ushort;
+  ulongvalue: ulong;
+  uint8_tvalue: uint8_t;
+  uint16_tvalue: uint16_t;
+  uint32_tvalue: uint32_t;
+  uint64_tvalue: uint64_t;
+  uint128_tvalue: uint128_t;
+  int8_tvalue: int8_t;
+  int16_tvalue: int16_t;
+  int32_tvalue: int32_t;
+  int64_tvalue: int64_t;
+  intarray: [int:4];
+  uintarray: [uint:4];
+  floatarray: [float:4];
+  doublearray: [double:4];
+  bytearray: [byte:4];
+  shortarray: [short:4];
+  ubytearray: [ubyte:4];
+  ushortarray: [ushort:4];
+  ulongarray: [ulong:4];
+  uint8_tarray: [uint8_t:4];
+  uint16_tarray: [uint16_t:4];
+  uint32_tarray: [uint32_t:4];
+  uint64_tarray: [uint64_t:4];
+  uint128_tarray: [uint128_t:4];
+  int8_tarray: [int8_t:4];
+  int16_tarray: [int16_t:4];
+  int32_tarray: [int32_t:4];
+  int64_tarray: [int64_t:4];
+  intdynamic: [int];
+  uintdynamic: [uint];
+  floatdynamic: [float];
+  doubledynamic: [double];
+  bytedynamic: [byte];
+  shortdynamic: [short];
+  ubytedynamic: [ubyte];
+  ushortdynamic: [ushort];
+  ulongdynamic: [ulong];
+  uint8_tdynamic: [uint8_t];
+  uint16_tdynamic: [uint16_t];
+  uint32_tdynamic: [uint32_t];
+  uint64_tdynamic: [uint64_t];
+  uint128_tdynamic: [uint128_t];
+  int8_tdynamic: [int8_t];
+  int16_tdynamic: [int16_t];
+  int32_tdynamic: [int32_t];
+  int64_tdynamic: [int64_t];
+  boolvalue: bool;
+  stringvalue: string;
+}
+
+root_type TestJSON;

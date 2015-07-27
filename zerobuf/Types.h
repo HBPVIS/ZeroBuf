@@ -21,6 +21,7 @@ namespace zerobuf
 class Allocator;
 class Zerobuf;
 class NonMovingAllocator;
+struct Schema;
 }
 
 #endif

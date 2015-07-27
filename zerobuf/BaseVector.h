@@ -20,39 +20,45 @@ namespace zerobuf
  *
  * @param A allocator type (needed for constness)
  * @param T element type
- * @param I Index of the vector in the parent allocator dynamic storage
  */
-template< class A, class T, size_t I >
+template< class A, class T >
 class BaseVector
 {
 public:
-    BaseVector( A* alloc );
+    /**
+     * @param alloc The parent allocator that contains the data.
+     * @param index Index of the vector in the parent allocator dynamic storage
+     */
+    BaseVector( A* alloc, size_t index );
     virtual ~BaseVector() {}
 
     const T& operator[] ( size_t index ) const;
 
     bool empty() const { return _getSize() == 0; }
     uint64_t size() const { return _getSize() / sizeof(T); }
-    const T* data() const { return _parent->template getDynamic< const T >( I ); }
+    const T* data() const
+        { return _parent->template getDynamic< const T >( _index ); }
 
     bool operator == ( const BaseVector& rhs ) const;
     bool operator != ( const BaseVector& rhs ) const;
 
 protected:
     A* _parent;
+    const size_t _index;
 
     BaseVector();
-    size_t _getSize() const { return _parent->getDynamicSize( I ); }
+    size_t _getSize() const { return _parent->getDynamicSize( _index ); }
 };
 
 // Implementation
-template< class A, class T, size_t I > inline
-BaseVector< A, T, I >::BaseVector( A* alloc )
+template< class A, class T > inline
+BaseVector< A, T >::BaseVector( A* alloc, const size_t index )
     : _parent( alloc )
+    , _index( index )
 {}
 
-template< class A, class T, size_t I > inline
-const T& BaseVector< A, T, I >::operator[] ( const size_t index ) const
+template< class A, class T > inline
+const T& BaseVector< A, T >::operator[] ( const size_t index ) const
 {
     if( index >= size( ))
         throw std::runtime_error( "Vector out of bounds read" );
@@ -60,8 +66,8 @@ const T& BaseVector< A, T, I >::operator[] ( const size_t index ) const
     return data()[ index ];
 }
 
-template< class A, class T, size_t I > inline
-bool BaseVector< A, T, I >::operator == ( const BaseVector& rhs ) const
+template< class A, class T > inline
+bool BaseVector< A, T >::operator == ( const BaseVector& rhs ) const
 {
     if( this == &rhs )
         return true;
@@ -71,15 +77,15 @@ bool BaseVector< A, T, I >::operator == ( const BaseVector& rhs ) const
     return ::memcmp( data(), rhs.data(), size_ ) == 0;
 }
 
-template< class A, class T, size_t I > inline
-bool BaseVector< A, T, I >::operator != ( const BaseVector& rhs ) const
+template< class A, class T > inline
+bool BaseVector< A, T >::operator != ( const BaseVector& rhs ) const
 {
     return !(operator == ( rhs ));
 }
 
-template< class A, class T, size_t I > inline
+template< class A, class T > inline
 std::ostream& operator << ( std::ostream& os,
-                            const BaseVector< A, T, I >& vector )
+                            const BaseVector< A, T >& vector )
 {
     return os << typeid( vector ).name() << " of size " << vector.size();
 }
