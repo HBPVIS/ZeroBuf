@@ -6,7 +6,7 @@
 
 #define BOOST_TEST_MODULE jsonSerialization
 
-#include <zerobuf/zerobuf.h>
+#include <zerobuf/Zerobuf.h>
 
 #include <boost/test/unit_test.hpp>
 
