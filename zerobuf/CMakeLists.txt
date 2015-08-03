@@ -4,19 +4,23 @@ set(ZEROBUF_PUBLIC_HEADERS
   Allocator.h
   BaseVector.h
   ConstVector.h
+  Generic.h
   NonMovingAllocator.h
   NonMovingBaseAllocator.h
   NonMovingSubAllocator.h
   Vector.h
+  Schema.h
   Types.h
   jsoncpp/json/json-forwards.h
   )
 
 set(ZEROBUF_HEADERS
+  detail/JsonSerialization.h
   jsoncpp/json/json.h
   )
 
 set(ZEROBUF_SOURCES
+  Generic.cpp
   NonMovingAllocator.cpp
   NonMovingBaseAllocator.cpp
   NonMovingSubAllocator.cpp

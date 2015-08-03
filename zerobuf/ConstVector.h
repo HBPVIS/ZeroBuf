@@ -15,15 +15,18 @@ namespace zerobuf
  * Const vector
  *
  * @param T element type
- * @param I Index of the vector in the parent allocator dynamic storage
  */
-template< class T, size_t I >
-class ConstVector : public BaseVector< const Allocator, T, I >
+template< class T >
+class ConstVector : public BaseVector< const Allocator, T >
 {
-    typedef BaseVector< const Allocator, T, I > Super;
+    typedef BaseVector< const Allocator, T > Super;
 
 public:
-    ConstVector( const Allocator* alloc );
+    /**
+     * @param alloc The parent allocator that contains the data.
+     * @param index Index of the vector in the parent allocator dynamic storage
+     */
+    ConstVector( const Allocator* alloc, size_t index );
     ~ConstVector() {}
 
 private:
@@ -35,9 +38,9 @@ private:
 };
 
 // Implementation
-template< class T, size_t I > inline
-ConstVector< T, I >::ConstVector( const Allocator* alloc )
-    : BaseVector< const Allocator, T, I >( alloc )
+template< class T > inline
+ConstVector< T >::ConstVector( const Allocator* alloc, const size_t index )
+    : BaseVector< const Allocator, T >( alloc, index )
 {}
 
 }

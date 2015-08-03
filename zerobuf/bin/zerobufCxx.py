@@ -27,7 +27,7 @@ from pyparsing import *
 from sys import stdout
 from os import path
 
-fbsBaseType = oneOf( "int uint float double byte short ubyte ushort ulong uint8_t uint16_t uint32_t uint64_t uint128_t int8_t int16_t int32_t int64_t string" )
+fbsBaseType = oneOf( "int uint float double byte short ubyte ushort ulong uint8_t uint16_t uint32_t uint64_t uint128_t int8_t int16_t int32_t int64_t bool string" )
 
 # namespace foo.bar
 fbsNamespaceName = Group( ZeroOrMore( Word( alphanums ) + Suppress( '.' )) +
@@ -47,7 +47,7 @@ fbsTableArray = ( ( Literal( '[' ) + fbsType + Literal( ']' )) ^
                   ( Literal( '[' ) + fbsType + Literal( ':' ) + Word( nums ) +
                     Literal( ']' )) )
 fbsTableValue = ( fbsType ^ fbsTableArray )
-fbsTableEntry = Group( Word( alphanums ) + Suppress( ':' ) + fbsTableValue +
+fbsTableEntry = Group( Word( alphanums+"_" ) + Suppress( ':' ) + fbsTableValue +
                        Suppress( ';' ))
 fbsTableSpec = ZeroOrMore( fbsTableEntry )
 
@@ -70,9 +70,9 @@ fbsObject.ignore( fbsComment )
 #fbsTableValue.setDebug()
 #fbsTableEntry.setDebug()
 
-def emitFunction( retVal, function, body ):
+def emitFunction( retVal, function, body, static=False ):
     if retVal: # '{}'-less body
-        header.write( "    " + retVal + " " + function + ";\n" )
+        header.write( "    {0}{1} {2};\n".format("static " if static else "", retVal, function))
         impl.write( "template< class Alloc >\n" + retVal + " " + emit.table +
                     "Base< Alloc >::" + function + "\n{\n    " + body +
                     "\n}\n\n" )
@@ -105,23 +105,31 @@ def emitDynamic( spec ):
     isString = ( spec[1] == "string" )
     if not isString:
         cxxtype = emit.types[ spec[2] ][1]
-    header.write( "    typedef ::zerobuf::Vector< " + cxxtype + ", " +
-                  str( emit.currentDyn ) + " > " + cxxName + ";\n" )
-    header.write( "    typedef ::zerobuf::ConstVector< " + cxxtype + ", " +
-                  str( emit.currentDyn ) + " > Const" + cxxName + ";\n" )
+    header.write( "    typedef ::zerobuf::Vector< " + cxxtype + " > " + cxxName + ";\n" )
+    header.write( "    typedef ::zerobuf::ConstVector< " + cxxtype + " > Const" + cxxName + ";\n" )
     emit.md5.update( cxxtype + "Vector" )
 
     # non-const, const pointer
     emitFunction( "typename " + emit.table + "Base< Alloc >::" + cxxName,
                   "get" + cxxName + "()",
-                  "return " + cxxName + "( getAllocator( ));" )
+                  "return " + cxxName + "( getAllocator(), " + str( emit.currentDyn ) + " );" )
     emitFunction( "typename " + emit.table + "Base< Alloc >::Const" + cxxName,
                   "get" + cxxName + "() const",
-                  "return Const" + cxxName + "( getAllocator( ));" )
+                  "return Const" + cxxName + "( getAllocator(), " + str( emit.currentDyn ) + " );" )
     emitFunction( "void",
                   "set" + cxxName + "( " + cxxtype +
                   " const * value, size_t size )",
                   "_setZerobufArray( value, size * sizeof( " + cxxtype +
+                  " ), " + str( emit.currentDyn ) + " );" )
+    # vector
+    emitFunction( "std::vector< " + cxxtype + ">",
+                  "get" + cxxName + "Vector() const",
+                  "const Const" + cxxName + "& vec = get" + cxxName + "();\n    return std::vector< " + cxxtype +
+                  " >( vec.data(), vec.data() + vec.size( ));" )
+    emitFunction( "void",
+                  "set" + cxxName + "( const std::vector< " +
+                  cxxtype + " >& value )",
+                  "_setZerobufArray( value.data(), value.size() * sizeof( " + cxxtype +
                   " ), " + str( emit.currentDyn ) + " );" )
     # string
     emitFunction( "std::string",
@@ -135,6 +143,9 @@ def emitDynamic( spec ):
                   "set" + cxxName + "( const std::string& value )",
                   "_setZerobufArray( value.c_str(), value.length(), " +
                   str( emit.currentDyn ) + " );" )
+    # schema entry
+    emit.entries.append("std::make_tuple(\"{0}\", \"{1}\", {2}, {3}, {4} )".format(spec[0], cxxtype, emit.currentDyn, emit.offset + 8, "false"))
+
     emit.offset += 16 # 8b offset, 8b size
     emit.currentDyn += 1
     header.write( "\n" )
@@ -155,13 +166,16 @@ def emitVariable( spec ):
                       "set"  + cxxName + "( " + cxxtype + " value )",
                       "getAllocator()->template getItem< " + cxxtype + " >( " +
                       str( emit.offset ) + " ) = value;" )
+
+        # schema entry
+        emit.entries.append("std::make_tuple(\"{0}\", \"{1}\", {2}, {3}, {4} )".format(spec[0], cxxtype, emit.offset, 0, "true"))
         emit.offset += emit.types[ spec[1] ][0]
     else: # static array
         cxxName = spec[0][0].upper() + spec[0][1:]
         cxxtype = emit.types[ spec[2] ][1]
         nElems = spec[4]
         emit.md5.update( cxxtype + nElems )
-        nBytes = long( emit.types[ spec[2] ][0] * nElems )
+        nBytes = long(emit.types[ spec[2] ][0]) * long(nElems)
         emitFunction( cxxtype + "*", "get" + cxxName + "()",
                       "return getAllocator()->template getItemPtr< " + cxxtype +
                       " >( " + str( emit.offset ) + " );" )
@@ -171,10 +185,10 @@ def emitVariable( spec ):
                       " >( " + str( emit.offset ) + " );" )
         emitFunction( "std::vector< " + cxxtype + ">",
                       "get" + cxxName + "Vector() const",
-                      "const uint8_t* ptr = getAllocator()->template " +
+                      "const " + cxxtype + "* ptr = getAllocator()->template " +
                       "getItemPtr< " + cxxtype + " >( " + str( emit.offset ) +
                       " );\n    return std::vector< " + cxxtype +
-                      " >( ptr, ptr + " + str( nBytes ) + " );" )
+                      " >( ptr, ptr + " + nElems + " );" )
         emitFunction( "void",
                       "set"  + cxxName + "( " + cxxtype + " value[ " +
                       spec[4] + " ] )",
@@ -195,23 +209,12 @@ def emitVariable( spec ):
                       "        ::memcpy( getAllocator()->template getItemPtr<" +
                       cxxtype + ">( " + str( emit.offset ) +
                       " ), value.data(), value.length( ));" )
+        # schema entry
+        emit.entries.append("std::make_tuple(\"{0}\", \"{1}\", {2}, {3}, {4} )".format(spec[0], cxxtype, emit.offset, nElems, "true"))
         emit.offset += nBytes
     header.write( "\n" )
     impl.write( "\n" )
 
-def emitJSON( variables ):
-    jsonCode = ( "Json::Value dict;\n    if( !_parseJSON( json, dict ))\n" +
-                 "        return false;\n\n" )
-    for spec in variables:
-        cxxName = spec[0][0].upper() + spec[0][1:]
-        jsonCode += ( "    if( dict.isMember( \"" + spec[ 0 ] + "\" ))\n" +
-                      "        std::cout << \"" + spec[0] + "\" << ':' << dict[ \"" + spec[0] +
-                      "\" ].toStyledString() << std::endl;\n" )
-    jsonCode += "    return true;"
-
-    emitFunction( "bool", "readJSON( const std::string& json )",
-                  jsonCode );
-    header.write( "\n" )
 
 def emit():
     emit.namespace = ""
@@ -236,8 +239,10 @@ def emit():
                    "int16_t" : ( 2, "int16_t" ),
                    "int32_t" : ( 4, "int32_t" ),
                    "int64_t" : ( 8, "int64_t" ),
+                   "bool" : ( 1, "bool" ),
                    "string" : ( 1, "char*" ),
     }
+    emit.entries = []
 
     def namespace():
         for namespace in emit.namespace:
@@ -275,7 +280,6 @@ def emit():
             emitDynamic( member )
         for member in item[2:]:
             emitVariable( member )
-        emitJSON( item[2:] )
         # ctors, dtor and assignment operator
         if emit.offset == 4: # OPT: table has no data
             emit.offset = 0
@@ -291,10 +295,11 @@ def emit():
                           str( emit.offset ) + ", " + str( emit.currentDyn ) +
                           " ))\n{}\n" )
             emitFunction( None,
+                          item[1] + "Base( const ::zerobuf::Zerobuf& from )",
+                          ": zerobuf::Zerobuf( new Alloc( *static_cast< const Alloc* >(from.getAllocator( ))))\n{}" )
+            emitFunction( None,
                           item[1] + "Base( const " + item[1] + "Base& from )",
-                          ": zerobuf::Zerobuf( new Alloc( "
-                          "*static_cast< const Alloc* >( " +
-                          "from.getAllocator( ))))\n{}" )
+                          ": zerobuf::Zerobuf( new Alloc( *static_cast< const Alloc* >(from.getAllocator( ))))\n{}" )
             header.write( "    virtual ~" + item[1] + "Base() {}\n\n" )
 
             emitFunction( item[1] + "Base< Alloc >&",
@@ -307,18 +312,22 @@ def emit():
                    str( emit.offset == 0 ).lower() + "; }\n" )
         header.write( "    static bool isStaticZerobuf() { return " +
                    str( emit.numDynamic == 0 ).lower() + "; }\n" )
-        header.write( "\n" )
 
+        # zerobufType
         digest = emit.md5.hexdigest()
         high = digest[ 0 : len( digest ) - 16 ]
         low  = digest[ len( digest ) - 16: ]
-        # static type id:
-        # header.write( "    static servus::uint128_t getZerobufType()\n" +
-        #            "    { return servus::uint128_t( 0x" + high + "ull, 0x" +
-        #            low + "ull ); }\n" )
-        header.write( "    virtual servus::uint128_t getZerobufType() const\n" +
-                   "    { return servus::uint128_t( 0x" + high + "ull, 0x" +
-                   low + "ull ); }\n" )
+        zerobufType = "servus::uint128_t( 0x{0}ull, 0x{1}ull )".format(high, low)
+        header.write( "    servus::uint128_t getZerobufType() const override\n" +
+                      "        { return " + zerobufType + "; }\n" )
+        header.write( "\n" )
+
+        # schema
+        schema = "{{ {0}, {1},\n        {2},\n        {{\n         {3}\n         }} }}".format(emit.offset, emit.currentDyn, zerobufType, ',\n         '.join(emit.entries))
+        emitFunction( "::zerobuf::Schema",
+                      "schema()",
+                      "return " + schema + ";", True )
+        header.write( "    ::zerobuf::Schema getSchema() const override { return schema(); }\n" )
         header.write( "\n" )
 
         # private implementation
@@ -328,13 +337,6 @@ def emit():
         #            str( emit.offset ) + ";\n" )
         # header.write( "    static const size_t ZEROBUF_NUM_DYNAMIC = " +
         #            str( emit.numDynamic ) + ";\n" )
-        if emit.numDynamic != 0:
-            emitFunction( "template< class T > void",
-                          "_setZerobufArray( const T* data, const size_t size,"+
-                           " const size_t arrayNum )",
-                          "void* array = getAllocator()->updateAllocation( " +
-                          "arrayNum, size );\n" +
-                          "    ::memcpy( array, data, size );" )
         header.write( "};\n\n" )
         header.write( "typedef " + item[1] +
                       "Base< ::zerobuf::NonMovingAllocator > " + item[1] +
@@ -356,12 +358,12 @@ def emit():
     header.write( "#pragma once\n" )
     header.write( "#include <zerobuf/ConstVector.h>\n" )
     header.write( "#include <zerobuf/NonMovingAllocator.h>\n" )
+    header.write( "#include <zerobuf/Schema.h>\n" )
     header.write( "#include <zerobuf/Vector.h>\n" )
     header.write( "#include <zerobuf/Zerobuf.h>\n" )
     header.write( "\n" )
     impl.write( "// Generated by zerobufCxx.py\n" )
     impl.write( "#include \"" + headerbase + ".h\"\n" )
-    impl.write( "#include <zerobuf/jsoncpp/json/json.h>\n" )
     impl.write( "#include <iostream>\n\n" )
 
     for item in schema:
