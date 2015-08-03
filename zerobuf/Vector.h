@@ -48,14 +48,14 @@ Vector< T >::Vector( Allocator* alloc, const size_t index )
 template< class T > inline
 void Vector< T >::push_back( const T& value )
 {
-    const size_t size = Super::_getSize();
+    const size_t size_ = Super::_getSize();
     const T* oldPtr = data();
     T* newPtr = reinterpret_cast< T* >(
-        Super::_parent->updateAllocation( Super::_index, size + sizeof( T )));
+        Super::_parent->updateAllocation( Super::_index, size_ + sizeof( T )));
     if( oldPtr != newPtr )
-        ::memcpy( newPtr, oldPtr, size );
+        ::memcpy( newPtr, oldPtr, size_ );
 
-    newPtr[ size / sizeof(T) ] = value;
+    newPtr[ size_ / sizeof(T) ] = value;
 }
 
 template< class T > inline
