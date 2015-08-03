@@ -7,9 +7,9 @@
 
 #include <zerobuf/Generic.h>
 
-#include <test_json.h>
-
 #include <boost/test/unit_test.hpp>
+
+#include "serialization.h"
 
 const std::string expectedJson( "{\n"
                                 "   \"boolvalue\" : true,\n"
@@ -107,82 +107,9 @@ const std::string expectedJson( "{\n"
                                 "   \"ushortvalue\" : 42\n"
                                 "}\n" );
 
-#define SETVALUES(type, name) \
-    const std::vector< type > name##Vector { type(1), type(1), type(2), type(3) }; \
-    const type name##value( 42 ); \
-    \
-    object.set##name##dynamic( name##Vector ); \
-    object.set##name##array( name##Vector ); \
-    object.set##name##value( name##value );
-
-#define TESTVALUES(type, name) \
-    const std::vector< type > expected##name##Vector { type(1), type(1), type(2), type(3) }; \
-    const type expected##name##value( 42 ); \
-    \
-    const std::vector< type >& name##Dynamic( object.get##name##dynamicVector( )); \
-    const std::vector< type >& name##Array( object.get##name##arrayVector( )); \
-    const type& name##Value( object.get##name##value( )); \
-    \
-    BOOST_CHECK_EQUAL_COLLECTIONS( expected##name##Vector.begin(), expected##name##Vector.end(),\
-                                   name##Dynamic.begin(), name##Dynamic.end( )); \
-    BOOST_CHECK_EQUAL_COLLECTIONS( expected##name##Vector.begin(), expected##name##Vector.end(),\
-                                   name##Array.begin(), name##Array.end( )); \
-    BOOST_CHECK_EQUAL( expected##name##value, name##Value );
-
-
-test::TestJSON getTestObject()
-{
-    test::TestJSON object;
-    SETVALUES(int32_t, Int);
-    SETVALUES(uint32_t, Uint);
-    SETVALUES(float, Float);
-    SETVALUES(double, Double);
-    SETVALUES(int8_t, Byte);
-    SETVALUES(int16_t, Short);
-    SETVALUES(uint8_t, Ubyte);
-    SETVALUES(uint16_t, Ushort);
-    SETVALUES(uint64_t, Ulong);
-    SETVALUES(uint8_t, Uint8_t);
-    SETVALUES(uint16_t, Uint16_t);
-    SETVALUES(uint32_t, Uint32_t);
-    SETVALUES(uint64_t, Uint64_t);
-    SETVALUES(servus::uint128_t, Uint128_t);
-    SETVALUES(int8_t, Int8_t);
-    SETVALUES(int16_t, Int16_t);
-    SETVALUES(int32_t, Int32_t);
-    SETVALUES(int64_t, Int64_t);
-    object.setBoolvalue( true );
-    object.setStringvalue( "testmessage" );
-    return object;
-}
-
-void checkTestObject( const test::TestJSON& object )
-{
-    TESTVALUES(int32_t, Int);
-    TESTVALUES(uint32_t, Uint);
-    TESTVALUES(float, Float);
-    TESTVALUES(double, Double);
-    TESTVALUES(int8_t, Byte);
-    TESTVALUES(int16_t, Short);
-    TESTVALUES(uint8_t, Ubyte);
-    TESTVALUES(uint16_t, Ushort);
-    TESTVALUES(uint64_t, Ulong);
-    TESTVALUES(uint8_t, Uint8_t);
-    TESTVALUES(uint16_t, Uint16_t);
-    TESTVALUES(uint32_t, Uint32_t);
-    TESTVALUES(uint64_t, Uint64_t);
-    TESTVALUES(servus::uint128_t, Uint128_t);
-    TESTVALUES(int8_t, Int8_t);
-    TESTVALUES(int16_t, Int16_t);
-    TESTVALUES(int32_t, Int32_t);
-    TESTVALUES(int64_t, Int64_t);
-    BOOST_CHECK( object.getBoolvalue( ));
-    BOOST_CHECK_EQUAL( object.getStringvalueString(), "testmessage" );
-}
-
 BOOST_AUTO_TEST_CASE(zerobufToJSON)
 {
-    const test::TestJSON& object( getTestObject( ));
+    const test::TestSchema& object( getTestObject( ));
 
     const std::string& json = object.toJSON();
     BOOST_CHECK_EQUAL( json, expectedJson );
@@ -190,17 +117,17 @@ BOOST_AUTO_TEST_CASE(zerobufToJSON)
 
 BOOST_AUTO_TEST_CASE(zerobufFromJSON)
 {
-    test::TestJSON object;
+    test::TestSchema object;
     object.fromJSON( expectedJson );
     checkTestObject( object );
 }
 
 BOOST_AUTO_TEST_CASE(rawZerobufToJSON)
 {
-    const test::TestJSON& object( getTestObject( ));
+    const test::TestSchema& object( getTestObject( ));
     const void* data = object.getZerobufData();
     const size_t size = object.getZerobufSize();
-    const zerobuf::Schema& schema = test::TestJSON::schema();
+    const zerobuf::Schema& schema = test::TestSchema::schema();
 
     zerobuf::Generic generic( schema );
     generic.setZerobufData( data, size );
@@ -210,10 +137,10 @@ BOOST_AUTO_TEST_CASE(rawZerobufToJSON)
 
 BOOST_AUTO_TEST_CASE(rawZerobufFromJSON)
 {
-    zerobuf::Schema schema = test::TestJSON::schema();
+    zerobuf::Schema schema = test::TestSchema::schema();
     zerobuf::Generic generic( schema );
     generic.fromJSON( expectedJson );
 
-    const test::TestJSON object( generic );
+    const test::TestSchema object( generic );
     checkTestObject( object );
 }
