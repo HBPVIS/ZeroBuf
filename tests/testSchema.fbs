@@ -1,7 +1,7 @@
 
 namespace test;
 
-table TestJSON {
+table TestSchema {
   intvalue: int;
   uintvalue: uint;
   floatvalue: float;
@@ -60,4 +60,4 @@ table TestJSON {
   stringvalue: string;
 }
 
-root_type TestJSON;
+root_type TestSchema;

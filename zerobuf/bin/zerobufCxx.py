@@ -70,14 +70,14 @@ fbsObject.ignore( fbsComment )
 #fbsTableValue.setDebug()
 #fbsTableEntry.setDebug()
 
-def emitFunction( retVal, function, body, static=False ):
+def emitFunction( retVal, function, body, static=False, explicit=False ):
     if retVal: # '{}'-less body
         header.write( "    {0}{1} {2};\n".format("static " if static else "", retVal, function))
         impl.write( "template< class Alloc >\n" + retVal + " " + emit.table +
                     "Base< Alloc >::" + function + "\n{\n    " + body +
                     "\n}\n\n" )
     else:      # ctor '[initializer list]{ body }'
-        header.write( "    " + function + ";\n" )
+        header.write( "    {0}{1};\n".format("explicit " if explicit else "", function))
         impl.write( "template< class Alloc >\n" + emit.table +
                     "Base< Alloc >::" + function + "\n    " + body + "\n\n" )
 
@@ -296,16 +296,15 @@ def emit():
                           " ))\n{}\n" )
             emitFunction( None,
                           item[1] + "Base( const ::zerobuf::Zerobuf& from )",
-                          ": zerobuf::Zerobuf( new Alloc( *static_cast< const Alloc* >(from.getAllocator( ))))\n{}" )
+                          ": zerobuf::Zerobuf( new Alloc( *static_cast< const Alloc* >(from.getAllocator( ))))\n{}",
+                          explicit=True)
             emitFunction( None,
                           item[1] + "Base( const " + item[1] + "Base& from )",
                           ": zerobuf::Zerobuf( new Alloc( *static_cast< const Alloc* >(from.getAllocator( ))))\n{}" )
             header.write( "    virtual ~" + item[1] + "Base() {}\n\n" )
 
-            emitFunction( item[1] + "Base< Alloc >&",
-                          "operator = ( const " + item[1] + "Base& rhs )",
-                          "::zerobuf::Zerobuf::operator = ( rhs );\n"
-                          "    return *this;" )
+            header.write( "    " + item[1] + "Base& operator = ( const " + item[1] + "Base& rhs )\n"+
+                          "        { ::zerobuf::Zerobuf::operator = ( rhs ); return *this; }" )
 
         # introspection
         header.write( "    static bool isEmptyZerobuf() { return " +

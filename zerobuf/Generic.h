@@ -26,7 +26,7 @@ template< class Alloc = NonMovingAllocator >
 class GenericBase : public Zerobuf
 {
 public:
-    ZEROBUF_API GenericBase( const Schema& schema );
+    ZEROBUF_API explicit GenericBase( const Schema& schema );
 
     ZEROBUF_API servus::uint128_t getZerobufType() const final;
     ZEROBUF_API Schema getSchema() const final;

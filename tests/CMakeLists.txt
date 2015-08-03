@@ -6,10 +6,12 @@ if(NOT BOOST_FOUND)
 endif()
 
 include(zerobufGenerateCxx)
-zerobuf_generate_cxx(TESTJSON ${OUTPUT_INCLUDE_DIR} test_json.fbs)
-set(TESTJSON_LIBRARY_TYPE STATIC)
-set(TESTJSON_INCLUDE_NAME testjson)
-common_library(testjson)
+zerobuf_generate_cxx(TESTSCHEMA ${CMAKE_CURRENT_BINARY_DIR} testSchema.fbs)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-set(TEST_LIBRARIES ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ZeroBuf testjson)
+set(TESTSCHEMA_LIBRARY_TYPE STATIC)
+set(TESTSCHEMA_INCLUDE_NAME testschema)
+common_library(testschema)
+
+set(TEST_LIBRARIES ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ZeroBuf testschema)
 include(CommonCTest)

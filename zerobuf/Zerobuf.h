@@ -50,7 +50,7 @@ protected:
 private:
     Allocator* const _alloc;
 
-    Zerobuf( const Zerobuf& );
+    explicit Zerobuf( const Zerobuf& );
 };
 
 }

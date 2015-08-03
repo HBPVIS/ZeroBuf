@@ -17,7 +17,8 @@ class NonMovingBaseAllocator : public Allocator
 {
 public:
     ZEROBUF_API NonMovingBaseAllocator( size_t staticSize, size_t numDynamic );
-    ZEROBUF_API NonMovingBaseAllocator( const NonMovingBaseAllocator& from );
+    ZEROBUF_API
+    explicit NonMovingBaseAllocator( const NonMovingBaseAllocator& from );
     ZEROBUF_API virtual ~NonMovingBaseAllocator();
 
     ZEROBUF_API
