@@ -13,5 +13,5 @@ set(TESTSCHEMA_LIBRARY_TYPE STATIC)
 set(TESTSCHEMA_INCLUDE_NAME testschema)
 common_library(testschema)
 
-set(TEST_LIBRARIES ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ZeroBuf testschema)
+set(TEST_LIBRARIES ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ZeroBuf testschema ZeroBufRender)
 include(CommonCTest)

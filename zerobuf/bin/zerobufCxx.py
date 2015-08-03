@@ -122,7 +122,7 @@ def emitDynamic( spec ):
                   "_setZerobufArray( value, size * sizeof( " + cxxtype +
                   " ), " + str( emit.currentDyn ) + " );" )
     # vector
-    emitFunction( "std::vector< " + cxxtype + ">",
+    emitFunction( "std::vector< " + cxxtype + " >",
                   "get" + cxxName + "Vector() const",
                   "const Const" + cxxName + "& vec = get" + cxxName + "();\n    return std::vector< " + cxxtype +
                   " >( vec.data(), vec.data() + vec.size( ));" )
@@ -183,7 +183,7 @@ def emitVariable( spec ):
                       "get" + cxxName + "() const",
                       "return getAllocator()->template getItemPtr< " + cxxtype +
                       " >( " + str( emit.offset ) + " );" )
-        emitFunction( "std::vector< " + cxxtype + ">",
+        emitFunction( "std::vector< " + cxxtype + " >",
                       "get" + cxxName + "Vector() const",
                       "const " + cxxtype + "* ptr = getAllocator()->template " +
                       "getItemPtr< " + cxxtype + " >( " + str( emit.offset ) +
@@ -261,6 +261,7 @@ def emit():
         header.write( "};\n\n" )
 
     def table():
+        emit.types[ item[1] ] = ( 4, item[1] )
         emit.offset = 4 # 4b version header in host endianness
         emit.numDynamic = countDynamic( item[2:] )
         emit.currentDyn = 0
@@ -288,7 +289,7 @@ def emit():
                           "Base& ) : Zerobuf() {}\n" )
             header.write( "    virtual ~" + item[1] + "Base() {}\n\n" )
             header.write( "    " + item[1] + "Base& operator = ( const " +
-                          item[1] + "Base& ) { return *this; }\n" )
+                          item[1] + "Base& ) { return *this; }\n\n" )
         else:
             emitFunction( None, item[1] + "Base()",
                           ": zerobuf::Zerobuf( new Alloc( " +
@@ -304,7 +305,7 @@ def emit():
             header.write( "    virtual ~" + item[1] + "Base() {}\n\n" )
 
             header.write( "    " + item[1] + "Base& operator = ( const " + item[1] + "Base& rhs )\n"+
-                          "        { ::zerobuf::Zerobuf::operator = ( rhs ); return *this; }" )
+                          "        { ::zerobuf::Zerobuf::operator = ( rhs ); return *this; }\n\n" )
 
         # introspection
         header.write( "    static bool isEmptyZerobuf() { return " +
