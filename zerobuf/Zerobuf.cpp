@@ -56,6 +56,19 @@ void Zerobuf::fromJSON( const std::string& json )
         getValueFromJSON( rootJSON, valueSchema )
 }
 
+bool Zerobuf::operator==( const Zerobuf& rhs ) const
+{
+    if( this == &rhs )
+        return true;
+    // not optimal, but correct and easy
+    return toJSON() == rhs.toJSON();
+}
+
+bool Zerobuf::operator!=( const Zerobuf& rhs ) const
+{
+    return !(*this == rhs);
+}
+
 void Zerobuf::_setZerobufArray( const void* data, const size_t size,
                                 const size_t arrayNum )
 {

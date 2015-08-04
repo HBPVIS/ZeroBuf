@@ -33,6 +33,9 @@ public:
     ZEROBUF_API std::string toJSON() const;
     ZEROBUF_API void fromJSON( const std::string& json );
 
+    ZEROBUF_API bool operator==( const Zerobuf& rhs ) const;
+    ZEROBUF_API bool operator!=( const Zerobuf& rhs ) const;
+
     /* @internal */
     const Allocator* getAllocator() const { return _alloc; }
 

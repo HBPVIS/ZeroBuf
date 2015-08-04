@@ -1,0 +1,13 @@
+// Copyright (c) 2015, Human Brain Project
+//                     Daniel.Nachbaur@epfl.ch
+//
+namespace zerobuf.render;
+
+table Camera
+{
+  origin: [float:3];
+  lookAt: [float:3];
+  up: [float:3];
+}
+
+root_type Camera;

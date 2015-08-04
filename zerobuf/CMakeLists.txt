@@ -47,3 +47,5 @@ configure_file(${CMAKE_CURRENT_LIST_DIR}/bin/zerobufCxx.py
 install(FILES bin/zerobufCxx.py DESTINATION bin COMPONENT bin)
 install(FILES share/zerobuf/CMake/zerobufGenerateCxx.cmake
   DESTINATION ${CMAKE_MODULE_INSTALL_PATH} COMPONENT dev)
+
+add_subdirectory(render)
