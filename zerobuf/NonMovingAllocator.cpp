@@ -8,6 +8,7 @@
 #include <zerobuf/version.h>
 
 #include <cstring>
+#include <stdlib.h>
 
 namespace zerobuf
 {
