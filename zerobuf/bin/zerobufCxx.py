@@ -107,7 +107,7 @@ def emitDynamic( spec ):
         cxxtype = emit.types[ spec[2] ][1]
     header.write( "    typedef ::zerobuf::Vector< " + cxxtype + " > " + cxxName + ";\n" )
     header.write( "    typedef ::zerobuf::ConstVector< " + cxxtype + " > Const" + cxxName + ";\n" )
-    emit.md5.update( cxxtype + "Vector" )
+    emit.md5.update( cxxtype.encode('utf-8') + b"Vector" )
 
     # non-const, const pointer
     emitFunction( "typename " + emit.table + "Base< Alloc >::" + cxxName,
@@ -158,7 +158,7 @@ def emitVariable( spec ):
     if len( spec ) == 2: # variable
         cxxName = spec[0][0].upper() + spec[0][1:]
         cxxtype = emit.types[ spec[1] ][1]
-        emit.md5.update( cxxtype )
+        emit.md5.update( cxxtype.encode('utf-8') )
         emitFunction( cxxtype, "get" + cxxName + "() const",
                       "return getAllocator()->template getItem< " + cxxtype +
                       " >( " + str( emit.offset ) + " );" )
@@ -174,8 +174,8 @@ def emitVariable( spec ):
         cxxName = spec[0][0].upper() + spec[0][1:]
         cxxtype = emit.types[ spec[2] ][1]
         nElems = spec[4]
-        emit.md5.update( cxxtype + nElems )
-        nBytes = long(emit.types[ spec[2] ][0]) * long(nElems)
+        emit.md5.update( (cxxtype + nElems).encode('utf-8') )
+        nBytes = int(emit.types[ spec[2] ][0]) * int(nElems)
         emitFunction( cxxtype + "*", "get" + cxxName + "()",
                       "return getAllocator()->template getItemPtr< " + cxxtype +
                       " >( " + str( emit.offset ) + " );" )
@@ -268,8 +268,8 @@ def emit():
         emit.table = item[1]
         emit.md5 = hashlib.md5()
         for namespace in emit.namespace:
-            emit.md5.update( namespace + "::" )
-        emit.md5.update( item[1] )
+            emit.md5.update( namespace.encode('utf-8') + b"::" )
+        emit.md5.update( item[1].encode('utf-8') )
 
         # class header
         header.write( "template< class Alloc = zerobuf::NonMovingAllocator >\n"+
