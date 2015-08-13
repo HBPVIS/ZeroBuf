@@ -19,7 +19,7 @@ set(COMMON_PROJECT_DOMAIN eu.humanbrainproject)
 set(ZEROBUF_DESCRIPTION "ZeroBuf is a replacement for FlatBuffers")
 set(ZEROBUF_DEPENDENT_LIBRARIES Servus)
 
-common_package(Boost COMPONENTS unit_test_framework)
+common_package(Boost 1.51 COMPONENTS unit_test_framework)
 common_package(Servus REQUIRED)
 common_package_post()
 
