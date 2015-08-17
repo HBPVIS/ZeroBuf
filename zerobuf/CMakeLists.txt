@@ -34,7 +34,7 @@ list(APPEND CPPCHECK_EXTRA_ARGS
 set_source_files_properties(jsoncpp/jsoncpp.cpp PROPERTIES COMPILE_FLAGS
   -Wno-shadow)
 
-set(ZEROBUF_LINK_LIBRARIES ${SERVUS_LIBRARIES})
+set(ZEROBUF_LINK_LIBRARIES PUBLIC Servus)
 set(ZEROBUF_INCLUDE_NAME zerobuf)
 set(ZEROBUF_OMIT_LIBRARY_HEADER ON)
 common_library(ZeroBuf)
