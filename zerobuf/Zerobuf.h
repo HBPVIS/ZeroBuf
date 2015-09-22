@@ -19,22 +19,22 @@ namespace zerobuf
  * Zerobuf objects can serialize/deserialize directly from their member storage
  * and from and to JSON.
  */
-class Zerobuf
+class ZEROBUF_API Zerobuf
 {
 public:
     virtual servus::uint128_t getZerobufType() const = 0;
     virtual Schema getSchema() const = 0;
     virtual void notifyUpdated() {}
 
-    ZEROBUF_API const void* getZerobufData() const;
-    ZEROBUF_API size_t getZerobufSize() const;
-    ZEROBUF_API void setZerobufData( const void* data, size_t size );
+    const void* getZerobufData() const;
+    size_t getZerobufSize() const;
+    void setZerobufData( const void* data, size_t size );
 
-    ZEROBUF_API std::string toJSON() const;
-    ZEROBUF_API void fromJSON( const std::string& json );
+    std::string toJSON() const;
+    void fromJSON( const std::string& json );
 
-    ZEROBUF_API bool operator==( const Zerobuf& rhs ) const;
-    ZEROBUF_API bool operator!=( const Zerobuf& rhs ) const;
+    bool operator==( const Zerobuf& rhs ) const;
+    bool operator!=( const Zerobuf& rhs ) const;
 
     /* @internal */
     const Allocator* getAllocator() const { return _alloc; }
@@ -42,9 +42,9 @@ public:
 protected:
     Zerobuf() : _alloc( 0 ) {}
     explicit Zerobuf( Allocator* alloc ) : _alloc( alloc ) {}
-    ZEROBUF_API virtual ~Zerobuf();
+    virtual ~Zerobuf();
 
-    ZEROBUF_API Zerobuf& operator = ( const Zerobuf& rhs );
+    Zerobuf& operator = ( const Zerobuf& rhs );
     Allocator* getAllocator() { return _alloc; }
 
     void _setZerobufArray( const void* data, const size_t size,
