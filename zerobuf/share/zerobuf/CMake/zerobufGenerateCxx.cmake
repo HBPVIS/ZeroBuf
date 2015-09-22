@@ -19,9 +19,9 @@ function(zerobuf_generate_cxx Name OutputDir)
     list(APPEND ${Name}_SOURCES ${ZEROBUF_SOURCE})
 
     add_custom_command(
-      COMMAND ${ZEROBUF_BASE_DIR}/bin/zerobufCxx.py
+      COMMAND python ${ZEROBUF_BASE_DIR}/bin/zerobufCxx.py
       ARGS -o "${OutputDir}" ${FILE}
-      COMMENT "Building zerobuf C++ headers for ${FILE}"
+      COMMENT "Building zerobuf C++ headers for ${FILE} in ${OutputDir}"
       DEPENDS ${FILE} ${ZEROBUF_BASE_DIR}/bin/zerobufCxx.py
       OUTPUT ${ZEROBUF_HEADER} ${ZEROBUF_SOURCE}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
