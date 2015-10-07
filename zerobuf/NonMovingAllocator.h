@@ -27,6 +27,8 @@ public:
     size_t getSize() const final { return _size; }
     ZEROBUF_API void copyBuffer( const void* data, size_t size ) final;
 
+    ZEROBUF_API  Allocator* clone() const final;
+
 private:
     uint8_t* _data;
     size_t _size;

@@ -1,6 +1,16 @@
 
 namespace test;
 
+enum TestEnum : uint {
+  FIRST,
+  SECOND
+}
+
+table TestNestedTable {
+  intvalue: int;
+  uintvalue: uint;
+}
+
 table TestSchema {
   intvalue: int;
   uintvalue: uint;
@@ -58,6 +68,11 @@ table TestSchema {
   int64_tdynamic: [int64_t];
   boolvalue: bool;
   stringvalue: string;
+  enumeration: TestEnum;
+  enumerations: [TestEnum:2];
+  table: TestNestedTable;
+  tables: [TestNestedTable:4];
+  tables_dynamic: [TestNestedTable];
 }
 
 root_type TestSchema;

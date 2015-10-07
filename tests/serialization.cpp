@@ -65,4 +65,13 @@ BOOST_AUTO_TEST_CASE(test_string)
     BOOST_CHECK( object.getStringvalue().empty( ));
     BOOST_CHECK_EQUAL( object.getStringvalue().size(), 0 );
     BOOST_CHECK_EQUAL( emptyMessage, object.getStringvalueString( ));
+
+    object.setEnumeration( test::TestEnum_SECOND );
+    BOOST_CHECK_EQUAL( object.getEnumeration(), test::TestEnum_SECOND );
+
+    const std::vector<test::TestEnum> testEnums = { test::TestEnum_FIRST, test::TestEnum_SECOND };
+    object.setEnumerations( testEnums );
+    const std::vector<test::TestEnum>& result = object.getEnumerationsVector();
+    BOOST_CHECK_EQUAL_COLLECTIONS( testEnums.begin(), testEnums.end(),
+                                   result.begin(), result.end( ));
 }

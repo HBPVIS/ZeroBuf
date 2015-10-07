@@ -25,12 +25,12 @@ public:
      * @param alloc The parent allocator that contains the data.
      * @param index Index of the vector in the parent allocator dynamic storage
      */
-    Vector( Allocator* alloc, size_t index );
+    Vector( Allocator* alloc, size_t index, size_t staticSize = sizeof( T ));
     ~Vector() {}
 
     void push_back( const T& value );
     T* data()
-        { return Super::_parent->template getDynamic< T >( Super::_index ); }
+        { return Super::_parent->template getDynamicPtr< T >( Super::_index ); }
 
 private:
     Vector();
@@ -41,8 +41,10 @@ private:
 
 // Implementation
 template< class T > inline
-Vector< T >::Vector( Allocator* alloc, const size_t index )
-    : BaseVector< Allocator, T >( alloc, index )
+Vector< T >::Vector( Allocator* alloc,
+                     const size_t index,
+                     const size_t staticSize )
+    : BaseVector< Allocator, T >( alloc, index, staticSize )
 {}
 
 template< class T > inline
@@ -55,7 +57,7 @@ void Vector< T >::push_back( const T& value )
     if( oldPtr != newPtr )
         ::memcpy( newPtr, oldPtr, size_ );
 
-    newPtr[ size_ / sizeof(T) ] = value;
+    newPtr[ size_ / Super::_elemSize ] = value;
 }
 
 template< class T > inline
@@ -64,6 +66,9 @@ void Vector< T >::copyBuffer( uint8_t* data_, size_t size )
     void* to = Super::_parent->updateAllocation( Super::_index, size );
     ::memcpy( to, data_, size );
 }
+
+template<>
+void Vector<Zerobuf>::push_back( const Zerobuf& value );
 
 }
 

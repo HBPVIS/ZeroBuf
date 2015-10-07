@@ -52,6 +52,92 @@ test::TestSchema getTestObject()
     SETVALUES(int64_t, Int64_t);
     object.setBoolvalue( true );
     object.setStringvalue( "testmessage" );
+
+    object.setEnumeration( test::TestEnum_SECOND );
+    const std::vector<test::TestEnum> testEnums = { test::TestEnum_FIRST, test::TestEnum_SECOND };
+    object.setEnumerations( testEnums );
+
+    int32_t intMagic = 42;
+    uint32_t uintMagic = 43;
+
+    // Writable nested table
+    test::TestNestedTable nestedTable;
+    nestedTable.setIntvalue( intMagic );
+    nestedTable.setUintvalue( uintMagic );
+    object.setTable( nestedTable );
+
+    // Writable copy of the table is acquired from parent schema
+    test::TestNestedTable nonConstestedTable = object.getTable( );
+    nonConstestedTable.setIntvalue( intMagic );
+    nonConstestedTable.setUintvalue( uintMagic );
+    BOOST_CHECK_EQUAL( nonConstestedTable.getIntvalue(), intMagic  );
+    BOOST_CHECK_EQUAL( nonConstestedTable.getUintvalue(), uintMagic  );
+
+    // Non writable copy of the table is acquired from parent schema
+    test::TestNestedTable constNestedTable = static_cast<const test::TestSchema&>( object ).getTable();
+    BOOST_CHECK_EQUAL( constNestedTable.getIntvalue(), intMagic  );
+    BOOST_CHECK_EQUAL( constNestedTable.getUintvalue(), uintMagic  );
+    BOOST_REQUIRE_THROW( constNestedTable.setIntvalue( intMagic ), std::runtime_error );
+    BOOST_REQUIRE_THROW( constNestedTable.setUintvalue( uintMagic ), std::runtime_error );
+
+    // Writable copy of the table is acquired from parent schema
+    std::vector< test::TestNestedTable > nonConstTables = object.getTablesVector();
+
+    intMagic = 42;
+    uintMagic = 43;
+
+    for( std::vector< test::TestNestedTable >::iterator it = nonConstTables.begin();
+         it != nonConstTables.end(); ++it )
+    {
+        test::TestNestedTable& table = *it;
+        table.setIntvalue( intMagic++ );
+        table.setUintvalue( uintMagic++ );
+    }
+
+    // Non writable copy of the tables are acquired from parent schema
+    std::vector< test::TestNestedTable > constTables =
+                                static_cast<const test::TestSchema&>(object).getTablesVector();
+
+    intMagic = 42;
+    uintMagic = 43;
+    for( std::vector< test::TestNestedTable >::iterator it = constTables.begin();
+         it != constTables.end(); ++it )
+    {
+        test::TestNestedTable& table = *it;
+        BOOST_CHECK_EQUAL( table.getIntvalue(), intMagic++ );
+        BOOST_CHECK_EQUAL( table.getUintvalue(), uintMagic++  );
+        BOOST_REQUIRE_THROW( table.setIntvalue( intMagic ), std::runtime_error );
+    }
+
+    intMagic = 42;
+    uintMagic = 43;
+
+    // Writable nested tables
+    std::vector< test::TestNestedTable > tables;
+    for( size_t i = 0; i < constTables.size(); ++i  )
+    {
+        test::TestNestedTable table;
+        table.setIntvalue( intMagic++ );
+        table.setUintvalue( uintMagic++ );
+        tables.push_back( table );
+    }
+    object.setTables( tables );
+
+    intMagic = 42;
+    uintMagic = 43;
+
+    // Setting dynamic tables
+    std::vector< test::TestNestedTable > tablesDynamic;
+    for( size_t i = 0; i < 2; ++i  )
+    {
+        test::TestNestedTable table;
+        table.setIntvalue( intMagic++ );
+        table.setUintvalue( uintMagic++ );
+        tablesDynamic.push_back( table );
+    }
+
+    object.setTables_dynamic( tablesDynamic );
+
     return object;
 }
 
@@ -77,4 +163,44 @@ void checkTestObject( const test::TestSchema& object )
     TESTVALUES(int64_t, Int64_t);
     BOOST_CHECK( object.getBoolvalue( ));
     BOOST_CHECK_EQUAL( object.getStringvalueString(), "testmessage" );
+
+    const test::TestNestedTable& nestedTable = object.getTable( );
+    BOOST_CHECK_EQUAL( nestedTable.getIntvalue(), 42  );
+    BOOST_CHECK_EQUAL( nestedTable.getUintvalue(), 43  );
+
+    std::vector< test::TestNestedTable > tables = object.getTablesVector();
+
+    // Test retrieved tables
+    int32_t intMagic = 42;
+    uint32_t uintMagic = 43;
+    for( std::vector< test::TestNestedTable >::iterator it = tables.begin();
+         it != tables.end(); ++it )
+    {
+        test::TestNestedTable& table = *it;
+        BOOST_CHECK_EQUAL( table.getIntvalue(), intMagic++ );
+        BOOST_CHECK_EQUAL( table.getUintvalue(), uintMagic++  );
+    }
+
+    // Test retrieved dynamic tables vector
+    intMagic = 42;
+    uintMagic = 43;
+    const auto& tablesDynamicVector = object.getTables_dynamicVector();
+    for( const test::TestNestedTable& table : tablesDynamicVector )
+    {
+        BOOST_CHECK_EQUAL( table.getIntvalue(), intMagic++ );
+        BOOST_CHECK_EQUAL( table.getUintvalue(), uintMagic++  );
+    }
+
+    // Test retrieved dynamic tables
+    intMagic = 42;
+    uintMagic = 43;
+    ::zerobuf::ConstVector< test::TestNestedTable > dynamicTables = object.getTables_dynamic();
+    for( size_t i = 0; i < dynamicTables.size(); ++i )
+    {
+        const test::TestNestedTable& table = dynamicTables[i];
+        BOOST_CHECK_EQUAL( table.getIntvalue(), intMagic++ );
+        BOOST_CHECK_EQUAL( table.getUintvalue(), uintMagic++  );
+    }
+
+    BOOST_REQUIRE_THROW( dynamicTables.data(), std::runtime_error );
 }

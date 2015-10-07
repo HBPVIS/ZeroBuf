@@ -10,9 +10,17 @@
 #include <zerobuf/api.h>
 #include <zerobuf/Types.h>
 #include <servus/uint128_t.h>
+#include <memory> // std::unique_ptr
+
+
+namespace Json
+{
+class Value;
+}
 
 namespace zerobuf
 {
+
 /**
  * Base class for all zerobufs.
  *
@@ -22,6 +30,7 @@ namespace zerobuf
 class Zerobuf
 {
 public:
+
     virtual servus::uint128_t getZerobufType() const = 0;
     virtual Schema getSchema() const = 0;
     virtual void notifyUpdated() {}
@@ -37,23 +46,26 @@ public:
     ZEROBUF_API bool operator!=( const Zerobuf& rhs ) const;
 
     /* @internal */
-    const Allocator* getAllocator() const { return _alloc; }
+    const Allocator* getAllocator() const;
 
 protected:
-    Zerobuf() : _alloc( 0 ) {}
-    explicit Zerobuf( Allocator* alloc ) : _alloc( alloc ) {}
+
+    Zerobuf();
+    explicit Zerobuf( Allocator* alloc );
+    explicit Zerobuf( const Zerobuf& zerobuf );
     ZEROBUF_API virtual ~Zerobuf();
 
-    ZEROBUF_API Zerobuf& operator = ( const Zerobuf& rhs );
-    Allocator* getAllocator() { return _alloc; }
+    ZEROBUF_API Zerobuf& operator=( const Zerobuf& rhs );
+    Allocator* getAllocator();
 
-    void _setZerobufArray( const void* data, const size_t size,
+    void _setZerobufArray( const void* data,
+                           const size_t size,
                            const size_t arrayNum );
 
 private:
-    Allocator* const _alloc;
 
-    explicit Zerobuf( const Zerobuf& );
+    class Impl;
+    std::unique_ptr<Impl> _impl;
 };
 
 }

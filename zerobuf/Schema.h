@@ -46,15 +46,25 @@ struct Schema
         FIELD_DATAOFFSET, //!< the data offset in the allocator
         FIELD_SIZE,       /**< size of static arrays, size offset in the
                                allocator for dynamic arrays */
-        FIELD_ISSTATIC    //!< bool if the field is static or not
+        FIELD_ISSTATIC,    //!< bool if the field is static or not
+        FIELD_SCHEMAFUNC    //!< schema function pointer
     };
 
+    typedef std::function<Schema()> SchemaFunction;
+
     /** Contains the necessary information to describe one object field. */
-    typedef std::tuple< std::string, std::string, size_t, size_t, bool > Field;
+    typedef std::tuple< std::string,
+                        std::string,
+                        size_t,
+                        size_t,
+                        bool,
+                        SchemaFunction> Field;
 
     /** All the fields in object */
     const std::vector< Field > fields;
 };
+
+
 
 }
 

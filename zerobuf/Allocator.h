@@ -47,14 +47,16 @@ public:
     template< class T > T getItem( const size_t offset ) const
         { return *getItemPtr< T >( offset ); }
 
-    template< class T > T* getDynamic( const size_t index )
+    template< class T > T* getDynamicPtr( const size_t index )
         { return reinterpret_cast< T* >( getData() + _getOffset( index )); }
 
-    template< class T > const T* getDynamic( const size_t index ) const
+    template< class T > const T* getDynamicPtr( const size_t index ) const
         { return reinterpret_cast< const T* >( getData() + _getOffset(index)); }
 
     size_t getDynamicSize( const size_t index ) const
         { return _getSize( index ); }
+
+    virtual Allocator* clone() const = 0;
 
 protected:
     uint64_t& _getOffset( const size_t i )
