@@ -28,6 +28,7 @@ public:
 
 protected:
     virtual void _resize( size_t newSize ) = 0;
+    ZEROBUF_API size_t getDynamic() const { return _numDynamic; }
 
 private:
     size_t _staticSize;

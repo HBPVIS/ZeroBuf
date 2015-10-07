@@ -54,6 +54,11 @@ void NonMovingAllocator::copyBuffer( const void* data, size_t size )
     ::memcpy( _data, data, size );
 }
 
+Allocator* NonMovingAllocator::clone() const
+{
+    return new NonMovingAllocator( *this );
+}
+
 void NonMovingAllocator::_resize( const size_t newSize )
 {
     _data = (uint8_t*)::realloc( _data, newSize );

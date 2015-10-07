@@ -4,6 +4,7 @@
  */
 
 #include <zerobuf/ConstVector.h>
+#include <zerobuf/Zerobuf.h>
 #include <zerobuf/jsoncpp/json/json.h>
 
 namespace zerobuf
@@ -34,6 +35,14 @@ Json::Value _toJSON< servus::uint128_t,
     json["high"] = Json::UInt64(value.high( ));
     json["low"] = Json::UInt64(value.low( ));
     return json;
+}
+
+/** Specialization for servus::uint128_t, represented as an object in JSON */
+template<>
+Json::Value _toJSON< ::zerobuf::Zerobuf,
+                     Json::UInt64 >( const ::zerobuf::Zerobuf& value )
+{
+    return value.getJSON();
 }
 
 /**
@@ -195,6 +204,7 @@ servus::uint128_t _fromJSON( const Json::Value& jsonValue )
     convertToJSON(double, double) \
     convertToJSON(bool, bool) \
     convertToJSON(char, char) \
+    convertToJSON(::zerobuf::Zerobuf, Json::UInt64) \
 }
 
 /**

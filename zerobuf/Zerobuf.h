@@ -10,6 +10,7 @@
 #include <zerobuf/api.h>
 #include <zerobuf/Types.h>
 #include <servus/uint128_t.h>
+#include <zerobuf/jsoncpp/json/json.h>
 
 namespace zerobuf
 {
@@ -31,6 +32,7 @@ public:
     ZEROBUF_API void setZerobufData( const void* data, size_t size );
 
     ZEROBUF_API std::string toJSON() const;
+    ZEROBUF_API Json::Value getJSON() const;
     ZEROBUF_API void fromJSON( const std::string& json );
 
     ZEROBUF_API bool operator==( const Zerobuf& rhs ) const;
@@ -42,6 +44,7 @@ public:
 protected:
     Zerobuf() : _alloc( 0 ) {}
     explicit Zerobuf( Allocator* alloc ) : _alloc( alloc ) {}
+    explicit Zerobuf( const Zerobuf& zerobuf );
     ZEROBUF_API virtual ~Zerobuf();
 
     ZEROBUF_API Zerobuf& operator = ( const Zerobuf& rhs );
@@ -53,7 +56,7 @@ protected:
 private:
     Allocator* const _alloc;
 
-    explicit Zerobuf( const Zerobuf& );
+
 };
 
 }

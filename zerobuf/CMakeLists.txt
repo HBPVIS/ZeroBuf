@@ -8,6 +8,7 @@ set(ZEROBUF_PUBLIC_HEADERS
   NonMovingAllocator.h
   NonMovingBaseAllocator.h
   NonMovingSubAllocator.h
+  ConstNonMovingSubAllocator.h
   Vector.h
   Schema.h
   Types.h
@@ -24,6 +25,7 @@ set(ZEROBUF_SOURCES
   NonMovingAllocator.cpp
   NonMovingBaseAllocator.cpp
   NonMovingSubAllocator.cpp
+  ConstNonMovingSubAllocator.cpp
   Zerobuf.cpp
   jsoncpp/jsoncpp.cpp
   )
