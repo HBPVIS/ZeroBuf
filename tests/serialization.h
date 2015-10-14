@@ -52,6 +52,75 @@ test::TestSchema getTestObject()
     SETVALUES(int64_t, Int64_t);
     object.setBoolvalue( true );
     object.setStringvalue( "testmessage" );
+
+    object.setEnumeration( test::TestEnum_SECOND );
+    const std::vector<test::TestEnum> testEnums = { test::TestEnum_FIRST, test::TestEnum_SECOND };
+    object.setEnumerations( testEnums );
+
+    // Writable copy of the table is acquired from parent schema
+    test::TestNestedTable nonConstestedTable = object.getTable( );
+    nonConstestedTable.setIntvalue( 42 );
+    nonConstestedTable.setUintvalue( 43 );
+    BOOST_CHECK_EQUAL( nonConstestedTable.getIntvalue(), 42  );
+    BOOST_CHECK_EQUAL( nonConstestedTable.getUintvalue(), 43  );
+
+    // Non writable copy of the table is acquired from parent schema
+    test::TestNestedTable constNestedTable = static_cast<const test::TestSchema&>( object ).getTable();
+    BOOST_CHECK_EQUAL( constNestedTable.getIntvalue(), 42  );
+    BOOST_CHECK_EQUAL( constNestedTable.getUintvalue(), 43  );
+    BOOST_REQUIRE_THROW( constNestedTable.setIntvalue( 42 ), std::runtime_error );
+    BOOST_REQUIRE_THROW( constNestedTable.setUintvalue( 43 ), std::runtime_error );
+
+    int32_t intMagic = 42;
+    uint32_t uintMagic = 43;
+
+    // Writable copy of nested table
+    test::TestNestedTable nestedTable;
+    nestedTable.setIntvalue( intMagic );
+    nestedTable.setUintvalue( uintMagic );
+    object.setTable( nestedTable );
+
+    // Writable copy of the table is acquired from parent schema
+    std::vector< test::TestNestedTable > nonConstTables = object.getTablesVector();
+
+    intMagic = 42;
+    uintMagic = 43;
+
+    for( std::vector< test::TestNestedTable >::iterator it = nonConstTables.begin();
+         it != nonConstTables.end(); ++it )
+    {
+        test::TestNestedTable& table = *it;
+        table.setIntvalue( intMagic++ );
+        table.setUintvalue( uintMagic++ );
+    }
+
+    // Non writable copy of the table is acquired from parent schema
+    std::vector< test::TestNestedTable > constTables =
+                                static_cast<const test::TestSchema&>(object).getTablesVector();
+
+    intMagic = 42;
+    uintMagic = 43;
+    for( std::vector< test::TestNestedTable >::iterator it = constTables.begin();
+         it != constTables.end(); ++it )
+    {
+        test::TestNestedTable& table = *it;
+        BOOST_CHECK_EQUAL( table.getIntvalue(), intMagic++ );
+        BOOST_CHECK_EQUAL( table.getUintvalue(), uintMagic++  );
+        BOOST_REQUIRE_THROW( table.setIntvalue( intMagic ), std::runtime_error );
+    }
+
+    intMagic = 42;
+    uintMagic = 43;
+    std::vector< test::TestNestedTable > tables;
+    for( size_t i = 0; i < constTables.size(); ++i  )
+    {
+        test::TestNestedTable table;
+        table.setIntvalue( intMagic++ );
+        table.setUintvalue( uintMagic++ );
+        tables.push_back( std::move( table ));
+    }
+    object.setTables( tables );
+
     return object;
 }
 
@@ -77,4 +146,20 @@ void checkTestObject( const test::TestSchema& object )
     TESTVALUES(int64_t, Int64_t);
     BOOST_CHECK( object.getBoolvalue( ));
     BOOST_CHECK_EQUAL( object.getStringvalueString(), "testmessage" );
+
+    const test::TestNestedTable& nestedTable = object.getTable( );
+    BOOST_CHECK_EQUAL( nestedTable.getIntvalue(), 42  );
+    BOOST_CHECK_EQUAL( nestedTable.getUintvalue(), 43  );
+
+    std::vector< test::TestNestedTable > tables = object.getTablesVector();
+
+    int32_t intMagic = 42;
+    uint32_t uintMagic = 43;
+    for( std::vector< test::TestNestedTable >::iterator it = tables.begin();
+         it != tables.end(); ++it )
+    {
+        test::TestNestedTable& table = *it;
+        BOOST_CHECK_EQUAL( table.getIntvalue(), intMagic++ );
+        BOOST_CHECK_EQUAL( table.getUintvalue(), uintMagic++  );
+    }
 }

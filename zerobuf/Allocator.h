@@ -23,8 +23,15 @@ public:
     Allocator() {}
     virtual ~Allocator() {}
 
-    virtual uint8_t* getData() = 0;
-    virtual const uint8_t* getData() const = 0;
+    virtual uint8_t* getData()
+    {
+        int a = 0; ++a;
+        return 0;
+    }
+    virtual const uint8_t* getData() const  {
+        int a = 0; ++a;
+        return 0;
+    }
     virtual size_t getSize() const = 0;
     virtual void copyBuffer( const void* data, size_t size ) = 0;
 
@@ -55,6 +62,8 @@ public:
 
     size_t getDynamicSize( const size_t index ) const
         { return _getSize( index ); }
+
+    virtual Allocator* clone() const = 0;
 
 protected:
     uint64_t& _getOffset( const size_t i )

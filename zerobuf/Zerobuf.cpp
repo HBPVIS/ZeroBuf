@@ -41,9 +41,19 @@ void Zerobuf::setZerobufData( const void* data, size_t size )
 std::string Zerobuf::toJSON() const
 {
     Json::Value rootJSON;
-    for( const auto& valueSchema : getSchema().fields )
-        addValueToJSON( rootJSON, valueSchema )
+    for( auto valueSchema : getSchema().fields )
+        addValueToJSON( rootJSON, valueSchema );
+
     return rootJSON.toStyledString();
+}
+
+Json::Value Zerobuf::getJSON() const
+{
+    Json::Value rootJSON;
+    for( const auto& valueSchema : getSchema().fields )
+        addValueToJSON( rootJSON, valueSchema );
+
+    return rootJSON;
 }
 
 void Zerobuf::fromJSON( const std::string& json )
@@ -53,7 +63,7 @@ void Zerobuf::fromJSON( const std::string& json )
     reader.parse( json, rootJSON );
 
     for( const auto& valueSchema : getSchema().fields )
-        getValueFromJSON( rootJSON, valueSchema )
+        getValueFromJSON( rootJSON, valueSchema );
 }
 
 bool Zerobuf::operator==( const Zerobuf& rhs ) const
@@ -69,6 +79,10 @@ bool Zerobuf::operator!=( const Zerobuf& rhs ) const
     return !(*this == rhs);
 }
 
+Zerobuf::Zerobuf( const Zerobuf& zerobuf )
+    : _alloc( zerobuf.getAllocator()->clone( ))
+{}
+
 void Zerobuf::_setZerobufArray( const void* data, const size_t size,
                                 const size_t arrayNum )
 {
@@ -82,5 +96,6 @@ Zerobuf& Zerobuf::operator = ( const Zerobuf& rhs )
         _alloc->copyBuffer( rhs._alloc->getData(), rhs._alloc->getSize( ));
     return *this;
 }
+
 
 }
