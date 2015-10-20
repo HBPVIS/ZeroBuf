@@ -11,6 +11,7 @@ set(ZEROBUF_PUBLIC_HEADERS
   Vector.h
   Schema.h
   Types.h
+  Zerobuf.h
   jsoncpp/json/json-forwards.h
   )
 
