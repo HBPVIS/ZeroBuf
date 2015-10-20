@@ -374,7 +374,7 @@ def emit():
     header.write( "\n#include \"" + headerbase + ".ipp\"\n\n" )
 
 if __name__ == "__main__":
-    if(len(argv) < 2):
+    if len(argv) < 2 :
         stderr.write("ERROR - " + argv[0] + " - too few input arguments!")
         exit(-1)
     
@@ -386,7 +386,7 @@ if __name__ == "__main__":
 
     # Parse, interpret and validate arguments
     args = parser.parse_args()
-    if(len(args.files) == 0):
+    if len(args.files) == 0 :
         stderr.write("ERROR - " + argv[0] + " - no input .fbs files given!")
         exit(-1)
     
