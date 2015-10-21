@@ -24,7 +24,7 @@
 import argparse
 import hashlib
 from pyparsing import *
-from sys import stdout
+from sys import stdout, stderr, argv, exit
 from os import path
 
 fbsBaseType = oneOf( "int uint float double byte short ubyte ushort ulong uint8_t uint16_t uint32_t uint64_t uint128_t int8_t int16_t int32_t int64_t bool string" )
@@ -374,6 +374,10 @@ def emit():
     header.write( "\n#include \"" + headerbase + ".ipp\"\n\n" )
 
 if __name__ == "__main__":
+    if len(argv) < 2 :
+        stderr.write("ERROR - " + argv[0] + " - too few input arguments!")
+        exit(-1)
+    
     parser = argparse.ArgumentParser( description =
                                       "zerobufCxx.py: A zerobuf C++ code generator for extended flatbuffers schemas" )
     parser.add_argument( "files", nargs = "*" )
@@ -382,7 +386,10 @@ if __name__ == "__main__":
 
     # Parse, interpret and validate arguments
     args = parser.parse_args()
-
+    if len(args.files) == 0 :
+        stderr.write("ERROR - " + argv[0] + " - no input .fbs files given!")
+        exit(-1)
+    
     for file in args.files:
         basename = path.splitext( file )[0]
         headerbase = path.basename( basename )

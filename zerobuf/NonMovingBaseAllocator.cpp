@@ -7,6 +7,7 @@
 
 #include <map>
 #include <cassert>
+#include <algorithm>
 
 namespace zerobuf
 {

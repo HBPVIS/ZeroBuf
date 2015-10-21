@@ -11,6 +11,7 @@ set(ZEROBUF_PUBLIC_HEADERS
   Vector.h
   Schema.h
   Types.h
+  Zerobuf.h
   jsoncpp/json/json-forwards.h
   )
 
@@ -31,8 +32,13 @@ set(ZEROBUF_SOURCES
 list(APPEND CPPCHECK_EXTRA_ARGS
   --suppress=*:${CMAKE_CURRENT_LIST_DIR}/jsoncpp/*)
 
+if(MSVC)
+  #currently, there seems to be no equivalent to -Wno-shadow under MSVC
+  #--would have to test Intel compilers under WIN32
+else()
 set_source_files_properties(jsoncpp/jsoncpp.cpp PROPERTIES COMPILE_FLAGS
   -Wno-shadow)
+endif()
 
 set(ZEROBUF_LINK_LIBRARIES PUBLIC Servus)
 set(ZEROBUF_INCLUDE_NAME zerobuf)

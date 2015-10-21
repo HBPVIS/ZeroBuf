@@ -47,7 +47,7 @@ protected:
     ZEROBUF_API Zerobuf& operator = ( const Zerobuf& rhs );
     Allocator* getAllocator() { return _alloc; }
 
-    void _setZerobufArray( const void* data, const size_t size,
+	ZEROBUF_API void _setZerobufArray(const void* data, const size_t size,
                            const size_t arrayNum );
 
 private:

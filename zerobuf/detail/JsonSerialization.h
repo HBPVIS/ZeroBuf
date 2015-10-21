@@ -84,7 +84,7 @@ servus::uint128_t _fromJSON( const Json::Value& jsonValue )
         else if( std::get< Schema::FIELD_ISSTATIC >( valueSchema )) \
         { \
             const cpptype* ptr = _alloc->getItemPtr< cpptype >( offset ); \
-            jsonValue.resize( size ); \
+            jsonValue.resize( static_cast<Json::Value::ArrayIndex>(size) ); \
             for( size_t i = 0; i < size; ++i ) \
                 jsonValue[uint32_t(i)] = _toJSON< cpptype, jsontype >( ptr[i] ); \
         } \
