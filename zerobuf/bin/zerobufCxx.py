@@ -195,12 +195,12 @@ def emitVariable( spec ):
         emit.md5.update( cxxtype.encode('utf-8') )
         if(emit.tables.issuperset([cxxtype])):
             emitFunction( cxxtype, "get" + cxxName + "() const",
-                          "return " + cxxtype + "( new ::zerobuf::ConstNonMovingSubAllocator( " +
-                          "static_cast<const ::zerobuf::NonMovingBaseAllocator*>(getAllocator()), " +
-                          str(emit.offset) + "," +
-                          str(0) + "," +
-                          str(emit.types[spec[1]][0]) +
-                          " ));" )
+                          "const " + cxxtype + " constRefObj( new ::zerobuf::ConstNonMovingSubAllocator( " +
+                          "    static_cast<const ::zerobuf::NonMovingBaseAllocator*>(getAllocator()), " +
+                          str(emit.offset) + "," + str(0) + "," + str(emit.types[spec[1]][0]) + " ));\n" +
+                          "    " + cxxtype + " copy;\n" +
+                          "    copy = constRefObj;\n" +
+                          "    return copy;" )
             emitFunction( cxxtype, "get" + cxxName + "() ",
                           "return " + cxxtype + "( new ::zerobuf::NonMovingSubAllocator( " +
                           "static_cast< ::zerobuf::NonMovingBaseAllocator*>(getAllocator()), " +

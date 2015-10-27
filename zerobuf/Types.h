@@ -22,6 +22,7 @@ class Allocator;
 class Zerobuf;
 class NonMovingAllocator;
 class NonMovingSubAllocator;
+class ConstNonMovingSubAllocator;
 struct Schema;
 }
 

@@ -6,7 +6,7 @@ enum TestEnum : uint {
   SECOND
 }
 
-table TestNestedTable {
+table TestNested {
   intvalue: int;
   uintvalue: uint;
 }
@@ -70,9 +70,9 @@ table TestSchema {
   stringvalue: string;
   enumeration: TestEnum;
   enumerations: [TestEnum:2];
-  table: TestNestedTable;
-  tables: [TestNestedTable:4];
-  tables_dynamic: [TestNestedTable];
+  nested: TestNested;
+  nestedarray: [TestNested:4];
+  nesteddynamic: [TestNested];
 }
 
 root_type TestSchema;

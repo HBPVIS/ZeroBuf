@@ -56,13 +56,16 @@ public:
         const size_t dynOff = (size_t)_parent->template getDynamicPtr<uint8_t>( _index )
                               - (size_t)_parent->getData();
 
-        ConstNonMovingSubAllocator* nonMovingAllocator
-                = new ConstNonMovingSubAllocator( static_cast<const NonMovingBaseAllocator*>( _parent ),
-                                                   dynOff + index * _elemSize,
-                                                   0,
-                                                   _elemSize );
+        ConstNonMovingSubAllocator* constRef =
+                new ConstNonMovingSubAllocator( static_cast<const NonMovingBaseAllocator*>( _parent ),
+                                                dynOff + index * _elemSize,
+                                                0,
+                                                _elemSize );
 
-       return Q( nonMovingAllocator );
+        const Q constRefObj( constRef );
+        Q copy;
+        copy = constRefObj;
+        return copy;
     }
 
     bool empty() const { return _getSize() == 0; }

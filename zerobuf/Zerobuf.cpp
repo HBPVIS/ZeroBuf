@@ -83,9 +83,8 @@ void convertToJSONValue<Zerobuf>( const Allocator* allocator,
         const NonMovingBaseAllocator* parentAllocator =
                    static_cast< const NonMovingBaseAllocator* >( allocator );
 
-        ConstVector< Zerobuf > values( parentAllocator, offset, schema.staticSize );
-        const size_t elementCount = values.size();
-        for( size_t i = 0; i < elementCount; ++i )
+        const size_t size = parentAllocator->getDynamicSize( offset ) / schema.staticSize;
+        for( size_t i = 0; i < size; ++i )
         {
             const size_t dynOff = (size_t)parentAllocator->getDynamicPtr<const uint8_t>( offset )
                                   - (size_t)parentAllocator->getData();
@@ -176,12 +175,12 @@ void convertFromJSONValue<Zerobuf>( Allocator* allocator,
 
         const Schema& schema = schemaFunc();
 
-        Vector< Zerobuf > values( allocator, offset, schema.staticSize );
-        for( size_t i = 0; i < values.size(); ++i )
+        const size_t size = parentAllocator->getDynamicSize( offset ) / schema.staticSize;
+        for( size_t i = 0; i < size; ++i )
         {
             NonMovingSubAllocator nonMovingAllocator( parentAllocator,
                                                       i,
-                                                      values.size(),
+                                                      size,
                                                       schema.staticSize );
 
             detail::fromJSONValue( &nonMovingAllocator, schema,  value[ uint32_t(i) ] );
@@ -254,7 +253,8 @@ struct Zerobuf::Impl
 
     Impl& operator=( const Impl& rhs )
     {
-        _alloc->copyBuffer( rhs._alloc->getData(), rhs._alloc->getSize( ));
+        const Allocator* from = rhs._alloc;
+        _alloc->copyBuffer( from->getData(),from->getSize( ));
         return *this;
     }
 
@@ -293,6 +293,12 @@ Zerobuf::Zerobuf( )
 Zerobuf::Zerobuf( Allocator* alloc )
     : _impl( new Zerobuf::Impl( *this, alloc ))
 {}
+
+Zerobuf::Zerobuf( const Zerobuf& zerobuf )
+{
+    if( this != &zerobuf )
+        *_impl = *zerobuf._impl;
+}
 
 Zerobuf::~Zerobuf()
 {

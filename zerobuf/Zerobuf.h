@@ -52,7 +52,7 @@ protected:
 
     Zerobuf();
     explicit Zerobuf( Allocator* alloc );
-    explicit Zerobuf( const Zerobuf& zerobuf );
+    Zerobuf( const Zerobuf& zerobuf );
     ZEROBUF_API virtual ~Zerobuf();
 
     ZEROBUF_API Zerobuf& operator=( const Zerobuf& rhs );
