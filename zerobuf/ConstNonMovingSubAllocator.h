@@ -17,7 +17,7 @@ namespace zerobuf
 class ConstNonMovingSubAllocator : public NonMovingBaseAllocator
 {
 public:
-    ZEROBUF_API ConstNonMovingSubAllocator( const NonMovingBaseAllocator* parent,
+    ZEROBUF_API ConstNonMovingSubAllocator( const Allocator* parent,
                                             size_t offset,
                                             size_t numDynamic,
                                             size_t staticSize );
@@ -29,7 +29,7 @@ public:
     ConstNonMovingSubAllocator& operator = ( const ConstNonMovingSubAllocator& );
     ZEROBUF_API
     ConstNonMovingSubAllocator& operator = ( const NonMovingSubAllocator& );
-    ZEROBUF_API const NonMovingBaseAllocator* getParent() const { return _parent; }
+    ZEROBUF_API const Allocator* getParent() const { return _parent; }
     ZEROBUF_API size_t getOffset() const { return _offset; }
     ZEROBUF_API size_t getIndex() const { return _index; }
 
@@ -39,7 +39,7 @@ public:
     ZEROBUF_API virtual Allocator* clone() const final;
 
 private:
-    const NonMovingBaseAllocator* _parent;
+    const Allocator* _parent;
     size_t _offset;
     size_t _index;
     size_t _size;

@@ -95,7 +95,8 @@ test::TestSchema getTestObject()
     BOOST_CHECK_EQUAL( object.getNested().getUintvalue(), uintMagic  );
 
     // Writable copy of the table is acquired from parent schema
-    std::vector< test::TestNested > nonConstTables = object.getNestedarrayVector();
+    std::vector< test::TestNested > nonConstTables =
+                                        object.getNestedarrayVector();
 
     intMagic = 42;
     uintMagic = 43;
@@ -110,8 +111,7 @@ test::TestSchema getTestObject()
 
     // Non writable copy of the tables are acquired from parent schema
     std::vector< test::TestNested > constTables =
-                        static_cast<const test::TestSchema&>(object).getNestedarrayVector();
-
+                                        constObject.getNestedarrayVector();
     intMagic = 42;
     uintMagic = 43;
     for( std::vector< test::TestNested >::iterator it = constTables.begin();
@@ -120,7 +120,12 @@ test::TestSchema getTestObject()
         test::TestNested& inner = *it;
         BOOST_CHECK_EQUAL( inner.getIntvalue(), intMagic++ );
         BOOST_CHECK_EQUAL( inner.getUintvalue(), uintMagic++  );
-        BOOST_REQUIRE_THROW( inner.setIntvalue( intMagic ), std::runtime_error );
+
+        inner.setIntvalue( 42 );
+        BOOST_CHECK_EQUAL( inner.getIntvalue(), 42 );
+        BOOST_CHECK_EQUAL(
+            object.getNestedarrayVector()[ intMagic - 43 ].getIntvalue(),
+            intMagic - 1 );
     }
 
     intMagic = 42;

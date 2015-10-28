@@ -30,7 +30,7 @@ public:
 
     void push_back( const T& value );
     T* data()
-        { return Super::_parent->template getDynamicPtr< T >( Super::_index ); }
+        { return Super::_parent->template getDynamic< T >( Super::_index ); }
 
 private:
     Vector();

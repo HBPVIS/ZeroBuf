@@ -110,7 +110,7 @@ void convertToJSONValue<char>( const Allocator* allocator,
     {
         const size_t size = std::get< Schema::FIELD_SIZE >( valueSchema );
         const uint8_t* ptr =
-            allocator->getDynamicPtr< const uint8_t >( offset );
+            allocator->getDynamic< const uint8_t >( offset );
         const std::string strValue(
             ptr, ptr + allocator->getItem< uint64_t >( size ));
         if( !strValue.empty( ))

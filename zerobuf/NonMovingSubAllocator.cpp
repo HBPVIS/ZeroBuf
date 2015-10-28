@@ -46,20 +46,20 @@ NonMovingSubAllocator& NonMovingSubAllocator::operator = (
 
 uint8_t* NonMovingSubAllocator::getData()
 {
-    return getDynamic() > 0 ? _parent->getDynamicPtr< uint8_t >( _offset ):
-                              _parent->getItemPtr< uint8_t >( _offset );
+    return getNumDynamic() > 0 ? _parent->getDynamic< uint8_t >( _offset ):
+                                 _parent->getItemPtr< uint8_t >( _offset );
 }
 
 const uint8_t* NonMovingSubAllocator::getData() const
 {
-    return getDynamic() > 0 ? _parent->getDynamicPtr< uint8_t >( _offset ):
-                              _parent->getItemPtr< uint8_t >( _offset );
+    return getNumDynamic() > 0 ? _parent->getDynamic< uint8_t >( _offset ):
+                                 _parent->getItemPtr< uint8_t >( _offset );
 }
 
 void NonMovingSubAllocator::copyBuffer( const void* data, const size_t size )
 {
-    void* to = getDynamic() > 0 ? _parent->updateAllocation( _offset, size ) :
-                                  getData();
+    void* to = getNumDynamic() > 0 ? _parent->updateAllocation( _offset, size ):
+                                     getData();
     _size = size;
     ::memcpy( to, data, size );
 }

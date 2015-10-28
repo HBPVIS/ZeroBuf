@@ -86,7 +86,7 @@ void convertToJSONValue<Zerobuf>( const Allocator* allocator,
         const size_t size = parentAllocator->getDynamicSize( offset ) / schema.staticSize;
         for( size_t i = 0; i < size; ++i )
         {
-            const size_t dynOff = (size_t)parentAllocator->getDynamicPtr<const uint8_t>( offset )
+            const size_t dynOff = (size_t)parentAllocator->getDynamic<const uint8_t>( offset )
                                   - (size_t)parentAllocator->getData();
 
             ConstNonMovingSubAllocator nonMovingAllocator( parentAllocator,
@@ -194,19 +194,13 @@ JSONRegisterer< Zerobuf > registerJSON( "Zerobuf" );
 
 }
 
-struct Zerobuf::Impl
+class Zerobuf::Impl
 {
-
+public:
     Impl( Zerobuf& zerobuf, Allocator* allocator )
         : _alloc( allocator )
         , _zerobuf( zerobuf )
     {}
-
-    Impl( const Impl& impl )
-        : _alloc( impl._alloc->clone() )
-        , _zerobuf( impl._zerobuf )
-    {
-    }
 
     ~Impl()
     {
@@ -254,7 +248,7 @@ struct Zerobuf::Impl
     Impl& operator=( const Impl& rhs )
     {
         const Allocator* from = rhs._alloc;
-        _alloc->copyBuffer( from->getData(),from->getSize( ));
+        _alloc->copyBuffer( from->getData(), from->getSize( ));
         return *this;
     }
 
@@ -286,7 +280,7 @@ void Vector<Zerobuf>::push_back( const Zerobuf& value )
               value.getZerobufSize());
 }
 
-Zerobuf::Zerobuf( )
+Zerobuf::Zerobuf()
     : _impl( new Zerobuf::Impl( *this, 0 ))
 {}
 
@@ -294,15 +288,8 @@ Zerobuf::Zerobuf( Allocator* alloc )
     : _impl( new Zerobuf::Impl( *this, alloc ))
 {}
 
-Zerobuf::Zerobuf( const Zerobuf& zerobuf )
-{
-    if( this != &zerobuf )
-        *_impl = *zerobuf._impl;
-}
-
 Zerobuf::~Zerobuf()
-{
-}
+{}
 
 const void* Zerobuf::getZerobufData() const
 {

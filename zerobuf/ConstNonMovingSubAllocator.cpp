@@ -12,7 +12,7 @@
 
 namespace zerobuf
 {
-ConstNonMovingSubAllocator::ConstNonMovingSubAllocator( const NonMovingBaseAllocator* parent,
+ConstNonMovingSubAllocator::ConstNonMovingSubAllocator( const Allocator* parent,
                                                         const size_t offset,
                                                         const size_t numDynamic,
                                                         const size_t staticSize )
@@ -64,8 +64,8 @@ ConstNonMovingSubAllocator& ConstNonMovingSubAllocator::operator = (
 
 const uint8_t* ConstNonMovingSubAllocator::getData() const
 {
-    return getDynamic() > 0 ? _parent->getDynamicPtr< uint8_t >( _offset ):
-                              _parent->getItemPtr< uint8_t >( _offset );
+    return getNumDynamic() > 0 ? _parent->getDynamic< uint8_t >( _offset ):
+                                 _parent->getItemPtr< uint8_t >( _offset );
 }
 
 Allocator* ConstNonMovingSubAllocator::clone() const

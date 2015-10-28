@@ -30,7 +30,6 @@ namespace zerobuf
 class Zerobuf
 {
 public:
-
     virtual servus::uint128_t getZerobufType() const = 0;
     virtual Schema getSchema() const = 0;
     virtual void notifyUpdated() {}
@@ -49,21 +48,17 @@ public:
     const Allocator* getAllocator() const;
 
 protected:
-
     Zerobuf();
-    explicit Zerobuf( Allocator* alloc );
-    Zerobuf( const Zerobuf& zerobuf );
+    explicit Zerobuf( Allocator* alloc ); // takes ownership of alloc
+    Zerobuf( const Zerobuf& zerobuf ) = delete;
     ZEROBUF_API virtual ~Zerobuf();
 
     ZEROBUF_API Zerobuf& operator=( const Zerobuf& rhs );
     Allocator* getAllocator();
 
-    void _setZerobufArray( const void* data,
-                           const size_t size,
-                           const size_t arrayNum );
+    void _setZerobufArray( const void* data, size_t size, size_t arrayNum );
 
 private:
-
     class Impl;
     std::unique_ptr<Impl> _impl;
 };
