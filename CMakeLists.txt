@@ -16,7 +16,9 @@ set(VERSION_ABI 1)
 include(Common)
 
 set(COMMON_PROJECT_DOMAIN eu.humanbrainproject)
-set(ZEROBUF_DESCRIPTION "ZeroBuf is a replacement for FlatBuffers")
+set(ZEROBUF_DESCRIPTION "ZeroBuf: zero-copy, zero-hassle protocol buffers")
+set(ZEROBUF_MAINTAINER "Human Brain Project <HBPVis@googlegroups.com>")
+set(ZEROBUF_LICENSE LGPL)
 set(ZEROBUF_DEPENDENT_LIBRARIES Servus)
 
 common_package(Boost 1.49 COMPONENTS unit_test_framework)
