@@ -33,8 +33,10 @@ list(APPEND CPPCHECK_EXTRA_ARGS
   --suppress=*:${CMAKE_CURRENT_LIST_DIR}/jsoncpp/*)
 
 if(MSVC)
-  #currently, there seems to be no equivalent to -Wno-shadow under MSVC
-  #--would have to test Intel compilers under WIN32
+  set_source_files_properties(jsoncpp/jsoncpp.cpp PROPERTIES COMPILE_FLAGS
+    /wd4267)
+  set_source_files_properties(ZeroBuf.cpp PROPERTIES COMPILE_FLAGS
+    /wd4267)
 else()
 set_source_files_properties(jsoncpp/jsoncpp.cpp PROPERTIES COMPILE_FLAGS
   -Wno-shadow)
