@@ -112,6 +112,7 @@ def emitDynamic( spec ):
     # non-const, const pointer
     emitFunction( "typename " + emit.table + "Base< Alloc >::" + cxxName,
                   "get" + cxxName + "()",
+                  "notifyChanging();\n    " +
                   "return " + cxxName + "( getAllocator(), " + str( emit.currentDyn ) + " );" )
     emitFunction( "typename " + emit.table + "Base< Alloc >::Const" + cxxName,
                   "get" + cxxName + "() const",
@@ -164,6 +165,7 @@ def emitVariable( spec ):
                       " >( " + str( emit.offset ) + " );" )
         emitFunction( "void",
                       "set"  + cxxName + "( " + cxxtype + " value )",
+                      "notifyChanging();\n    " +
                       "getAllocator()->template getItem< " + cxxtype + " >( " +
                       str( emit.offset ) + " ) = value;" )
 
@@ -177,6 +179,7 @@ def emitVariable( spec ):
         emit.md5.update( (cxxtype + nElems).encode('utf-8') )
         nBytes = int(emit.types[ spec[2] ][0]) * int(nElems)
         emitFunction( cxxtype + "*", "get" + cxxName + "()",
+                      "notifyChanging();\n    " +
                       "return getAllocator()->template getItemPtr< " + cxxtype +
                       " >( " + str( emit.offset ) + " );" )
         emitFunction( "const " + cxxtype + "*",
@@ -192,6 +195,7 @@ def emitVariable( spec ):
         emitFunction( "void",
                       "set"  + cxxName + "( " + cxxtype + " value[ " +
                       spec[4] + " ] )",
+                      "notifyChanging();\n    " +
                       "::memcpy( getAllocator()->template getItemPtr< " +
                       cxxtype + " >( " + str( emit.offset ) + " ), value, " +
                       spec[4] + " * sizeof( " + cxxtype + " ));" )
@@ -199,6 +203,7 @@ def emitVariable( spec ):
                       "set" + cxxName + "( const std::vector< " +
                       cxxtype + " >& value )",
                       "if( " + str( nElems ) + " >= value.size( ))\n" +
+                      "        notifyChanging();" +
                       "        ::memcpy( getAllocator()->template getItemPtr<" +
                       cxxtype + ">( " + str( emit.offset ) +
                       " ), value.data(), value.size() * sizeof( " + cxxtype +
@@ -206,6 +211,7 @@ def emitVariable( spec ):
         emitFunction( "void",
                       "set" + cxxName + "( const std::string& value )",
                       "if( " + str( nBytes ) + " >= value.length( ))\n" +
+                      "        notifyChanging();\n" +
                       "        ::memcpy( getAllocator()->template getItemPtr<" +
                       cxxtype + ">( " + str( emit.offset ) +
                       " ), value.data(), value.length( ));" )
@@ -272,8 +278,8 @@ def emit():
         emit.md5.update( item[1].encode('utf-8') )
 
         # class header
-        header.write( "template< class Alloc = zerobuf::NonMovingAllocator >\n"+
-                      "class " + item[1] + "Base : public zerobuf::Zerobuf\n" +
+        header.write( "template< class Alloc = ::zerobuf::NonMovingAllocator >\n"+
+                      "class " + item[1] + "Base : public ::zerobuf::Zerobuf\n" +
                       "{\npublic:\n" )
 
         # member access
@@ -292,16 +298,16 @@ def emit():
                           item[1] + "Base& ) { return *this; }\n\n" )
         else:
             emitFunction( None, item[1] + "Base()",
-                          ": zerobuf::Zerobuf( new Alloc( " +
+                          ": ::zerobuf::Zerobuf( new Alloc( " +
                           str( emit.offset ) + ", " + str( emit.currentDyn ) +
                           " ))\n{}\n" )
             emitFunction( None,
                           item[1] + "Base( const ::zerobuf::Zerobuf& from )",
-                          ": zerobuf::Zerobuf( new Alloc( *static_cast< const Alloc* >(from.getAllocator( ))))\n{}",
+                          ": ::zerobuf::Zerobuf( new Alloc( *static_cast< const Alloc* >(from.getAllocator( ))))\n{}",
                           explicit=True)
             emitFunction( None,
                           item[1] + "Base( const " + item[1] + "Base& from )",
-                          ": zerobuf::Zerobuf( new Alloc( *static_cast< const Alloc* >(from.getAllocator( ))))\n{}" )
+                          ": ::zerobuf::Zerobuf( new Alloc( *static_cast< const Alloc* >(from.getAllocator( ))))\n{}" )
             header.write( "    virtual ~" + item[1] + "Base() {}\n\n" )
 
             header.write( "    " + item[1] + "Base& operator = ( const " + item[1] + "Base& rhs )\n"+
@@ -377,7 +383,7 @@ if __name__ == "__main__":
     if len(argv) < 2 :
         stderr.write("ERROR - " + argv[0] + " - too few input arguments!")
         exit(-1)
-    
+
     parser = argparse.ArgumentParser( description =
                                       "zerobufCxx.py: A zerobuf C++ code generator for extended flatbuffers schemas" )
     parser.add_argument( "files", nargs = "*" )
@@ -389,7 +395,7 @@ if __name__ == "__main__":
     if len(args.files) == 0 :
         stderr.write("ERROR - " + argv[0] + " - no input .fbs files given!")
         exit(-1)
-    
+
     for file in args.files:
         basename = path.splitext( file )[0]
         headerbase = path.basename( basename )

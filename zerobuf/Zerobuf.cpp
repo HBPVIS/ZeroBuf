@@ -33,7 +33,10 @@ size_t Zerobuf::getZerobufSize() const
 void Zerobuf::setZerobufData( const void* data, size_t size )
 {
     if( _alloc )
+    {
+        notifyChanging();
         _alloc->copyBuffer( data, size );
+    }
     else
         std::cerr << "Can't copy data into empty zerobuf" << std::endl;
 }
@@ -52,6 +55,7 @@ void Zerobuf::fromJSON( const std::string& json )
     Json::Reader reader;
     reader.parse( json, rootJSON );
 
+    notifyChanging();
     for( const auto& valueSchema : getSchema().fields )
         getValueFromJSON( rootJSON, valueSchema )
 }
@@ -72,6 +76,7 @@ bool Zerobuf::operator!=( const Zerobuf& rhs ) const
 void Zerobuf::_setZerobufArray( const void* data, const size_t size,
                                 const size_t arrayNum )
 {
+    notifyChanging();
     void* array = _alloc->updateAllocation( arrayNum, size );
     ::memcpy( array, data, size );
 }
@@ -79,7 +84,10 @@ void Zerobuf::_setZerobufArray( const void* data, const size_t size,
 Zerobuf& Zerobuf::operator = ( const Zerobuf& rhs )
 {
     if( this != &rhs )
+    {
+        notifyChanging();
         _alloc->copyBuffer( rhs._alloc->getData(), rhs._alloc->getSize( ));
+    }
     return *this;
 }
 
