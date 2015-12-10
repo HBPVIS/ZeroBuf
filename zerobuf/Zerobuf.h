@@ -24,7 +24,12 @@ class Zerobuf
 public:
     virtual servus::uint128_t getZerobufType() const = 0;
     virtual Schema getSchema() const = 0;
-    virtual void notifyUpdated() {}
+
+    /** Called if any data in this object is about to change. */
+    virtual void notifyChanging() {}
+
+    /** Called by ZeroEQ subscriber upon receive() of this object. */
+    virtual void notifyReceived() {}
 
     ZEROBUF_API const void* getZerobufData() const;
     ZEROBUF_API size_t getZerobufSize() const;
@@ -47,8 +52,8 @@ protected:
     ZEROBUF_API Zerobuf& operator = ( const Zerobuf& rhs );
     Allocator* getAllocator() { return _alloc; }
 
-	ZEROBUF_API void _setZerobufArray(const void* data, const size_t size,
-                           const size_t arrayNum );
+    ZEROBUF_API void _setZerobufArray( const void* data, const size_t size,
+                                       const size_t arrayNum );
 
 private:
     Allocator* const _alloc;
