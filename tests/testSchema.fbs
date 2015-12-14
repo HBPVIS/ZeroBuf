@@ -3,8 +3,10 @@ namespace test;
 
 table TestSchema {
   intvalue: int;
-  uintvalue: uint;
-  floatvalue: float;
+  uintvalue: uint = 42;
+  floatvalue: float = 4.2;
+  falseBool: bool = false;
+  trueBool: bool = true;
   doublevalue: double;
   bytevalue: byte;
   shortvalue: short;

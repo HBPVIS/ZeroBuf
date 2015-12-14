@@ -41,12 +41,14 @@ fbsEnum = Group( Keyword( "enum" ) + Word( alphanums ) + Suppress( ':' ) +
                  fbsBaseType + Suppress( '{' ) + OneOrMore( fbsEnumValue ) +
                  Suppress( '}' ))
 
-# value:[type]; entries in table
+# value:[type] = defaultValue; entries in table
+# TODO: support more default values other than numbers and booleans
 fbsType = ( fbsBaseType ^ Word( alphanums ))
 fbsTableArray = ( ( Literal( '[' ) + fbsType + Literal( ']' )) ^
                   ( Literal( '[' ) + fbsType + Literal( ':' ) + Word( nums ) +
                     Literal( ']' )) )
-fbsTableValue = ( fbsType ^ fbsTableArray )
+fbsTableValue = ((fbsType ^ fbsTableArray) + ZeroOrMore(Suppress('=') +
+                Or([Word("true"), Word("false"), Word(nums+".")])))
 fbsTableEntry = Group( Word( alphanums+"_" ) + Suppress( ':' ) + fbsTableValue +
                        Suppress( ';' ))
 fbsTableSpec = ZeroOrMore( fbsTableEntry )
@@ -83,7 +85,7 @@ def emitFunction( retVal, function, body, static=False, explicit=False ):
 
 def isDynamic( spec ):
     isString = ( spec[1] == "string" )
-    if len( spec ) == 2 and not isString:
+    if (len( spec ) == 2 or len( spec ) == 3) and not isString:
         return False
     if len( spec ) == 6: # static array
         return False
@@ -153,12 +155,14 @@ def emitDynamic( spec ):
     impl.write( "\n" )
 
 def emitVariable( spec ):
-    if( len( spec ) != 2 and len( spec ) != 6 ) or spec[1] == "string":
+    if( len( spec ) != 2 and len( spec ) != 3 and len( spec ) != 6 ) or spec[1] == "string":
         return
 
-    if len( spec ) == 2: # variable
+    if len( spec ) == 2 or len( spec ) == 3: # variable
         cxxName = spec[0][0].upper() + spec[0][1:]
         cxxtype = emit.types[ spec[1] ][1]
+        if len(spec) == 3:
+            emit.defaultValues += "set{0}({1});\n".format(cxxName,spec[2])
         emit.md5.update( cxxtype.encode('utf-8') )
         emitFunction( cxxtype, "get" + cxxName + "() const",
                       "return getAllocator()->template getItem< " + cxxtype +
@@ -271,6 +275,7 @@ def emit():
         emit.offset = 4 # 4b version header in host endianness
         emit.numDynamic = countDynamic( item[2:] )
         emit.currentDyn = 0
+        emit.defaultValues = ''
         emit.table = item[1]
         emit.md5 = hashlib.md5()
         for namespace in emit.namespace:
@@ -298,9 +303,8 @@ def emit():
                           item[1] + "Base& ) { return *this; }\n\n" )
         else:
             emitFunction( None, item[1] + "Base()",
-                          ": ::zerobuf::Zerobuf( new Alloc( " +
-                          str( emit.offset ) + ", " + str( emit.currentDyn ) +
-                          " ))\n{}\n" )
+                          ": ::zerobuf::Zerobuf( new Alloc( {0}, {1} ))\n"
+                          "{{\n{2}}}\n".format(emit.offset, emit.currentDyn, emit.defaultValues))
             emitFunction( None,
                           item[1] + "Base( const ::zerobuf::Zerobuf& from )",
                           ": ::zerobuf::Zerobuf( new Alloc( *static_cast< const Alloc* >(from.getAllocator( ))))\n{}",

@@ -10,7 +10,17 @@
 #include "serialization.h"
 
 
-BOOST_AUTO_TEST_CASE(checkDefault)
+BOOST_AUTO_TEST_CASE(defaultValues)
+{
+    test::TestSchema object;
+    BOOST_CHECK_EQUAL( object.getIntvalue(), 0 );
+    BOOST_CHECK_EQUAL( object.getUintvalue(), 42 );
+    BOOST_CHECK_EQUAL( object.getFloatvalue(), 4.2f );
+    BOOST_CHECK( !object.getFalseBool( ));
+    BOOST_CHECK( object.getTrueBool( ));
+}
+
+BOOST_AUTO_TEST_CASE(initialized)
 {
     checkTestObject( getTestObject( ));
 }
