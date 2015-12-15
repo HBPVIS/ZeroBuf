@@ -207,18 +207,22 @@ def emitVariable( spec ):
                       "set" + cxxName + "( const std::vector< " +
                       cxxtype + " >& value )",
                       "if( " + str( nElems ) + " >= value.size( ))\n" +
-                      "        notifyChanging();" +
-                      "        ::memcpy( getAllocator()->template getItemPtr<" +
-                      cxxtype + ">( " + str( emit.offset ) +
-                      " ), value.data(), value.size() * sizeof( " + cxxtype +
-                      "));" )
-        emitFunction( "void",
-                      "set" + cxxName + "( const std::string& value )",
-                      "if( " + str( nBytes ) + " >= value.length( ))\n" +
+                      "    {\n" +
                       "        notifyChanging();\n" +
                       "        ::memcpy( getAllocator()->template getItemPtr<" +
                       cxxtype + ">( " + str( emit.offset ) +
-                      " ), value.data(), value.length( ));" )
+                      " ), value.data(), value.size() * sizeof( " + cxxtype +
+                      "));\n" +
+                      "    }" )
+        emitFunction( "void",
+                      "set" + cxxName + "( const std::string& value )",
+                      "if( " + str( nBytes ) + " >= value.length( ))\n" +
+                      "    {\n" +
+                      "        notifyChanging();\n" +
+                      "        ::memcpy( getAllocator()->template getItemPtr<" +
+                      cxxtype + ">( " + str( emit.offset ) +
+                      " ), value.data(), value.length( ));\n" +
+                      "    }" )
         # schema entry
         emit.entries.append("std::make_tuple(\"{0}\", \"{1}\", {2}, {3}, {4} )".format(spec[0], cxxtype, emit.offset, nElems, "true"))
         emit.offset += nBytes
