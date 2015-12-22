@@ -102,6 +102,7 @@ test::TestSchema getTestObject()
         object.getNesteddynamic().push_back( inner );
     }
 
+    object.getNestedMember().setName( "Hugo" );
     return object;
 }
 
@@ -165,4 +166,7 @@ void checkTestObject( const test::TestSchema& object )
         BOOST_CHECK_EQUAL( inner.getIntvalue(), intMagic++ );
         BOOST_CHECK_EQUAL( inner.getUintvalue(), uintMagic++  );
     }
+
+    BOOST_CHECK_EQUAL( object.getNestedMember().getNameString(), "Hugo" );
+    BOOST_CHECK_EQUAL( object.getNestedMember().getZerobufSize(), 28 );
 }

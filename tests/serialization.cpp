@@ -18,6 +18,9 @@ BOOST_AUTO_TEST_CASE(defaultValues)
     BOOST_CHECK_EQUAL( object.getFloatvalue(), 4.2f );
     BOOST_CHECK( !object.getFalseBool( ));
     BOOST_CHECK( object.getTrueBool( ));
+
+    test::TestNestedZerobuf small;
+    BOOST_CHECK_EQUAL( small.getDynamic().getIntvalue(), 7 );
 }
 
 BOOST_AUTO_TEST_CASE(initialized)

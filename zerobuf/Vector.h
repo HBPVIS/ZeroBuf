@@ -217,7 +217,7 @@ Vector<T>::push_back(
     const typename std::enable_if<std::is_base_of<Zerobuf,Q>::value, Q>::type&
         value )
 {
-    const size_t size_ =  _getSize();
+    const size_t size_ = _getSize();
     uint8_t* newPtr = _alloc->updateAllocation( _index, true /*copy*/,
                                                size_ + value.getZerobufSize( ));
     ::memcpy( newPtr + size_, value.getZerobufData(), value.getZerobufSize( ));

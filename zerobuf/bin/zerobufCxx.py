@@ -62,10 +62,12 @@ fbsObject.ignore( fbsComment )
 #fbsTableEntry.setDebug()
 
 def isDynamic( spec ):
-    isString = ( spec[1] == "string" )
-    if (len( spec ) == 2 or len( spec ) == 3) and not isString:
+    if spec[1] in emit.tables and emit.types[spec[1]][0] == 0:
+        return True
+    isString = (spec[1] == "string")
+    if (len(spec) == 2 or len(spec) == 3) and not isString:
         return False
-    if len( spec ) == 6: # static array
+    if len(spec) == 6: # static array
         return False
     return True
 
@@ -91,10 +93,39 @@ def emitFunction( retVal, function, body, static=False, explicit=False ):
         impl.write( "\n" + emit.table +
                     "::" + implFunc + "\n    " + body + "\n\n" )
 
-def emitDynamic( spec ):
+def emitDynamicMember(spec):
     cxxname = spec[0]
     cxxName = cxxname[0].upper() + cxxname[1:]
-    isString = ( spec[1] == "string" )
+    isString = (spec[1] == "string")
+    cxxtype = emit.types[spec[1]][1]
+
+    emit.md5.update( cxxtype.encode('utf-8'))
+
+    emitFunction("{0}&".format(cxxtype), "get{0}()".format(cxxName),
+                 "notifyChanging();\n    return _{0};".format(cxxname))
+    emitFunction("const {0}&".format(cxxtype), "get{0}() const".format(cxxName),
+                 "return _{0};".format(cxxname))
+    emitFunction("void", "set{0}( const {1}& value )".format(cxxName, cxxtype),
+                 "notifyChanging();\n    _{0} = value;".format(cxxname))
+    emit.initializers.append([cxxname, 1, cxxtype, emit.currentDyn, 0])
+    emit.members.append("{0} _{1};".format(cxxtype, cxxname));
+
+    emit.schema.append("std::make_tuple( \"{0}\", {1}::ZEROBUF_TYPE(), {2}, 0, 1 )".
+                        format(cxxname, cxxtype, emit.offset))
+    emit.nestedSchemas.add( "{0}::schema()".format(cxxtype))
+
+    emit.offset += 16 # 8b offset, 8b size
+    emit.currentDyn += 1
+    header.write("\n")
+    impl.write("\n")
+
+def emitDynamic(spec):
+    if(len(spec) == 2 and spec[1] in emit.tables): # dynamic Zerobuf member
+       return emitDynamicMember(spec)
+
+    cxxname = spec[0]
+    cxxName = cxxname[0].upper() + cxxname[1:]
+    isString = (spec[1] == "string")
     if isString:
         cxxtype = "char"
         elemSize = 1
@@ -114,7 +145,7 @@ def emitDynamic( spec ):
     emitFunction( "const typename {0}::{1}&".format( emit.table, cxxName ),
                   "get" + cxxName + "() const",
                   "return _{0};".format( cxxname ))
-    emit.initializers.append( [cxxname, 0, cxxName, emit.currentDyn, elemSize] )
+    emit.initializers.append([cxxname, 0, cxxName, emit.currentDyn, elemSize])
     emit.members.append( "{0} _{1};".format( cxxName, cxxname ));
 
     if cxxtype in emit.tables: # Dynamic array of (static) Zerobufs
@@ -147,8 +178,7 @@ def emitDynamic( spec ):
                       " ), " + str( emit.currentDyn ) + " );" )
         emitFunction( "std::vector< " + cxxtype + " >",
                       "get" + cxxName + "Vector() const",
-                      "    return std::vector< " + cxxtype +
-                      " >( _{0}.data(), _{0}.data() + _{0}.size( ));".format(cxxname))
+                      "return std::vector< {0} >( _{1}.data(), _{1}.data() + _{1}.size( ));".format(cxxtype, cxxname))
         emitFunction( "void",
                       "set" + cxxName + "( const std::vector< " +
                       cxxtype + " >& value )",
@@ -213,7 +243,7 @@ def emitStaticMember( spec ):
                       "notifyChanging();\n    " +
                       "_{0} = value;".format( cxxname ))
         emit.members.append( "{0} _{1};".format( cxxtype, cxxname ));
-        emit.initializers.append( [cxxname, 1, cxxtype, emit.offset, elemSize] )
+        emit.initializers.append([cxxname, 1, cxxtype, emit.offset, elemSize])
     else:
         emitFunction( cxxtype, "get" + cxxName + "() const",
                       "return getAllocator().template getItem< " + cxxtype +
@@ -274,7 +304,8 @@ def emitStaticArray( spec ):
                       "notifyChanging();\n    " +
                       "_{0} = value;".format( cxxname ))
         emit.members.append( "{0} _{1};".format( cxxName, cxxname ))
-        emit.initializers.append( [cxxname, nElems, cxxtype, emit.offset, elemSize] )
+        emit.initializers.append([cxxname, nElems, cxxtype, emit.offset,
+                                  elemSize])
 
     else:
         emitFunction( cxxtype + "*", "get" + cxxName + "()",
@@ -335,11 +366,11 @@ def emitStaticArray( spec ):
                                 nElems ))
     emit.offset += nBytes
 
-def emitStatic( spec ):
-    if len( spec ) == 2 or len( spec ) == 3:
-        emitStaticMember( spec )
+def emitStatic(spec):
+    if len(spec) == 2 or len(spec) == 3:
+        emitStaticMember(spec)
     else:
-        emitStaticArray( spec )
+        emitStaticArray(spec)
     header.write( "\n" )
     impl.write( "\n" )
 
@@ -348,12 +379,14 @@ def move_statics(emit):
     # [cxxname, nElems, cxxtype, emit.offset|index, elemSize]
     for initializer in emit.initializers:
         if initializer[1] == 1: # single member
-            movers += "    _{0}.reset( ::zerobuf::AllocatorPtr( "\
-                "new ::zerobuf::StaticSubAllocator( getAllocator(), {2}, {3} )));\n"\
-                .format(initializer[0], initializer[2], initializer[3], initializer[4])
-            movers += "    rhs._{0}.reset( ::zerobuf::AllocatorPtr( "\
-                "new ::zerobuf::StaticSubAllocator( rhs.getAllocator(), {2}, {3} )));\n"\
-                .format(initializer[0], initializer[2], initializer[3], initializer[4])
+            if initializer[4] == 0: # dynamic member
+                allocator = "::zerobuf::NonMovingSubAllocator( {{0}}, {0}, {1}::ZEROBUF_NUM_DYNAMICS(), {1}::ZEROBUF_STATIC_SIZE( ))".format(initializer[3], initializer[2])
+            else:
+                allocator = "::zerobuf::StaticSubAllocator( {{0}}, {0}, {1} )".format(initializer[3], initializer[4])
+            movers += "    _{0}.reset( ::zerobuf::AllocatorPtr( new {1}));\n"\
+                .format(initializer[0], allocator ).format( "getAllocator()" )
+            movers += "    rhs._{0}.reset( ::zerobuf::AllocatorPtr( new {1}));\n"\
+                .format(initializer[0], allocator ).format( "rhs.getAllocator()" )
         elif initializer[1] != 0: # static array
             for i in range(0, initializer[1]):
                 movers += "    _{0}[{1}].reset( ::zerobuf::AllocatorPtr( "\
@@ -382,7 +415,7 @@ def move_initializer(emit):
             initializers += "    , _{0}( getAllocator(), {1} )\n".format(initializer[0], initializer[3])
     initializers += "{\n"
     initializers += move_operator(emit)
-    initializers += "}\n"
+    initializers += "}"
     return initializers
 
 
@@ -394,9 +427,12 @@ def initializer_list(emit):
         if initializer[1] == 0: # dynamic array
             initializers += "    , _{0}( getAllocator(), {1} )\n".format(initializer[0], initializer[3])
         elif initializer[1] == 1: # single member
-            initializers += "    , _{0}( ::zerobuf::AllocatorPtr( "\
-                "new ::zerobuf::StaticSubAllocator( getAllocator(), {1}, {2} )))\n"\
-                .format(initializer[0], initializer[3], initializer[4])
+            if initializer[4] == 0: # dynamic member
+                allocator = "::zerobuf::NonMovingSubAllocator( getAllocator(), {0}, {1}::ZEROBUF_NUM_DYNAMICS(), {1}::ZEROBUF_STATIC_SIZE( ))".format(initializer[3], initializer[2])
+            else:
+                allocator = "::zerobuf::StaticSubAllocator( getAllocator(), {0}, {1} )".format(initializer[3], initializer[4])
+            initializers += "    , _{0}( ::zerobuf::AllocatorPtr( new {1}))\n"\
+                .format(initializer[0], allocator)
         else: # static array
             initializers += "    , _{0}{1}".format(initializer[0], "{{")
             for i in range( 0, initializer[1] ):
@@ -484,20 +520,18 @@ def emit():
         # ctors, dtor and assignment operator
         if emit.offset == 4: # OPT: table has no data
             emit.offset = 0
-            emitFunction( None, "{0}()".format( item[1] ),
-                          ": ::zerobuf::Zerobuf( ::zerobuf::AllocatorPtr()){}" )
-            emitFunction( None,
-                          "{0}( const {0}& )".format( item[1] ),
-                          ": ::zerobuf::Zerobuf( ::zerobuf::AllocatorPtr()){}" )
-            header.write( "    virtual ~" + item[1] + "() {}\n\n" )
-            header.write( "    " + item[1] + "& operator = ( const " +
-                          item[1] + "& ) { return *this; }\n\n" )
+            emitFunction(None, "{0}()".format( item[1] ),
+                         ": ::zerobuf::Zerobuf( ::zerobuf::AllocatorPtr( )){}")
+            emitFunction(None,
+                         "{0}( const {0}& )".format( item[1] ),
+                         ": ::zerobuf::Zerobuf( ::zerobuf::AllocatorPtr( )){}")
+            header.write("    virtual ~" + item[1] + "() {}\n\n")
+            header.write("    " + item[1] + "& operator = ( const " +
+                         item[1] + "& ) { return *this; }\n\n")
         else:
             # default ctor
-            emitFunction( None,
-                          "{0}()".format( item[1] ),
-                          ": {0}( ::zerobuf::AllocatorPtr( new ::zerobuf::NonMovingAllocator( {1}, {2} )))\n"
-                          "{{\n{3}}}".format( item[1], emit.offset, emit.numDynamic, emit.defaultValues ))
+            emitFunction(None, "{0}()".format(item[1]),
+                         ": {0}( ::zerobuf::AllocatorPtr( new ::zerobuf::NonMovingAllocator( {1}, {2} )))\n{{}}".format(item[1], emit.offset, emit.numDynamic))
 
             # member initialization ctor
             memberArgs = []
@@ -509,6 +543,9 @@ def emit():
                     isString = (member[1] == "string")
                     if isString:
                         cxxtype = "std::string"
+                    elif(len(member) == 2 and member[1] in emit.tables):
+                        # dynamic Zerobuf member
+                        cxxtype = emit.types[member[1]][1]
                     else:
                         cxxtype = "std::vector< {0} >".format(emit.types[member[2]][1])
                 else:
@@ -522,7 +559,7 @@ def emit():
 
                 valueName = cxxname + 'Value'
                 memberArgs.append("const {0}& {1}".format(cxxtype, valueName))
-                initializers += "    set{0}({1});\n".format(cxxName, valueName)
+                initializers += "    set{0}( {1} );\n".format(cxxName, valueName)
 
             emitFunction( None,
                           "{0}( {1} )".format(item[1], ', '.join(memberArgs)),
@@ -530,33 +567,31 @@ def emit():
                           "{{\n{3}}}".format( item[1], emit.offset, emit.numDynamic, initializers ))
 
             # copy ctor
-            emitFunction( None,
-                          "{0}( const {0}& rhs )".format( item[1] ),
-                          ": {0}( ::zerobuf::AllocatorPtr( new ::zerobuf::NonMovingAllocator( {1}, {2} )))\n".format( item[1], emit.offset, emit.numDynamic ) +
-                          "{\n" +
-                          "    *this = rhs;\n" +
-                          "}",
-                          explicit = False )
+            emitFunction(None,
+                         "{0}( const {0}& rhs )".format(item[1]),
+                         ": {0}( ::zerobuf::AllocatorPtr( new ::zerobuf::NonMovingAllocator( {1}, {2} )))\n".format(item[1], emit.offset, emit.numDynamic) +
+                         "{\n    *this = rhs;\n}")
 
             # move ctor
-            emitFunction( None,
+            emitFunction(None,
                          "{0}( {0}&& rhs ) throw()".format(item[1]),
-                          ": ::zerobuf::Zerobuf( std::move( rhs ))\n" +
-                          move_initializer(emit),
-                          explicit = False )
+                         ": ::zerobuf::Zerobuf( std::move( rhs ))\n" +
+                         move_initializer(emit))
 
             # copy-from-baseclass ctor
-            emitFunction( None,
-                          "{0}( const ::zerobuf::Zerobuf& rhs )".format( item[1] ),
-                          ": {0}( ::zerobuf::AllocatorPtr( new ::zerobuf::NonMovingAllocator( {1}, {2} )))\n".format( item[1], emit.offset, emit.numDynamic ) +
-                          "{\n" +
-                          "    ::zerobuf::Zerobuf::operator =( rhs );\n" +
-                          "}",
-                          explicit = False )
+            emitFunction(None,
+                         "{0}( const ::zerobuf::Zerobuf& rhs )".format(item[1]),
+                         ": {0}( ::zerobuf::AllocatorPtr( new ::zerobuf::NonMovingAllocator( {1}, {2} )))\n".format(item[1], emit.offset, emit.numDynamic) +
+                         "{\n" +
+                         "    ::zerobuf::Zerobuf::operator = ( rhs );\n" +
+                         "}")
 
             # Zerobuf object owns allocator!
-            emitFunction( None, "{0}( ::zerobuf::AllocatorPtr allocator )".format( item[1] ),
-                          ": ::zerobuf::Zerobuf( std::move( allocator ))\n{0}{{}}".format(initializer_list(emit)))
+            emitFunction(None,
+                         "{0}( ::zerobuf::AllocatorPtr allocator )".format( item[1] ),
+                         ": ::zerobuf::Zerobuf( std::move( allocator ))\n{0}".format(initializer_list(emit)) +
+                         "{{\n{3}}}".format(item[1], emit.offset, emit.numDynamic, emit.defaultValues),
+                         explicit = True)
 
             header.write( "    virtual ~" + item[1] + "() {}\n\n" )
             header.write( "    " + item[1] + "& operator = ( const " + item[1] + "& rhs )\n"+
@@ -577,6 +612,7 @@ def emit():
         header.write( "    static ::zerobuf::uint128_t ZEROBUF_TYPE() {{ return {0}; }}\n".format( zerobufType ))
         header.write( "    ::zerobuf::uint128_t getZerobufType() const final {{ return {0}; }}\n".format( zerobufType ))
         header.write( "    size_t getZerobufStaticSize() const final {{ return {0}; }}\n".format( emit.offset ))
+        header.write( "    static size_t ZEROBUF_STATIC_SIZE() {{ return {0}; }}\n".format( emit.offset ))
         header.write( "    size_t getZerobufNumDynamics() const final {{ return {0}; }}\n".format( emit.numDynamic ))
         header.write( "    static size_t ZEROBUF_NUM_DYNAMICS() {{ return {0}; }}\n".format( emit.numDynamic ))
         header.write( "\n" )
@@ -597,7 +633,8 @@ def emit():
         header.write( "private:\n    {0}\n".
                       format( '\n    '.join( emit.members )))
         header.write( "};\n\n" )
-        emit.types[ item[1] ] = ( emit.offset, item[1] )
+        emit.types[ item[1] ] = ( emit.offset if emit.numDynamic == 0 else 0,
+                                  item[1] )
         emit.tables.add( item[1] )
 
     def root_type():
@@ -617,8 +654,8 @@ def emit():
     header.write( "\n" )
     impl.write( "// Generated by zerobufCxx.py\n\n" )
     impl.write( "#include \"" + headerbase + ".h\"\n\n" )
-    impl.write( "#include <zerobuf/NonMovingAllocator.h>\n" )
     impl.write( "#include <zerobuf/Schema.h>\n" )
+    impl.write( "#include <zerobuf/NonMovingSubAllocator.h>\n" )
     impl.write( "#include <zerobuf/StaticSubAllocator.h>\n" )
     impl.write( "\n" )
 

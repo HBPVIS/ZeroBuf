@@ -66,15 +66,37 @@ public:
     size_t getDynamicSize( const size_t index ) const
         { return _getSize( index ); }
 
+    void check( const size_t numDynamics ) const
+    {
+        for( size_t i = 0; i < numDynamics; ++i )
+            _checkIndex( i );
+    }
+
 protected:
     uint64_t& _getOffset( const size_t i )
-        { return getItem< uint64_t >( 4 + i * 16 ); }
+        { _checkIndex( i ); return getItem< uint64_t >( 4 + i * 16 ); }
     uint64_t _getOffset( const size_t i ) const
-        { return getItem< uint64_t >( 4 + i * 16 ); }
+        { _checkIndex( i ); return getItem< uint64_t >( 4 + i * 16 ); }
     uint64_t& _getSize( const size_t i )
-        { return getItem< uint64_t >( 4 + 8 + i * 16 ); }
+        { _checkIndex( i ); return getItem< uint64_t >( 4 + 8 + i * 16 ); }
     uint64_t _getSize( const size_t i ) const
-        { return getItem< uint64_t >( 4 + 8 + i * 16 ); }
+        { _checkIndex( i ); return getItem< uint64_t >( 4 + 8 + i * 16 ); }
+
+    void _checkIndex( const size_t i ) const
+    {
+        const uint64_t offset = getItem< uint64_t >( 4 + i * 16 );
+        const uint64_t size = getItem< uint64_t >( 4 + 8 + i * 16 );
+        if( offset + size > getSize( ))
+            throw std::runtime_error(
+                "Internal allocator error: dynamic #" + std::to_string( i ) +
+                " at " + std::to_string( offset ) + " size " +
+                std::to_string( size ) + " exceeds allocation size " +
+                std::to_string( getSize( )));
+        if( offset != 0 && offset < 4 + (i+1) * 16 )
+            throw std::runtime_error(
+                "Internal allocator error: dynamic #" + std::to_string( i ) +
+                " at " + std::to_string(offset) + " is within static section" );
+    }
 };
 }
 

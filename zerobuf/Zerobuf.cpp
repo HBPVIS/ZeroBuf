@@ -186,4 +186,10 @@ void Zerobuf::_copyZerobufArray( const void* data, const size_t size,
     ::memcpy( array, data, size );
 }
 
+void Zerobuf::check() const
+{
+    if( _allocator )
+        getAllocator().check( getZerobufNumDynamics( ));
+}
+
 }

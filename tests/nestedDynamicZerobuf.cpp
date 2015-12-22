@@ -20,11 +20,14 @@ BOOST_AUTO_TEST_CASE(emptyTestNestedZerobuf)
 BOOST_AUTO_TEST_CASE(copyConstructTestNestedZerobuf)
 {
     test::TestNestedZerobuf temporary;
+    temporary.getDynamic().setName( "Hugo" );
     temporary.getNested().push_back( test::TestNested( 1, 2 ));
     BOOST_CHECK_EQUAL( temporary.getNested().size(), 1 );
+    BOOST_CHECK_EQUAL( temporary.getDynamic().getNameString(), "Hugo" );
 
     const test::TestNestedZerobuf testNestedZerobuf( temporary );
     BOOST_CHECK_EQUAL( testNestedZerobuf.getNested().size(), 1 );
+    BOOST_CHECK_EQUAL( testNestedZerobuf.getDynamic().getNameString(), "Hugo" );
 
     const test::TestNestedZerobuf::Nested& nested=testNestedZerobuf.getNested();
     BOOST_CHECK_EQUAL( nested[0], test::TestNested( 1, 2 ));
@@ -34,19 +37,24 @@ BOOST_AUTO_TEST_CASE(copyConstructTestNestedZerobuf)
 BOOST_AUTO_TEST_CASE(moveConstructTestNestedZerobuf)
 {
     test::TestNestedZerobuf temporary;
+    temporary.getDynamic().setName( "Hugo" );
     temporary.getNested().push_back( test::TestNested( 1, 2 ));
     test::TestNestedZerobuf testNestedZerobuf( std::move( temporary ));
 
     BOOST_CHECK_EQUAL( testNestedZerobuf.getNested().size(), 1 );
     BOOST_CHECK_EQUAL( testNestedZerobuf.getNested()[0],
                        test::TestNested( 1, 2 ));
+    BOOST_CHECK_EQUAL( testNestedZerobuf.getDynamic().getNameString(), "Hugo" );
     BOOST_CHECK_NE( temporary, testNestedZerobuf );
     BOOST_CHECK( temporary.getNested().empty( ));
+    BOOST_CHECK_MESSAGE( temporary.getDynamic().getNameString().empty(),
+                         temporary.getDynamic().getNameString( ));
 
     temporary = std::move( testNestedZerobuf );
     BOOST_CHECK_EQUAL( temporary.getNested().size(), 1 );
     BOOST_CHECK_EQUAL( temporary.getNested()[0],
                        test::TestNested( 1, 2 ));
+    BOOST_CHECK_EQUAL( temporary.getDynamic().getNameString(), "Hugo" );
     BOOST_CHECK_NE( temporary, testNestedZerobuf );
     BOOST_CHECK( testNestedZerobuf.getNested().empty( ));
 
@@ -117,6 +125,10 @@ BOOST_AUTO_TEST_CASE(vector)
 
 const std::string expectedJSON =
     "{\n"
+    "   \"dynamic\" : {\n"
+    "      \"intvalue\" : 7,\n"
+    "      \"name\" : \"Hugo\"\n"
+    "   },\n"
     "   \"nested\" : [\n"
     "      {\n"
     "         \"intvalue\" : 1,\n"
@@ -132,6 +144,7 @@ const std::string expectedJSON =
 BOOST_AUTO_TEST_CASE(testNestedZerobufToGeneric)
 {
     test::TestNestedZerobuf testNestedZerobuf;
+    testNestedZerobuf.getDynamic().setName( "Hugo" );
     testNestedZerobuf.getNested().push_back( test::TestNested( 1, 2 ));
     testNestedZerobuf.getNested().push_back( test::TestNested( 10, 20 ));
     const void* data = testNestedZerobuf.getZerobufData();
@@ -151,6 +164,7 @@ BOOST_AUTO_TEST_CASE(genericToTestNestedZerobuf)
     generic.fromJSON( expectedJSON );
 
     test::TestNestedZerobuf expected;
+    expected.getDynamic().setName( "Hugo" );
     expected.getNested().push_back( test::TestNested( 1, 2 ));
     expected.getNested().push_back( test::TestNested( 10, 20 ));
     const test::TestNestedZerobuf testNestedZerobuf( generic );
@@ -164,6 +178,7 @@ BOOST_AUTO_TEST_CASE(genericToTestNestedZerobuf)
 BOOST_AUTO_TEST_CASE(testNestedZerobufJSON)
 {
     test::TestNestedZerobuf testNestedZerobuf;
+    testNestedZerobuf.getDynamic().setName( "Hugo" );
     testNestedZerobuf.getNested().push_back( test::TestNested( 1, 2 ));
     testNestedZerobuf.getNested().push_back( test::TestNested( 10, 20 ));
 

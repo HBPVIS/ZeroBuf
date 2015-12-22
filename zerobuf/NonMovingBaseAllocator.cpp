@@ -95,7 +95,6 @@ uint8_t* NonMovingBaseAllocator::updateAllocation(
 
     // realloc space at the end
     _resize( start + newSize );
-
     return _moveAllocation( index, copy, start, newSize );
 }
 

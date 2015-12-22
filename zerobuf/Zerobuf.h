@@ -81,6 +81,9 @@ public:
     /** @internal */
     void reset( AllocatorPtr allocator ) { _allocator.swap( allocator ); }
 
+    /** @internal Check consistency of zerobuf */
+    ZEROBUF_API void check() const;
+
 protected:
     explicit Zerobuf( AllocatorPtr alloc ); // takes ownership of alloc
     ZEROBUF_API virtual ~Zerobuf();
