@@ -11,6 +11,10 @@
 
 #include "serialization.h"
 
+const std::string expectedNestedJson( "{\n"
+                                      "   \"intvalue\" : 42,\n"
+                                      "   \"uintvalue\" : 4200\n"
+                                      "}\n" );
 const std::string expectedJson( "{\n"
                                 "   \"boolvalue\" : true,\n"
                                 "   \"bytearray\" : [ 1, 1, 2, 3 ],\n"
@@ -19,6 +23,8 @@ const std::string expectedJson( "{\n"
                                 "   \"doublearray\" : [ 1, 1, 2, 3 ],\n"
                                 "   \"doubledynamic\" : [ 1, 1, 2, 3 ],\n"
                                 "   \"doublevalue\" : 42,\n"
+                                "   \"enumeration\" : 1,\n"
+                                "   \"enumerations\" : [ 0, 1 ],\n"
                                 "   \"falseBool\" : false,\n"
                                 "   \"floatarray\" : [ 1, 1, 2, 3 ],\n"
                                 "   \"floatdynamic\" : [ 1, 1, 2, 3 ],\n"
@@ -38,6 +44,70 @@ const std::string expectedJson( "{\n"
                                 "   \"intarray\" : [ 1, 1, 2, 3 ],\n"
                                 "   \"intdynamic\" : [ 1, 1, 2, 3 ],\n"
                                 "   \"intvalue\" : 42,\n"
+                                "   \"nested\" : {\n"
+                                "      \"intvalue\" : 42,\n"
+                                "      \"uintvalue\" : 4200\n"
+                                "   },\n"
+                                "   \"nestedarray\" : [\n"
+                                "      {\n"
+                                "         \"intvalue\" : 42,\n"
+                                "         \"uintvalue\" : 4200\n"
+                                "      },\n"
+                                "      {\n"
+                                "         \"intvalue\" : 43,\n"
+                                "         \"uintvalue\" : 4201\n"
+                                "      },\n"
+                                "      {\n"
+                                "         \"intvalue\" : 44,\n"
+                                "         \"uintvalue\" : 4202\n"
+                                "      },\n"
+                                "      {\n"
+                                "         \"intvalue\" : 45,\n"
+                                "         \"uintvalue\" : 4203\n"
+                                "      }\n"
+                                "   ],\n"
+                                "   \"nesteddynamic\" : [\n"
+                                "      {\n"
+                                "         \"intvalue\" : 42,\n"
+                                "         \"uintvalue\" : 4200\n"
+                                "      },\n"
+                                "      {\n"
+                                "         \"intvalue\" : 43,\n"
+                                "         \"uintvalue\" : 4201\n"
+                                "      },\n"
+                                "      {\n"
+                                "         \"intvalue\" : 44,\n"
+                                "         \"uintvalue\" : 4202\n"
+                                "      },\n"
+                                "      {\n"
+                                "         \"intvalue\" : 45,\n"
+                                "         \"uintvalue\" : 4203\n"
+                                "      },\n"
+                                "      {\n"
+                                "         \"intvalue\" : 46,\n"
+                                "         \"uintvalue\" : 4204\n"
+                                "      },\n"
+                                "      {\n"
+                                "         \"intvalue\" : 47,\n"
+                                "         \"uintvalue\" : 4205\n"
+                                "      },\n"
+                                "      {\n"
+                                "         \"intvalue\" : 48,\n"
+                                "         \"uintvalue\" : 4206\n"
+                                "      },\n"
+                                "      {\n"
+                                "         \"intvalue\" : 49,\n"
+                                "         \"uintvalue\" : 4207\n"
+                                "      },\n"
+                                "      {\n"
+                                "         \"intvalue\" : 50,\n"
+                                "         \"uintvalue\" : 4208\n"
+                                "      },\n"
+                                "      {\n"
+                                "         \"intvalue\" : 51,\n"
+                                "         \"uintvalue\" : 4209\n"
+                                "      }\n"
+                                "   ],\n"
                                 "   \"shortarray\" : [ 1, 1, 2, 3 ],\n"
                                 "   \"shortdynamic\" : [ 1, 1, 2, 3 ],\n"
                                 "   \"shortvalue\" : 42,\n"
@@ -112,13 +182,22 @@ const std::string expectedJson( "{\n"
 BOOST_AUTO_TEST_CASE(zerobufToJSON)
 {
     const test::TestSchema& object( getTestObject( ));
-
     const std::string& json = object.toJSON();
     BOOST_CHECK_EQUAL( json, expectedJson );
+
+    const test::TestNested& constNested = object.getNested();
+    BOOST_CHECK_EQUAL( constNested.toJSON(), expectedNestedJson );
+
+    test::TestNested nested = object.getNested();
+    BOOST_CHECK_EQUAL( nested.toJSON(), expectedNestedJson );
 }
 
 BOOST_AUTO_TEST_CASE(zerobufFromJSON)
 {
+    test::TestNested nested;
+    nested.fromJSON( expectedNestedJson );
+    checkTestObject( nested );
+
     test::TestSchema object;
     object.fromJSON( expectedJson );
     checkTestObject( object );
@@ -129,20 +208,24 @@ BOOST_AUTO_TEST_CASE(rawZerobufToJSON)
     const test::TestSchema& object( getTestObject( ));
     const void* data = object.getZerobufData();
     const size_t size = object.getZerobufSize();
-    const zerobuf::Schema& schema = test::TestSchema::schema();
+    const zerobuf::Schemas& schemas = test::TestSchema::schemas();
 
-    zerobuf::Generic generic( schema );
-    generic.setZerobufData( data, size );
+    zerobuf::Generic generic( schemas );
+    generic.copyZerobufData( data, size );
     const std::string& json = generic.toJSON();
     BOOST_CHECK_EQUAL( json, expectedJson );
 }
 
 BOOST_AUTO_TEST_CASE(rawZerobufFromJSON)
 {
-    zerobuf::Schema schema = test::TestSchema::schema();
-    zerobuf::Generic generic( schema );
+    const zerobuf::Schemas& schemas = test::TestSchema::schemas();
+    zerobuf::Generic generic( schemas );
     generic.fromJSON( expectedJson );
 
     const test::TestSchema object( generic );
     checkTestObject( object );
+    BOOST_CHECK_EQUAL( object.getZerobufNumDynamics(),
+                       generic.getZerobufNumDynamics( ));
+    BOOST_CHECK_EQUAL( object.getZerobufStaticSize(),
+                       generic.getZerobufStaticSize( ));
 }

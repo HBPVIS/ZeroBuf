@@ -18,29 +18,7 @@ NonMovingAllocator::NonMovingAllocator( const size_t staticSize,
     : NonMovingBaseAllocator( staticSize, numDynamic )
     , _data( (uint8_t*)::calloc( 1, staticSize ))
     , _size( staticSize )
-{
-    uint32_t& version = getItem< uint32_t >( 0 );
-    version = ZEROBUF_VERSION_ABI;
-}
-
-NonMovingAllocator::NonMovingAllocator( const NonMovingAllocator& from )
-    : NonMovingBaseAllocator( from )
-    , _data( (uint8_t*)malloc( from._size ))
-    , _size( from._size )
-{
-    ::memcpy( _data, from._data, from._size );
-}
-
-NonMovingAllocator& NonMovingAllocator::operator = (
-    const NonMovingAllocator& rhs )
-{
-    if( this == &rhs )
-        return *this;
-
-    NonMovingBaseAllocator::operator = ( rhs );
-    copyBuffer( rhs._data, rhs._size );
-    return *this;
-}
+{}
 
 NonMovingAllocator::~NonMovingAllocator()
 {

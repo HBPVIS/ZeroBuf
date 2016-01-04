@@ -11,65 +11,67 @@
 
 namespace zerobuf
 {
-NonMovingSubAllocator::NonMovingSubAllocator( NonMovingBaseAllocator* parent,
-                                              const size_t index,
-                                              const size_t numDynamic,
-                                              const size_t staticSize )
+template< class A >
+NonMovingSubAllocatorBase< A >::NonMovingSubAllocatorBase(
+    A& parent, const size_t index, const size_t numDynamic,
+    const size_t staticSize )
     : NonMovingBaseAllocator( staticSize, numDynamic )
     , _parent( parent )
     , _index( index )
-    , _size( parent->getDynamicSize( index ))
 {}
 
-NonMovingSubAllocator::NonMovingSubAllocator( const NonMovingSubAllocator& from)
-    : NonMovingBaseAllocator( from )
-    , _parent( from._parent )
-    , _index( from._index )
-    , _size( from._size )
+template< class A > NonMovingSubAllocatorBase< A >::~NonMovingSubAllocatorBase()
 {}
 
-NonMovingSubAllocator::~NonMovingSubAllocator()
-{}
-
-NonMovingSubAllocator& NonMovingSubAllocator::operator = (
-    const NonMovingSubAllocator& rhs )
+template< class A > uint8_t* NonMovingSubAllocatorBase< A >::getData()
 {
-    if( this == &rhs )
-        return *this;
-
-    NonMovingBaseAllocator::operator = ( rhs );
-    _parent = rhs._parent;
-    _index = rhs._index;
-    _size = rhs._size;
-    return *this;
+    return _parent.template getDynamic< uint8_t >( _index );
 }
 
-uint8_t* NonMovingSubAllocator::getData()
+template<> uint8_t* NonMovingSubAllocatorBase< const Allocator >::getData()
 {
-    return _parent->getDynamic< uint8_t >( _index );
+    throw std::runtime_error( "Non-const access on const allocator" );
 }
 
-const uint8_t* NonMovingSubAllocator::getData() const
+template< class A >
+const uint8_t* NonMovingSubAllocatorBase< A >::getData() const
 {
-    return _parent->getDynamic< const uint8_t >( _index );
+    return _parent.template getDynamic< uint8_t >( _index );
 }
 
-void NonMovingSubAllocator::copyBuffer( const void* data, const size_t size )
+template< class A > size_t NonMovingSubAllocatorBase< A >::getSize() const
 {
-    void* to = _parent->updateAllocation( _index, size );
-    _size = size;
+    return _parent.getDynamicSize( _index );
+}
+
+template< class A >
+void NonMovingSubAllocatorBase< A >::copyBuffer( const void* data,
+                                                 const size_t size )
+{
+    void* to = _parent.updateAllocation( _index, false /*no copy*/, size );
     ::memcpy( to, data, size );
 }
 
-void NonMovingSubAllocator::_resize( const size_t newSize )
+template<> void
+NonMovingSubAllocatorBase< const Allocator >::copyBuffer( const void*,
+                                                          const size_t )
 {
-    _parent->updateAllocation( _index, newSize );
-    if( _size == 0 )
-    {
-        uint32_t& version = getItem< uint32_t >( 0 );
-        version = ZEROBUF_VERSION_ABI;
-    }
-    _size = newSize;
+    throw std::runtime_error( "Non-const access on const allocator" );
 }
+
+template< class A >
+void NonMovingSubAllocatorBase< A >::_resize( const size_t newSize )
+{
+    _parent.updateAllocation( _index, true /*copy*/, newSize );
+}
+
+template<>
+void NonMovingSubAllocatorBase< const Allocator >::_resize( const size_t )
+{
+    throw std::runtime_error( "Non-const access on const allocator" );
+}
+
+template class NonMovingSubAllocatorBase< Allocator >;
+template class NonMovingSubAllocatorBase< const Allocator >;
 
 }
