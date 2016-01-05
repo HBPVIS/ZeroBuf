@@ -1,6 +1,23 @@
 
 namespace test;
 
+enum TestEnum : uint {
+  FIRST,
+  SECOND
+}
+
+table TestNested {
+  intvalue: int;
+  uintvalue: uint;
+}
+
+table TestEmpty {
+}
+
+table TestNestedZerobuf {
+  nested: [TestNested];
+}
+
 table TestSchema {
   intvalue: int;
   uintvalue: uint = 42;
@@ -60,6 +77,11 @@ table TestSchema {
   int64_tdynamic: [int64_t];
   boolvalue: bool;
   stringvalue: string;
+  enumeration: TestEnum;
+  enumerations: [TestEnum:2];
+  nested: TestNested;
+  nestedarray: [TestNested:4];
+  nesteddynamic: [TestNested];
 }
 
 root_type TestSchema;

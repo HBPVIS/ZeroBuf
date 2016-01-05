@@ -14,7 +14,7 @@ function(zerobuf_generate_cxx Name OutputDir)
   foreach(FILE ${ARGN})
     get_filename_component(ZEROBUF_OUTPUT ${FILE} NAME_WE)
     set(ZEROBUF_HEADER "${OutputDir}/${ZEROBUF_OUTPUT}.h")
-    set(ZEROBUF_SOURCE "${OutputDir}/${ZEROBUF_OUTPUT}.ipp")
+    set(ZEROBUF_SOURCE "${OutputDir}/${ZEROBUF_OUTPUT}.cpp")
     list(APPEND ${Name}_HEADERS ${ZEROBUF_HEADER})
     list(APPEND ${Name}_SOURCES ${ZEROBUF_SOURCE})
 

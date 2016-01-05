@@ -7,15 +7,15 @@
 #ifndef ZEROBUF_ALLOCATOR_H
 #define ZEROBUF_ALLOCATOR_H
 
-#include <zerobuf/Types.h>
+#include <zerobuf/types.h>
 
 namespace zerobuf
 {
 /**
- * Allocator base class and interface
+ * Allocator base class and interface.
  *
  * Implements part of the binary data layout by providing access to the stored
- * elements.
+ * elements. Not intended to be used by application code.
  */
 class Allocator
 {
@@ -27,13 +27,20 @@ public:
     virtual const uint8_t* getData() const = 0;
     virtual size_t getSize() const = 0;
     virtual void copyBuffer( const void* data, size_t size ) = 0;
+    virtual bool canMove() const { return false; } // allocation is moveable
 
-    /** Update allocation of the dynamic elem @arg index to have newSize bytes.
-     * Updates the offset and size fields in the static section as needed.
+    /**
+     * Update allocation of the dynamic elem at index to have newSize bytes.
+     *
+     * The offset and size fields in the static section are updated as needed.
      * Does not copy the old data to the new location.
+     *
      * @return the pointer to the elem at the new place.
      */
-    virtual uint8_t* updateAllocation( size_t index,  size_t newSize ) = 0;
+    virtual uint8_t* updateAllocation( size_t /*index*/, bool /*copy*/,
+                                       size_t /*newSize*/ )
+        { throw std::runtime_error( "Dynamic allocation not implemented" ); }
+
 
     template< class T > T* getItemPtr( const size_t offset )
         { return reinterpret_cast< T* >( getData() + offset ); }
@@ -52,6 +59,9 @@ public:
 
     template< class T > const T* getDynamic( const size_t index ) const
         { return reinterpret_cast< const T* >( getData() + _getOffset(index)); }
+
+    uint64_t getDynamicOffset( const size_t index ) const
+        { return _getOffset( index ); }
 
     size_t getDynamicSize( const size_t index ) const
         { return _getSize( index ); }

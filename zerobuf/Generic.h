@@ -9,33 +9,30 @@
 #include <zerobuf/api.h>
 #include <zerobuf/Zerobuf.h> // base class
 #include <zerobuf/Schema.h> // member
-#include <zerobuf/NonMovingAllocator.h>
 
 namespace zerobuf
 {
 
 /**
- * A ZeroBuf object which can hold values that are described by the given
- * schema.
+ * A ZeroBuf object which holds values described by the given schemas.
  *
- * The main purpose is to create an object at runtime where the values can be
- * set and accessed via JSON w/o having the schema file nor the generated class
- * file available. Hence it does not provide any semantic methods.
+ * The main purpose is to create an object at runtime for JSON conversion using
+ * toJSON() and fromJSON() without having the schema file nor the generated
+ * class file available. Does not provide any semantic methods.
  */
-template< class Alloc = NonMovingAllocator >
-class GenericBase : public Zerobuf
+class Generic : public Zerobuf
 {
 public:
-    ZEROBUF_API explicit GenericBase( const Schema& schema );
+    ZEROBUF_API explicit Generic( const Schemas& schemas );
 
-    ZEROBUF_API servus::uint128_t getZerobufType() const final;
-    ZEROBUF_API Schema getSchema() const final;
+    ZEROBUF_API uint128_t getZerobufType() const final;
+    ZEROBUF_API size_t getZerobufStaticSize() const final;
+    ZEROBUF_API size_t getZerobufNumDynamics() const final;
+    ZEROBUF_API Schemas getSchemas() const final;
 
 private:
-    const Schema _schema;
+    const Schemas _schemas;
 };
-
-typedef GenericBase< NonMovingAllocator > Generic;
 
 }
 

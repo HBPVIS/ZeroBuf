@@ -17,17 +17,18 @@ class NonMovingAllocator : public NonMovingBaseAllocator
 {
 public:
     ZEROBUF_API NonMovingAllocator( size_t staticSize, size_t numDynamic );
-    ZEROBUF_API NonMovingAllocator( const NonMovingAllocator& from );
     ZEROBUF_API ~NonMovingAllocator();
-
-    ZEROBUF_API NonMovingAllocator& operator = ( const NonMovingAllocator& rhs );
 
     uint8_t* getData() final { return _data; }
     const uint8_t* getData() const final { return _data; }
     size_t getSize() const final { return _size; }
     ZEROBUF_API void copyBuffer( const void* data, size_t size ) final;
+    bool canMove() const final { return true; }
 
 private:
+    NonMovingAllocator( const NonMovingAllocator& ) = delete;
+    NonMovingAllocator& operator = ( const NonMovingAllocator& ) = delete;
+
     uint8_t* _data;
     size_t _size;
 

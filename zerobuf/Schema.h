@@ -15,11 +15,19 @@ namespace zerobuf
 {
 
 /**
- * A runtime and optimized representation of the schema file input, which
- * describes the data layout of a ZeroBuf object.
+ * A runtime optimized representation of the schema file input.
+ *
+ * Describes the data layout of a zerobuf. The type identifier is either the MD5
+ * hash of the builtin C++ type (eg md5( "uint64_t" )) or the type identifier of
+ * a child schema. A Zerobuf returns a vector of its own and all child schemas,
+ * with its own schema in front.
+ *
+ * @sa Zerobuf::getSchemas()
  */
 struct Schema
 {
+    static const uint128_t& ZEROBUF_TYPE();
+
     /**
      * The static size of the object.
      * @sa NonMovingBaseAllocator
@@ -30,31 +38,43 @@ struct Schema
      * The number of dynamic fields in the object.
      * @sa NonMovingBaseAllocator
      */
-    const size_t numDynamic;
+    const size_t numDynamics;
 
     /**
      * The type identifier of the object.
      * @sa ZeroBuf::getZerobufType()
      */
-    const servus::uint128_t type;
+    const uint128_t type;
 
     /** Access enums for the field tuple in the object.*/
     enum FieldEnum
     {
-        FIELD_NAME,       //!< the name of the field
-        FIELD_TYPE,       //!< the type of the field
-        FIELD_DATAOFFSET, //!< the data offset in the allocator
-        FIELD_SIZE,       /**< size of static arrays, size offset in the
-                               allocator for dynamic arrays */
-        FIELD_ISSTATIC    //!< bool if the field is static or not
+        FIELD_NAME,       //!< name of the field
+        FIELD_TYPE,       //!< type identifier of the field
+        FIELD_OFFSET,     //!< offset in bytes in the zerobuf
+        FIELD_SIZE,       //!< size of the field (0 for dynamic elements)
+        FIELD_ELEMENTS    //!< number of elements (0 for dynamic arrays)
     };
 
-    /** Contains the necessary information to describe one object field. */
-    typedef std::tuple< std::string, std::string, size_t, size_t, bool > Field;
+    /**
+     * Contains the information to describe one Zerobuf member.
+     * @sa FieldEnum
+     */
+    typedef std::tuple< std::string, uint128_t, size_t, size_t, size_t > Field;
 
     /** All the fields in object */
     const std::vector< Field > fields;
+
+    bool operator == ( const Schema& rhs ) const;
+    bool operator != ( const Schema& rhs ) const;
 };
+
+inline std::ostream& operator << ( std::ostream& os, const Schema& schema )
+{
+    return os << "Schema for " << schema.type << ", " << schema.staticSize
+              << "b static, " << schema.numDynamics << "/" << schema.fields.size()
+              << " dynamic/total entries";
+}
 
 }
 

@@ -3,11 +3,18 @@
 //
 namespace zerobuf.render;
 
+table Vector3f
+{
+    x: float;
+    y: float;
+    z: float;
+}
+
 table Camera
 {
-  origin: [float:3];
-  lookAt: [float:3];
-  up: [float:3];
+  origin: Vector3f;
+  lookAt: Vector3f;
+  up: Vector3f;
 }
 
 root_type Camera;
