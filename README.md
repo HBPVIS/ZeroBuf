@@ -9,15 +9,16 @@ ZeroBuf is a replacement for FlatBuffers, resolving the following
 shortcomings:
 
 * Direct get and set functionality on the defined data members
-* A single, in-memory buffer storing all data members, which is directly
+* A single memory buffer storing all data members, which is directly
   serializable
-* Usable, random access to the the data members
+* Usable, random read and write access to the the data members
 * Zero copy of the data used by the (C++) implementation from and to the network
 
-# V1 Features
+# Features
 
-* Storage of (u)int[8,16,32,64,128]_t, float, double single elements, fixed
-  size arrays and dynamic arrays
+* Storage of (u)int[8,16,32,64,128]_t, float, double single elements,
+  static sub-structures, fixed size arrays and dynamic arrays of
+  static-sized elements
 * Access to arrays using raw pointers, iterators, std::array,
   std::string and std::vector
 

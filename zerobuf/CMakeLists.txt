@@ -26,6 +26,7 @@ set(ZEROBUF_SOURCES
   NonMovingAllocator.cpp
   NonMovingBaseAllocator.cpp
   NonMovingSubAllocator.cpp
+  Schema.cpp
   StaticSubAllocator.cpp
   Zerobuf.cpp
   jsoncpp/jsoncpp.cpp

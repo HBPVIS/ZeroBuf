@@ -26,6 +26,8 @@ namespace zerobuf
  */
 struct Schema
 {
+    static const uint128_t& ZEROBUF_TYPE();
+
     /**
      * The static size of the object.
      * @sa NonMovingBaseAllocator
@@ -62,9 +64,17 @@ struct Schema
 
     /** All the fields in object */
     const std::vector< Field > fields;
+
+    bool operator == ( const Schema& rhs ) const;
+    bool operator != ( const Schema& rhs ) const;
 };
 
-
+inline std::ostream& operator << ( std::ostream& os, const Schema& schema )
+{
+    return os << "Schema for " << schema.type << ", " << schema.staticSize
+              << "b static, " << schema.numDynamics << "/" << schema.fields.size()
+              << " dynamic/total entries";
+}
 
 }
 
