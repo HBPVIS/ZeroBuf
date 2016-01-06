@@ -32,11 +32,6 @@ public:
     Vector( Allocator& alloc, size_t index );
     ~Vector() {}
 
-    /** @return true if the two vectors are identical. */
-    bool operator == ( const Vector& rhs ) const;
-    /** @return false if the two vectors are identical. */
-    bool operator != ( const Vector& rhs ) const;
-
     /** @return true if the vector contains no elements. */
     bool empty() const { return _getSize() == 0; }
 
@@ -44,11 +39,7 @@ public:
     uint64_t size() const { return _getSize() / _getElementSize< T >(); }
 
     /** Empty the vector. */
-    void clear()
-    {
-        _alloc->updateAllocation( _index, false, 0 );
-        _zerobufs.clear();
-    }
+    void clear();
 
     /** @return The pointer to the current allocation of the vector */
     T* data() { return _alloc->template getDynamic< T >( _index ); }
@@ -56,83 +47,40 @@ public:
     /** @return The pointer to the current allocation of the vector */
     const T* data() const { return _alloc->template getDynamic< T >( _index ); }
 
+    /** @return true if the two vectors of buitins are identical. */
+    bool operator == ( const Vector& rhs ) const;
+    /** @return false if the two vectors are identical. */
+    bool operator != ( const Vector& rhs ) const;
+
     /** @return a builtin const element */
     template< class Q = T >
     const typename std::enable_if<!std::is_base_of<Zerobuf,Q>::value, Q>::type&
-    operator[] ( const size_t index ) const
-    {
-        if( index >= size( ))
-            throw std::runtime_error( "Vector out of bounds read" );
-
-        return data()[ index ];
-    }
+    operator[] ( const size_t index ) const;
 
     /** @return a builtin element */
     template< class Q = T >
     typename std::enable_if< !std::is_base_of< Zerobuf, Q >::value, Q >::type&
-    operator[] ( const size_t index )
-    {
-        if( index >= size( ))
-            throw std::runtime_error( "Vector out of bounds read" );
-
-        return data()[ index ];
-    }
+    operator[] ( const size_t index );
 
     /** @return a Zerobuf-derived const element */
     template< class Q = T >
     const typename std::enable_if< std::is_base_of<Zerobuf,Q>::value, Q >::type&
-    operator[] ( const size_t index ) const
-    {
-        if( index >= size( ))
-            throw std::runtime_error( "Vector out of bounds read" );
-
-        while( _zerobufs.size() < index + 1 )
-            _zerobufs.emplace_back( AllocatorPtr(
-                new ConstDynamicSubAllocator( *_alloc, _index, _zerobufs.size(),
-                                              _getElementSize< T >( ))));
-        return _zerobufs[ index ];
-    }
+    operator[] ( const size_t index ) const;
 
     /** @return a Zerobuf-derived element */
     template< class Q = T >
     typename std::enable_if< std::is_base_of< Zerobuf, Q >::value, Q >::type&
-    operator[] ( const size_t index )
-    {
-        if( index >= size( ))
-            throw std::runtime_error( "Vector out of bounds read" );
-
-        while( _zerobufs.size() < index + 1 )
-            _zerobufs.emplace_back( AllocatorPtr(
-                new DynamicSubAllocator( *_alloc, _index, _zerobufs.size(),
-                                         _getElementSize< T >( ))));
-        return _zerobufs[ index ];
-    }
+    operator[] ( const size_t index );
 
     /** Insert a builtin element at the end of the vector. */
-    template< class Q = T >
-    void push_back( const typename
-                    std::enable_if<!std::is_base_of<Zerobuf,Q>::value, Q>::type&
-                    value )
-    {
-        const size_t size_ = _getSize();
-        T* newPtr = reinterpret_cast< T* >(
-            _alloc->updateAllocation( _index, true /*copy*/,
-                                      size_ + sizeof( T )));
-        newPtr[ size_ / _getElementSize< T >() ] = value;
-    }
+    template< class Q = T > void
+    push_back( const typename std::enable_if<
+                                !std::is_base_of<Zerobuf,Q>::value, Q>::type& );
 
     /** Insert a Zerobuf-derived element at the end of the vector. */
-    template< class Q = T >
-    void push_back( const typename
-                    std::enable_if<std::is_base_of<Zerobuf,Q>::value, Q>::type&
-                    value )
-    {
-        const size_t size_ =  _getSize();
-        uint8_t* newPtr = _alloc->updateAllocation( _index, true /*copy*/,
-                                               size_ + value.getZerobufSize( ));
-        ::memcpy( newPtr + size_, value.getZerobufData(),
-                  value.getZerobufSize( ));
-    }
+    template< class Q = T > void
+    push_back( const typename std::enable_if<
+                                  std::is_base_of<Zerobuf,Q>::value, Q>::type&);
 
     /** @internal */
     void reset( Allocator& alloc ) { _alloc = &alloc; _zerobufs.clear(); }
@@ -173,6 +121,12 @@ Vector< T >::Vector( Allocator& alloc, const size_t index )
     , _index( index )
 {}
 
+template< class T > inline void Vector< T >::clear()
+{
+    _alloc->updateAllocation( _index, false, 0 );
+    _zerobufs.clear();
+}
+
 template< class T > inline
 bool Vector< T >::operator == ( const Vector& rhs ) const
 {
@@ -183,13 +137,90 @@ bool Vector< T >::operator == ( const Vector& rhs ) const
         return false;
     if( size_ == 0 )
         return true;
-    return ::memcmp( data(), rhs.data(), size_ ) == 0;
+
+    if( !std::is_base_of< Zerobuf, T >::value )
+        return ::memcmp( data(), rhs.data(), size_ ) == 0;
+
+    for( size_t i = 0; i < size_; ++i )
+        if( (*this)[i] != rhs[i] )
+            return false;
+    return true;
 }
 
 template< class T > inline
 bool Vector< T >::operator != ( const Vector& rhs ) const
 {
     return !(operator == ( rhs ));
+}
+
+template< class T > template< class Q > inline const typename
+std::enable_if<!std::is_base_of<Zerobuf,Q>::value, Q>::type&
+Vector< T >::operator[] ( const size_t index ) const
+{
+    if( index >= size( ))
+        throw std::runtime_error( "Vector out of bounds read" );
+
+    return data()[ index ];
+}
+
+template< class T > template< class Q > inline typename
+std::enable_if< !std::is_base_of< Zerobuf, Q >::value, Q >::type&
+Vector< T >::operator[] ( const size_t index )
+{
+    if( index >= size( ))
+        throw std::runtime_error( "Vector out of bounds read" );
+
+    return data()[ index ];
+}
+
+template< class T > template< class Q > inline const typename
+std::enable_if< std::is_base_of<Zerobuf,Q>::value, Q >::type&
+Vector< T >::operator[] ( const size_t index ) const
+{
+    if( index >= size( ))
+        throw std::runtime_error( "Vector out of bounds read" );
+
+    while( _zerobufs.size() < index + 1 )
+        _zerobufs.emplace_back( AllocatorPtr(
+            new ConstDynamicSubAllocator( *_alloc, _index, _zerobufs.size(),
+                                          _getElementSize< T >( ))));
+    return _zerobufs[ index ];
+}
+
+template< class T > template< class Q > inline typename
+std::enable_if< std::is_base_of< Zerobuf, Q >::value, Q >::type&
+Vector< T >::operator[] ( const size_t index )
+{
+    if( index >= size( ))
+        throw std::runtime_error( "Vector out of bounds read" );
+
+    while( _zerobufs.size() < index + 1 )
+        _zerobufs.emplace_back( AllocatorPtr(
+            new DynamicSubAllocator( *_alloc, _index, _zerobufs.size(),
+                                     _getElementSize< T >( ))));
+    return _zerobufs[ index ];
+}
+
+template< class T > template< class Q > inline void
+Vector< T >::push_back(
+    const typename std::enable_if<!std::is_base_of<Zerobuf,Q>::value, Q>::type&
+        value )
+{
+    const size_t size_ = _getSize();
+    T* newPtr = reinterpret_cast< T* >(
+        _alloc->updateAllocation( _index, true /*copy*/, size_ + sizeof( T )));
+    newPtr[ size_ / _getElementSize< T >() ] = value;
+}
+
+template< class T > template< class Q > inline void
+Vector<T>::push_back(
+    const typename std::enable_if<std::is_base_of<Zerobuf,Q>::value, Q>::type&
+        value )
+{
+    const size_t size_ =  _getSize();
+    uint8_t* newPtr = _alloc->updateAllocation( _index, true /*copy*/,
+                                               size_ + value.getZerobufSize( ));
+    ::memcpy( newPtr + size_, value.getZerobufData(), value.getZerobufSize( ));
 }
 
 template< class T > inline
