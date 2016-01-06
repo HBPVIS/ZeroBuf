@@ -92,6 +92,15 @@ void Zerobuf::copyZerobufData( const void* data, size_t size )
         throw std::runtime_error(
             "Can't copy data into empty Zerobuf object" );
 
+    if( size < 4 )
+        throw std::runtime_error( "zerobuf too small" );
+
+    const uint32_t version = *reinterpret_cast< const uint32_t* >( data );
+    if( version != ZEROBUF_VERSION_ABI )
+        throw std::runtime_error( "Version mismatch, got zerobuf v" +
+                                  std::to_string( version ) + " running v" +
+                                  std::to_string( ZEROBUF_VERSION_ABI ));
+
     notifyChanging();
     _allocator->copyBuffer( data, size );
 }
