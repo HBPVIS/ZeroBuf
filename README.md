@@ -17,7 +17,7 @@ shortcomings:
 # Features
 
 * Storage of (u)int[8,16,32,64,128]_t, float, double single elements,
-  static sub-structures, fixed size arrays and dynamic arrays of
+  static and dynamic sub-structures, fixed size and dynamic arrays of
   static-sized elements
 * Access to arrays using raw pointers, iterators, std::array,
   std::string and std::vector

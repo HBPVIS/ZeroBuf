@@ -11,6 +11,20 @@
 
 namespace zerobuf
 {
+namespace
+{
+template< class A >
+void _initializeAllocation( A& alloc, const size_t index, const size_t size )
+{
+    if( alloc.getDynamicOffset( index ) == 0 )
+        alloc.updateAllocation( index, false /*no copy*/, size );
+}
+
+template<>
+void _initializeAllocation( const Allocator&, const size_t, const size_t ) {}
+
+}
+
 template< class A >
 NonMovingSubAllocatorBase< A >::NonMovingSubAllocatorBase(
     A& parent, const size_t index, const size_t numDynamic,
@@ -18,14 +32,16 @@ NonMovingSubAllocatorBase< A >::NonMovingSubAllocatorBase(
     : NonMovingBaseAllocator( staticSize, numDynamic )
     , _parent( parent )
     , _index( index )
-{}
+{
+    _initializeAllocation( parent, index, staticSize );
+}
 
 template< class A > NonMovingSubAllocatorBase< A >::~NonMovingSubAllocatorBase()
 {}
 
 template< class A > uint8_t* NonMovingSubAllocatorBase< A >::getData()
 {
-    return _parent.template getDynamic< uint8_t >( _index );
+    return _parent.getData() + _parent.getDynamicOffset( _index );
 }
 
 template<> uint8_t* NonMovingSubAllocatorBase< const Allocator >::getData()
@@ -36,7 +52,7 @@ template<> uint8_t* NonMovingSubAllocatorBase< const Allocator >::getData()
 template< class A >
 const uint8_t* NonMovingSubAllocatorBase< A >::getData() const
 {
-    return _parent.template getDynamic< uint8_t >( _index );
+    return _parent.getData() + _parent.getDynamicOffset( _index );
 }
 
 template< class A > size_t NonMovingSubAllocatorBase< A >::getSize() const

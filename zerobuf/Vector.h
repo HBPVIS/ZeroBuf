@@ -1,6 +1,6 @@
 
-/* Copyright (c) 2015, Human Brain Project
- *                     Stefan.Eilemann@epfl.ch
+/* Copyright (c) 2015-2016, Human Brain Project
+ *                          Stefan.Eilemann@epfl.ch
  */
 
 #ifndef ZEROBUF_VECTOR_H
@@ -85,6 +85,9 @@ public:
     /** @internal */
     void reset( Allocator& alloc ) { _alloc = &alloc; _zerobufs.clear(); }
 
+    /** Remove unused memory from vector and all members. */
+    void compact( float ) { /* NOP: elements are static and clear frees */ }
+
 private:
     Allocator* _alloc;
     const size_t _index;
@@ -138,13 +141,10 @@ bool Vector< T >::operator == ( const Vector& rhs ) const
     if( size_ == 0 )
         return true;
 
-    if( !std::is_base_of< Zerobuf, T >::value )
-        return ::memcmp( data(), rhs.data(), size_ ) == 0;
-
-    for( size_t i = 0; i < size_; ++i )
-        if( (*this)[i] != rhs[i] )
-            return false;
-    return true;
+    // memory compare is valid for Zerobufs as well since they are right now
+    // static and therefore will have the same layout
+    return ::memcmp( static_cast< const void* >( data( )),
+                     static_cast< const void* >( rhs.data( )), size_ ) == 0;
 }
 
 template< class T > inline
@@ -217,7 +217,7 @@ Vector<T>::push_back(
     const typename std::enable_if<std::is_base_of<Zerobuf,Q>::value, Q>::type&
         value )
 {
-    const size_t size_ =  _getSize();
+    const size_t size_ = _getSize();
     uint8_t* newPtr = _alloc->updateAllocation( _index, true /*copy*/,
                                                size_ + value.getZerobufSize( ));
     ::memcpy( newPtr + size_, value.getZerobufData(), value.getZerobufSize( ));

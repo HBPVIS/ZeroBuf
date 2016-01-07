@@ -93,14 +93,18 @@ public:
     bool toJSON( const Allocator& allocator, Json::Value& jsonValue ) const
     {
         const Schema& root = _schemas.front();
-        const Schema::Field field( "root", root.type, 0, root.staticSize, 1 );
+        const Schema::Field field( "root", root.type, 0,
+                                   root.numDynamics == 0 ? root.staticSize : 0,
+                                   1 );
         return _fromZeroBuf( allocator, field, root, jsonValue );
     }
 
     bool fromJSON( Allocator& allocator, const Json::Value& jsonValue ) const
     {
         const Schema& root = _schemas.front();
-        const Schema::Field field( "root", root.type, 0, root.staticSize, 1 );
+        const Schema::Field field( "root", root.type, 0,
+                                   root.numDynamics == 0 ? root.staticSize : 0,
+                                   1 );
         return _toZeroBuf( allocator, field, root, jsonValue );
     }
 
@@ -154,8 +158,8 @@ private:
         const auto& func = _toJSONMap.find( type );
         if( func == _toJSONMap.end( ))
         {
-            std::cerr << "Missing converter for type of field "
-                      << _getName( field ) << std::endl;
+            std::cerr << "Missing converter for type " << type.getShortString()
+                      << " of field " << _getName( field ) << std::endl;
             return false;
         }
         return func->second( allocator, field, jsonValue );
@@ -168,8 +172,8 @@ private:
         const auto& func = _fromJSONMap.find( type );
         if( func == _fromJSONMap.end( ))
         {
-            std::cerr << "Missing converter for type of field "
-                      << _getName( field ) << std::endl;
+            std::cerr << "Missing converter for type " << type.getShortString()
+                      << " of field " << _getName( field ) << std::endl;
             return false;
         }
         return func->second( allocator, field, jsonValue );
@@ -216,18 +220,22 @@ private:
             const bool isRoot = offset == 0;
             if( _isStaticElement( field ))
             {
+                if( isRoot )
+                    return _fromZeroBufItem( allocator, schema, jsonValue );
+
                 const ConstStaticSubAllocator subAllocator( allocator, offset,
                                                             _getSize( field ));
-                return _fromZeroBufItem( isRoot ? allocator : subAllocator,
-                                         schema, jsonValue );
+                return _fromZeroBufItem( subAllocator, schema, jsonValue );
             }
 
-            const size_t index = isRoot ? 0 : _getIndex( field );
-            const ConstNonMovingSubAllocator subAllocator( allocator, index,
+            if( isRoot )
+                return _fromZeroBufItem( allocator, schema, jsonValue );
+
+            const ConstNonMovingSubAllocator subAllocator( allocator,
+                                                           _getIndex( field ),
                                                            schema.numDynamics,
                                                            schema.staticSize );
-            return _fromZeroBufItem( isRoot ? allocator : subAllocator,
-                                     schema, jsonValue );
+            return _fromZeroBufItem( subAllocator, schema, jsonValue );
         }
 
         default: // static array
@@ -308,18 +316,21 @@ private:
             const bool isRoot = offset == 0;
             if( _isStaticElement( field ))
             {
+                if( isRoot )
+                    return _toZeroBufItem( allocator, schema, jsonValue );
+
                 StaticSubAllocator subAllocator( allocator, offset,
                                                  _getSize( field ));
-                return _toZeroBufItem( isRoot ? allocator : subAllocator,
-                                       schema, jsonValue );
+                return _toZeroBufItem( subAllocator, schema, jsonValue );
             }
 
-            const size_t index = isRoot ? 0 : _getIndex( field );
-            NonMovingSubAllocator subAllocator( allocator, index,
+            if( isRoot )
+                return _toZeroBufItem( allocator, schema, jsonValue );
+
+            NonMovingSubAllocator subAllocator( allocator, _getIndex( field ),
                                                 schema.numDynamics,
                                                 schema.staticSize );
-            return _toZeroBufItem( isRoot ? allocator : subAllocator,
-                                   schema, jsonValue );
+            return _toZeroBufItem( subAllocator, schema, jsonValue );
         }
 
         default: // static array

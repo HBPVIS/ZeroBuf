@@ -1,6 +1,6 @@
 
-/* Copyright (c) 2015, Human Brain Project
- *                     Daniel Nachbaur <danielnachbaur@epfl.ch>
+/* Copyright (c) 2015-2016, Human Brain Project
+ *                          Daniel Nachbaur <danielnachbaur@epfl.ch>
  */
 
 #include <testSchema.h>
@@ -102,6 +102,7 @@ test::TestSchema getTestObject()
         object.getNesteddynamic().push_back( inner );
     }
 
+    object.getNestedMember().setName( "Hugo" );
     return object;
 }
 
@@ -113,6 +114,8 @@ void checkTestObject( const test::TestNested& nested )
 
 void checkTestObject( const test::TestSchema& object )
 {
+    object.check();
+
     TESTVALUES(int32_t, Int);
     TESTVALUES(uint32_t, Uint);
     TESTVALUES(float, Float);
@@ -133,7 +136,6 @@ void checkTestObject( const test::TestSchema& object )
     TESTVALUES(int64_t, Int64_t);
     BOOST_CHECK( object.getBoolvalue( ));
     BOOST_CHECK_EQUAL( object.getStringvalueString(), "testmessage" );
-
     BOOST_CHECK_EQUAL( object.getEnumeration(), test::TestEnum_SECOND );
 
     const std::vector<test::TestEnum> testEnums = { test::TestEnum_FIRST,
@@ -150,6 +152,7 @@ void checkTestObject( const test::TestSchema& object )
     uint32_t uintMagic = 4200;
     for( const auto& inner : tables )
     {
+        inner.check();
         BOOST_CHECK_EQUAL( inner.getIntvalue(), intMagic++ );
         BOOST_CHECK_EQUAL( inner.getUintvalue(), uintMagic++  );
     }
@@ -162,7 +165,12 @@ void checkTestObject( const test::TestSchema& object )
     for( size_t i = 0; i < dynamicTables.size(); ++i )
     {
         const test::TestNested& inner = dynamicTables[i];
+        inner.check();
         BOOST_CHECK_EQUAL( inner.getIntvalue(), intMagic++ );
         BOOST_CHECK_EQUAL( inner.getUintvalue(), uintMagic++  );
     }
+
+    object.getNestedMember().check();
+    BOOST_CHECK_EQUAL( object.getNestedMember().getNameString(), "Hugo" );
+    BOOST_CHECK_EQUAL( object.getNestedMember().getZerobufSize(), 28 );
 }

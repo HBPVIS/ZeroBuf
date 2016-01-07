@@ -11,10 +11,16 @@ table TestNested {
   uintvalue: uint;
 }
 
+table TestDynamic {
+  intvalue: int=7;
+  name: string;
+}
+
 table TestEmpty {
 }
 
 table TestNestedZerobuf {
+  dynamic: TestDynamic;
   nested: [TestNested];
 }
 
@@ -82,6 +88,7 @@ table TestSchema {
   nested: TestNested;
   nestedarray: [TestNested:4];
   nesteddynamic: [TestNested];
+  nestedMember: TestDynamic;
 }
 
 root_type TestSchema;
