@@ -1,7 +1,7 @@
 
-/* Copyright (c) 2015, Human Brain Project
- *                     Stefan.Eilemann@epfl.ch
- *                     grigori.chevtchenko@epfl.ch
+/* Copyright (c) 2015-2016, Human Brain Project
+ *                          Stefan.Eilemann@epfl.ch
+ *                          grigori.chevtchenko@epfl.ch
  */
 
 #ifndef ZEROBUF_NONMOVINGBASEALLOCATOR_H
@@ -21,7 +21,8 @@ public:
     ZEROBUF_API virtual ~NonMovingBaseAllocator();
 
     ZEROBUF_API uint8_t* updateAllocation( size_t index, bool copy,
-                                           size_t size ) override;
+                                           size_t size ) final;
+    ZEROBUF_API void compact( float threshold ) final;
 
 protected:
     virtual void _resize( size_t newSize ) = 0;

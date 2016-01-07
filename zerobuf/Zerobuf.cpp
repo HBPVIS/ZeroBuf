@@ -1,6 +1,6 @@
 
-/* Copyright (c) 2015, Human Brain Project
- *                     Stefan.Eilemann@epfl.ch
+/* Copyright (c) 2015-2016, Human Brain Project
+ *                          Stefan.Eilemann@epfl.ch
  */
 
 #include "Zerobuf.h"
@@ -84,6 +84,12 @@ const void* Zerobuf::getZerobufData() const
 size_t Zerobuf::getZerobufSize() const
 {
     return _allocator ? _allocator->getSize() : 0;
+}
+
+void Zerobuf::compact( const float threshold )
+{
+    if( _allocator && getZerobufNumDynamics() > 0 )
+        _allocator->compact( threshold );
 }
 
 void Zerobuf::copyZerobufData( const void* data, size_t size )

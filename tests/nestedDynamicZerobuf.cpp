@@ -1,6 +1,6 @@
 
-/* Copyright (c) 2015, Human Brain Project
- *                     Stefan.Eilemann@epfl.ch
+/* Copyright (c) 2015-2016, Human Brain Project
+ *                          Stefan.Eilemann@epfl.ch
  */
 
 #define BOOST_TEST_MODULE nestedDynamicZerobuf
@@ -103,24 +103,57 @@ BOOST_AUTO_TEST_CASE(changeTestNestedZerobuf)
 
 BOOST_AUTO_TEST_CASE(vector)
 {
-    test::TestNestedZerobuf temporary;
-    const test::TestNestedZerobuf& constTemp = temporary;
-    temporary.getNested().push_back( test::TestNested( 1, 2 ));
-    temporary.getNested().push_back( test::TestNested( 3, 4 ));
+    test::TestNestedZerobuf object;
+    const test::TestNestedZerobuf& constObject = object;
+    object.getNested().push_back( test::TestNested( 1, 2 ));
+    object.getNested().push_back( test::TestNested( 3, 4 ));
 
+    BOOST_CHECK_EQUAL( object.getNested().size(), 2 );
+    BOOST_CHECK_EQUAL( object.getNested(), constObject.getNested( ));
+    BOOST_CHECK_THROW( object.getNested()[42], std::runtime_error );
+    BOOST_CHECK_THROW( constObject.getNested()[42], std::runtime_error );
 
-    BOOST_CHECK_EQUAL( temporary.getNested().size(), 2 );
-    BOOST_CHECK_EQUAL( temporary.getNested(), constTemp.getNested( ));
-    BOOST_CHECK_THROW( temporary.getNested()[42], std::runtime_error );
-    BOOST_CHECK_THROW( constTemp.getNested()[42], std::runtime_error );
+    test::TestNestedZerobuf object2;
+    BOOST_CHECK_NE( object.getNested(), object2.getNested( ));
 
-    test::TestNestedZerobuf temporary2;
-    BOOST_CHECK_NE( temporary.getNested(), temporary2.getNested( ));
+    object.getNested().clear();
+    BOOST_CHECK_EQUAL( object.getNested().size(), 0 );
+    BOOST_CHECK( object.getNested().empty( ));
+    BOOST_CHECK_EQUAL( object.getNested(), object2.getNested( ));
+}
 
-    temporary.getNested().clear();
-    BOOST_CHECK_EQUAL( temporary.getNested().size(), 0 );
-    BOOST_CHECK( temporary.getNested().empty( ));
-    BOOST_CHECK_EQUAL( temporary.getNested(), temporary2.getNested( ));
+BOOST_AUTO_TEST_CASE(compact)
+{
+    test::TestNestedZerobuf object;
+    object.getNested().push_back( test::TestNested( 1, 2 ));
+    object.getNested().push_back( test::TestNested( 3, 4 ));
+
+    object.getDynamic().setName( "The quick brown fox" );
+    object.getDynamic().setName( "The quick brown fox jumps" );
+    object.getDynamic().setName( "The quick brown" );
+
+    size_t minSize = test::TestNestedZerobuf::ZEROBUF_STATIC_SIZE() +
+                     2 * test::TestNested::ZEROBUF_STATIC_SIZE() +
+                     test::TestDynamic::ZEROBUF_STATIC_SIZE() +
+                     object.getDynamic().getName().size();
+
+    BOOST_CHECK_LT( minSize, object.getZerobufSize( ));
+    object.compact();
+    object.check();
+    object.getDynamic().check();
+    BOOST_CHECK_EQUAL( minSize, object.getZerobufSize( ));
+
+    minSize = test::TestNestedZerobuf::ZEROBUF_STATIC_SIZE() +
+              test::TestDynamic::ZEROBUF_STATIC_SIZE();
+    object.getDynamic().getName().clear();
+    object.getNested().clear();
+
+    BOOST_CHECK_LT( minSize, object.getZerobufSize( ));
+    object.compact();
+    object.check();
+    object.getDynamic().check();
+    BOOST_CHECK_EQUAL( minSize, object.getZerobufSize( ));
+
 }
 
 const std::string expectedJSON =

@@ -1,6 +1,6 @@
 
-/* Copyright (c) 2015, Human Brain Project
- *                     Stefan.Eilemann@epfl.ch
+/* Copyright (c) 2015-2016, Human Brain Project
+ *                          Stefan.Eilemann@epfl.ch
  */
 
 #include "NonMovingBaseAllocator.h"
@@ -96,6 +96,38 @@ uint8_t* NonMovingBaseAllocator::updateAllocation(
     // realloc space at the end
     _resize( start + newSize );
     return _moveAllocation( index, copy, start, newSize );
+}
+
+void NonMovingBaseAllocator::compact( const float threshold )
+{
+    uint64_t dynamicSize = 0;
+    for( size_t i = 0; i < _numDynamic; ++i )
+        if( _getOffset( i ) > 0 )
+            dynamicSize += _getSize( i );
+
+    const uint64_t minSize = _staticSize + dynamicSize;
+    if( float(getSize() - minSize) / float( minSize ) < threshold )
+        return;
+
+    // OPT: Surely there is a clever algo to do this in place, but for now use
+    //      two copies:
+    std::unique_ptr< uint8_t[] > buffer( new uint8_t[ dynamicSize ]);
+    uint8_t* iter = buffer.get();
+    for( size_t i = 0; i < _numDynamic; ++i )
+    {
+        uint64_t& offset = _getOffset( i );
+        if( offset == 0 )
+            continue;
+
+        const uint64_t size = _getSize( i );
+        const uint64_t newOffset = iter - buffer.get() + _staticSize;
+        ::memcpy( iter, getData() + offset, size );
+        iter += size;
+        offset = newOffset;
+    }
+
+    _resize( minSize );
+    ::memcpy( getData() + _staticSize, buffer.get(), dynamicSize );
 }
 
 }

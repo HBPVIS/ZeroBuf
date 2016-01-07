@@ -1,7 +1,7 @@
 
-/* Copyright (c) 2015, Human Brain Project
- *                     Stefan.Eilemann@epfl.ch
- *                     grigori.chevtchenko@epfl.ch
+/* Copyright (c) 2015-2016, Human Brain Project
+ *                          Stefan.Eilemann@epfl.ch
+ *                          grigori.chevtchenko@epfl.ch
  */
 
 #ifndef ZEROBUF_ALLOCATOR_H
@@ -27,6 +27,8 @@ public:
     virtual const uint8_t* getData() const = 0;
     virtual size_t getSize() const = 0;
     virtual void copyBuffer( const void* data, size_t size ) = 0;
+    virtual void compact( float /*threshold*/ )
+        { throw std::runtime_error( "Compaction not implemented" ); }
     virtual bool canMove() const { return false; } // allocation is moveable
 
     /**

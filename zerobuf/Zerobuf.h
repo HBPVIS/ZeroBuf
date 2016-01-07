@@ -1,7 +1,7 @@
 
-/* Copyright (c) 2015, Human Brain Project
- *                     Stefan.Eilemann@epfl.ch
- *                     grigori.chevtchenko@epfl.ch
+/* Copyright (c) 2015-2016, Human Brain Project
+ *                          Stefan.Eilemann@epfl.ch
+ *                          grigori.chevtchenko@epfl.ch
  */
 
 #ifndef ZEROBUF_ZEROBUF_H
@@ -46,6 +46,17 @@ public:
 
     /** @return the size of the zerobuf. */
     ZEROBUF_API size_t getZerobufSize() const;
+
+    /**
+     * Remove unused holes from the zerobuf.
+     *
+     * Compaction only occurs if the current allocation exceeds the relative
+     * threshold to the optimal size, that is, if unusedMemory divided by
+     * optimalMemory is above the threshold.
+     *
+     * @param threshold the compaction threshold
+     */
+    ZEROBUF_API virtual void compact( float threshold = 0.1f );
 
     /** Copy the raw data into the zerobuf. */
     ZEROBUF_API void copyZerobufData( const void* data, size_t size );

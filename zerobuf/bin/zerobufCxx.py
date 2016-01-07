@@ -62,14 +62,17 @@ fbsObject.ignore( fbsComment )
 #fbsTableEntry.setDebug()
 
 def isDynamic( spec ):
+    #  field is a sub-struct and field size is dynamic
     if spec[1] in emit.tables and emit.types[spec[1]][0] == 0:
         return True
-    isString = (spec[1] == "string")
-    if (len(spec) == 2 or len(spec) == 3) and not isString:
-        return False
-    if len(spec) == 6: # static array
-        return False
-    return True
+
+    if spec[1] == "string": # strings are dynamic
+        return True
+
+    if len(spec) == 4: # name : [type] dynamic array
+        return True
+
+    return False
 
 def countDynamic( specs ):
     numDynamic = 0
@@ -79,7 +82,8 @@ def countDynamic( specs ):
     return numDynamic
 
 def emitFunction( retVal, function, body, static=False, explicit=False ):
-    implFunc = re.sub( r" final$", "", function ) # remove ' final' keyword
+    implFunc = re.sub(r" final$", "", function) # remove ' final' keyword
+    implFunc = re.sub(r" = [0-9\.f]+ ", " ", implFunc) # remove default params
 
     if retVal: # '{}'-less body
         header.write( "    {0}{1} {2};\n".
@@ -517,6 +521,17 @@ def emit():
             if not isDynamic( member ):
                 emitStatic( member )
 
+        # Recursive compaction
+        if emit.numDynamic > 0:
+            compact = ''
+            for member in item[2:]:
+                if isDynamic( member ):
+                    compact += "    _{0}.compact( threshold );\n".format(member[0])
+            compact += "    ::zerobuf::Zerobuf::compact( threshold );"
+            compact = compact[4:]
+            emitFunction("void", "compact( const float threshold = 0.1f ) final",
+                         compact)
+
         # ctors, dtor and assignment operator
         if emit.offset == 4: # OPT: table has no data
             emit.offset = 0
@@ -633,6 +648,8 @@ def emit():
         header.write( "private:\n    {0}\n".
                       format( '\n    '.join( emit.members )))
         header.write( "};\n\n" )
+
+        # record size of myself in type lookup table, 0 if dynamically sized
         emit.types[ item[1] ] = ( emit.offset if emit.numDynamic == 0 else 0,
                                   item[1] )
         emit.tables.add( item[1] )
