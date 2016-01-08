@@ -65,7 +65,7 @@ Zerobuf& Zerobuf::operator = ( Zerobuf&& rhs )
     notifyChanging();
     rhs.notifyChanging();
 
-    if( _allocator->canMove() && rhs._allocator->canMove( ))
+    if( _allocator->isMovable() && rhs._allocator->isMovable( ))
         _allocator = std::move( rhs._allocator );
     else // Sub allocator data can't be moved - need to copy
         _allocator->copyBuffer( rhs._allocator->getData(),
