@@ -58,7 +58,10 @@ BOOST_AUTO_TEST_CASE(moveConstructTestNestedZerobuf)
     BOOST_CHECK_NE( temporary, testNestedZerobuf );
     BOOST_CHECK( testNestedZerobuf.getNested().empty( ));
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wself-move"
     temporary = std::move( temporary );
+#pragma clang diagnostic pop
     BOOST_CHECK_EQUAL( temporary.getNested().size(), 1 );
     BOOST_CHECK_EQUAL( temporary.getNested()[0],
                        test::TestNested( 1, 2 ));
