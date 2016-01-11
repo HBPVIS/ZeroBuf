@@ -634,8 +634,8 @@ def emit():
 
         # schema
         schema = "{{ {0}, {1},\n        {2},\n        {{\n         {3}\n         }} }}".format( emit.offset, emit.currentDyn, zerobufType, ',\n         '.join( emit.schema ))
-        schemas = "return ::zerobuf::Schemas{{{{ {0}::schema(), {1} }}}}".format(
-            emit.table, ', '.join( emit.nestedSchemas ))
+        schemas = "return ::zerobuf::Schemas{{ ::zerobuf::Schemas{{ {0}::schema() {1} }}}}".format(
+            emit.table, (', ' + ', '.join( emit.nestedSchemas) if len(emit.nestedSchemas) > 0 else '' ))
         emitFunction( "::zerobuf::Schema", "schema()",
                       "return {0};".format( schema ), True )
         emitFunction( "::zerobuf::Schemas", "schemas()",
