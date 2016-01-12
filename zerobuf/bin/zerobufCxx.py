@@ -707,6 +707,8 @@ if __name__ == "__main__":
                 header = sys.stdout
                 impl = sys.stdout
             else:
+                if not os.path.exists( args.outputdir ):
+                    os.makedirs( args.outputdir )
                 header = open( args.outputdir + "/" + headerbase + ".h", 'w' )
                 impl = open( args.outputdir + "/" + headerbase + ".cpp", 'w' )
         else:
