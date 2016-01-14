@@ -54,8 +54,8 @@ BOOST_AUTO_TEST_CASE(test_string)
     BOOST_CHECK_EQUAL( std::string( objectString.data(), objectString.size( )),
                        message + "!" );
     BOOST_CHECK_EQUAL( object.getStringvalueString(), message + "!" );
-    BOOST_CHECK_MESSAGE( object.getZerobufSize() >= 40,
-                         object.getZerobufSize( ));
+    BOOST_CHECK_MESSAGE( object.toBinary().size >= 40,
+                         object.toBinary().size );
 
     const std::string longMessage( "So long, and thanks for all the fish!" );
     object.setStringvalue( longMessage );
@@ -138,11 +138,11 @@ BOOST_AUTO_TEST_CASE(compact)
     test::TestSchema schema = getTestObject();
     checkTestObject( schema ); // fill _zerobufs in vectors
 
-    size_t oldSize = schema.getZerobufSize();
+    size_t oldSize = schema.toBinary().size;
     schema.compact(); // compaction under threshold
-    BOOST_CHECK_EQUAL( schema.getZerobufSize(), oldSize );
+    BOOST_CHECK_EQUAL( schema.toBinary().size, oldSize );
     schema.compact( 0.f ); // force compaction
-    BOOST_CHECK_LT( schema.getZerobufSize(), oldSize );
+    BOOST_CHECK_LT( schema.toBinary().size, oldSize );
     checkTestObject( schema ); // fill _zerobufs in vectors
 
     schema.getNestedMember().setName( "The quick brown fox" );
@@ -172,14 +172,14 @@ BOOST_AUTO_TEST_CASE(compact)
     schema.getNestedMember().getName().clear();
 
     // compact
-    oldSize = schema.getZerobufSize();
+    oldSize = schema.toBinary().size;
 
     schema.compact();
     schema.check();
     schema.getNestedMember().check();
-    BOOST_CHECK_LT( schema.getZerobufSize(), oldSize );
+    BOOST_CHECK_LT( schema.toBinary().size, oldSize );
 
     test::TestSchema copy;
     copy.fromJSON( schema.toJSON( ));
-    BOOST_CHECK_EQUAL( schema.getZerobufSize(), copy.getZerobufSize( ));
+    BOOST_CHECK_EQUAL( schema.toBinary().size, copy.toBinary().size );
 }

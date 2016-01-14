@@ -210,12 +210,11 @@ BOOST_AUTO_TEST_CASE(zerobufFromJSON)
 BOOST_AUTO_TEST_CASE(rawZerobufToJSON)
 {
     const test::TestSchema& object( getTestObject( ));
-    const void* data = object.getZerobufData();
-    const size_t size = object.getZerobufSize();
+    const zerobuf::Data& zerobuf = object.toBinary();
     const zerobuf::Schemas& schemas = test::TestSchema::schemas();
 
     zerobuf::Generic generic( schemas );
-    generic.copyZerobufData( data, size );
+    generic.fromBinary( zerobuf.ptr.get(), zerobuf.size );
     const std::string& json = generic.toJSON();
     BOOST_CHECK_EQUAL( json, expectedJson );
 }

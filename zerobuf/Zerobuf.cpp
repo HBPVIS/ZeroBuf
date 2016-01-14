@@ -45,7 +45,7 @@ Zerobuf& Zerobuf::operator = ( const Zerobuf& rhs )
     if( this == &rhs || !_allocator || !rhs._allocator )
         return *this;
 
-    if( getZerobufType() != rhs.getZerobufType( ))
+    if( getTypeIdentifier() != rhs.getTypeIdentifier( ))
         throw std::runtime_error( "Can't assign Zerobuf of a different type" );
 
     notifyChanging();
@@ -59,7 +59,7 @@ Zerobuf& Zerobuf::operator = ( Zerobuf&& rhs )
     if( this == &rhs || !rhs._allocator )
         return *this;
 
-    if( getZerobufType() != rhs.getZerobufType( ))
+    if( getTypeIdentifier() != rhs.getTypeIdentifier( ))
         throw std::runtime_error( "Can't assign Zerobuf of a different type" );
 
     notifyChanging();
@@ -76,58 +76,50 @@ Zerobuf& Zerobuf::operator = ( Zerobuf&& rhs )
     return *this;
 }
 
-const void* Zerobuf::getZerobufData() const
-{
-    return _allocator ? _allocator->getData() : nullptr;
-}
-
-size_t Zerobuf::getZerobufSize() const
-{
-    return _allocator ? _allocator->getSize() : 0;
-}
-
 void Zerobuf::compact( const float threshold )
 {
     if( _allocator && getZerobufNumDynamics() > 0 )
         _allocator->compact( threshold );
 }
 
-void Zerobuf::copyZerobufData( const void* data, size_t size )
+bool Zerobuf::_fromBinary( const void* data, const size_t size )
 {
     if( !_allocator )
         throw std::runtime_error(
             "Can't copy data into empty Zerobuf object" );
 
     if( size < 4 )
-        throw std::runtime_error( "zerobuf too small" );
+    {
+        std::cerr << "zerobuf too small" << std::endl;
+        return false;
+    }
 
     const uint32_t version = *reinterpret_cast< const uint32_t* >( data );
     if( version != ZEROBUF_VERSION_ABI )
-        throw std::runtime_error( "Version mismatch, got zerobuf v" +
-                                  std::to_string( version ) + " running v" +
-                                  std::to_string( ZEROBUF_VERSION_ABI ));
+    {
+        std::cerr << "Version mismatch, got zerobuf v" << version
+                  << " running v" << ZEROBUF_VERSION_ABI << std::endl;
+        return false;
+    }
 
     notifyChanging();
     _allocator->copyBuffer( data, size );
+    return true;
 }
 
-std::string Zerobuf::toJSON() const
+Data Zerobuf::_toBinary() const
 {
     if( !_allocator )
-        return "{}";
+        return Data();
 
-    Json::Value json;
-    JSONConverter converter( getSchemas( ));
-
-    if( converter.toJSON( *_allocator, json ))
-        return json.toStyledString();
-
-    std::cerr << "Internal error converting to JSON, got so far:\n"
-              << json.toStyledString() << std::endl;
-    return std::string();
+    Data data;
+    data.ptr = std::shared_ptr< const void >( _allocator->getData(),
+                                              []( const void* ){} );
+    data.size = _allocator->getSize();
+    return data;
 }
 
-bool Zerobuf::fromJSON( const std::string& string )
+bool Zerobuf::_fromJSON( const std::string& string )
 {
     if( !_allocator )
         throw std::runtime_error(
@@ -147,10 +139,26 @@ bool Zerobuf::fromJSON( const std::string& string )
     return converter.fromJSON( *_allocator, json );
 }
 
+std::string Zerobuf::_toJSON() const
+{
+    if( !_allocator )
+        return "{}";
+
+    Json::Value json;
+    JSONConverter converter( getSchemas( ));
+
+    if( converter.toJSON( *_allocator, json ))
+        return json.toStyledString();
+
+    std::cerr << "Internal error converting to JSON, got so far:\n"
+              << json.toStyledString() << std::endl;
+    return std::string();
+}
+
 bool Zerobuf::operator == ( const Zerobuf& rhs ) const
 {
     if( this == &rhs ||
-        ( !_allocator && getZerobufType() == rhs.getZerobufType( )))
+        ( !_allocator && getTypeIdentifier() == rhs.getTypeIdentifier( )))
     {
         return true;
     }

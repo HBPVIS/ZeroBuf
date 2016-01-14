@@ -15,7 +15,8 @@ BOOST_AUTO_TEST_CASE(compareSchemas)
 {
     const zerobuf::Schemas& schemas1 = zerobuf::render::Camera::schemas();
     const zerobuf::Schemas& schemas2 = test::TestEmpty::schemas();
-    const zerobuf::Schemas schemas3{{ 0, 0, test::TestEmpty::ZEROBUF_TYPE(), {}}};
+    const zerobuf::Schemas schemas3{{ 0, 0, test::TestEmpty::TYPE_IDENTIFIER(),
+                                    {}}};
     const zerobuf::Schemas schemas4;
 
     BOOST_CHECK_NE( schemas1.size(), schemas2.size( ));

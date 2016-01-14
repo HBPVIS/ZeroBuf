@@ -65,12 +65,11 @@ const std::string expectedJSON = "{\n"
 BOOST_AUTO_TEST_CASE(vectorToGeneric)
 {
     const zerobuf::render::Vector3f vector( 1, -2, 4.5f );
-    const void* data = vector.getZerobufData();
-    const size_t size = vector.getZerobufSize();
+    const zerobuf::Data& zerobuf = vector.toBinary();
     const zerobuf::Schemas& schemas = zerobuf::render::Vector3f::schemas();
 
     zerobuf::Generic generic( schemas );
-    generic.copyZerobufData( data, size );
+    generic.fromBinary( zerobuf );
     const std::string& json = generic.toJSON();
     BOOST_CHECK_EQUAL( json, expectedJSON );
 }

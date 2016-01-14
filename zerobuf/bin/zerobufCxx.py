@@ -114,7 +114,7 @@ def emitDynamicMember(spec):
     emit.initializers.append([cxxname, 1, cxxtype, emit.currentDyn, 0])
     emit.members.append("{0} _{1};".format(cxxtype, cxxname));
 
-    emit.schema.append("std::make_tuple( \"{0}\", {1}::ZEROBUF_TYPE(), {2}, 0, 1 )".
+    emit.schema.append("std::make_tuple( \"{0}\", {1}::TYPE_IDENTIFIER(), {2}, 0, 1 )".
                         format(cxxname, cxxtype, emit.offset))
     emit.nestedSchemas.add( "{0}::schema()".format(cxxtype))
 
@@ -209,7 +209,7 @@ def emitDynamic(spec):
 
     if cxxtype in emit.tables:
         emit.nestedSchemas.add( "{0}::schema()".format( cxxtype ))
-        zerobufType = "{0}::ZEROBUF_TYPE()".format( cxxtype )
+        zerobufType = "{0}::TYPE_IDENTIFIER()".format( cxxtype )
         elemSize = "( {0}::ZEROBUF_NUM_DYNAMICS() == 0 ? {1} : 0 )".format( cxxtype, emit.types[ cxxtype ][ 0 ] )
     else:
         digest = hashlib.md5( "{0}".format( cxxtype ).encode('utf-8')).hexdigest()
@@ -263,7 +263,7 @@ def emitStaticMember( spec ):
         cxxtype = "uint32_t"
     if cxxtype in emit.tables:
         emit.nestedSchemas.add( "{0}::schema()".format( cxxtype ))
-        zerobufType = "{0}::ZEROBUF_TYPE()".format( cxxtype )
+        zerobufType = "{0}::TYPE_IDENTIFIER()".format( cxxtype )
     else:
         digest = hashlib.md5( "{0}".format( cxxtype ).encode('utf-8')).hexdigest()
         high = digest[ 0 : len( digest ) - 16 ]
@@ -358,7 +358,7 @@ def emitStaticArray( spec ):
         cxxtype = "uint32_t"
     if cxxtype in emit.tables:
         emit.nestedSchemas.add( "{0}::schema()".format( cxxtype ))
-        zerobufType = "{0}::ZEROBUF_TYPE()".format( cxxtype )
+        zerobufType = "{0}::TYPE_IDENTIFIER()".format( cxxtype )
     else:
         digest = hashlib.md5( "{0}".format( cxxtype ).encode('utf-8')).hexdigest()
         high = digest[ 0 : len( digest ) - 16 ]
@@ -624,8 +624,8 @@ def emit():
         zerobufType = "::zerobuf::uint128_t( 0x{0}ull, 0x{1}ull )".format( high,
                                                                            low )
         header.write( "    // Introspection\n" )
-        header.write( "    static ::zerobuf::uint128_t ZEROBUF_TYPE() {{ return {0}; }}\n".format( zerobufType ))
-        header.write( "    ::zerobuf::uint128_t getZerobufType() const final {{ return {0}; }}\n".format( zerobufType ))
+        header.write( "    static ::zerobuf::uint128_t TYPE_IDENTIFIER() {{ return {0}; }}\n".format( zerobufType ))
+        header.write( "    ::zerobuf::uint128_t getTypeIdentifier() const final {{ return {0}; }}\n".format( zerobufType ))
         header.write( "    size_t getZerobufStaticSize() const final {{ return {0}; }}\n".format( emit.offset ))
         header.write( "    static size_t ZEROBUF_STATIC_SIZE() {{ return {0}; }}\n".format( emit.offset ))
         header.write( "    size_t getZerobufNumDynamics() const final {{ return {0}; }}\n".format( emit.numDynamic ))

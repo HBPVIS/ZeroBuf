@@ -16,7 +16,7 @@ Generic::Generic( const Schemas& schemas )
     , _schemas( schemas )
 {}
 
-uint128_t Generic::getZerobufType() const
+uint128_t Generic::getTypeIdentifier() const
 {
     return _schemas.front().type;
 }
