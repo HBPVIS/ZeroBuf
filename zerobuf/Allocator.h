@@ -29,7 +29,7 @@ public:
     virtual void copyBuffer( const void* data, size_t size ) = 0;
     virtual void compact( float /*threshold*/ )
         { throw std::runtime_error( "Compaction not implemented" ); }
-    virtual bool canMove() const { return false; } // allocation is moveable
+    virtual bool isMovable() const { return false; } // allocation is moveable
 
     /**
      * Update allocation of the dynamic elem at index to have newSize bytes.

@@ -218,9 +218,10 @@ Vector<T>::push_back(
         value )
 {
     const size_t size_ = _getSize();
+    const zerobuf::Data& zerobuf = value.toBinary();
     uint8_t* newPtr = _alloc->updateAllocation( _index, true /*copy*/,
-                                               size_ + value.getZerobufSize( ));
-    ::memcpy( newPtr + size_, value.getZerobufData(), value.getZerobufSize( ));
+                                               size_ + zerobuf.size );
+    ::memcpy( newPtr + size_, zerobuf.ptr.get(), zerobuf.size );
 }
 
 template< class T > inline

@@ -9,7 +9,8 @@
 
 #include <zerobuf/api.h>
 #include <zerobuf/types.h>
-#include <servus/uint128_t.h>
+#include <servus/serializable.h> // base class
+#include <servus/uint128_t.h> // used inline in operator <<
 
 namespace zerobuf
 {
@@ -20,12 +21,9 @@ namespace zerobuf
  * Zerobuf objects can serialize/deserialize directly from their member storage
  * and from and to JSON.
  */
-class Zerobuf
+class Zerobuf : public servus::Serializable
 {
 public:
-    /** @return the type of this object, hashed from its schema. */
-    virtual uint128_t getZerobufType() const = 0;
-
     /** @return the static size of this object in bytes. */
     virtual size_t getZerobufStaticSize() const = 0;
 
@@ -38,15 +36,6 @@ public:
     /** Called if any data in this object is about to change. */
     virtual void notifyChanging() {}
 
-    /** Called by ZeroEQ subscriber upon receive() of this object. */
-    virtual void notifyReceived() {}
-
-    /** @return the pointer to the zerobuf. */
-    ZEROBUF_API const void* getZerobufData() const;
-
-    /** @return the size of the zerobuf. */
-    ZEROBUF_API size_t getZerobufSize() const;
-
     /**
      * Remove unused holes from the zerobuf.
      *
@@ -57,22 +46,6 @@ public:
      * @param threshold the compaction threshold
      */
     ZEROBUF_API virtual void compact( float threshold = 0.1f );
-
-    /** Copy the raw data into the zerobuf. */
-    ZEROBUF_API void copyZerobufData( const void* data, size_t size );
-
-    /** Convert the given instance to a JSON representation. */
-    ZEROBUF_API std::string toJSON() const;
-
-    /**
-     * Convert the given JSON string into this object.
-     *
-     * When a parse error occurs, the object may be partially updated by the
-     * already parsed data.
-     *
-     * @return true on success, false on error.
-     */
-    ZEROBUF_API bool fromJSON( const std::string& json );
 
     /** Assignment operator. */
     ZEROBUF_API Zerobuf& operator = ( const Zerobuf& rhs );
@@ -110,11 +83,16 @@ private:
 
     Zerobuf() = delete;
     Zerobuf( const Zerobuf& zerobuf ) = delete;
+
+    bool _fromBinary( const void* data, const size_t size ) final;
+    Data _toBinary() const final;
+    bool _fromJSON( const std::string& json ) final;
+    std::string _toJSON() const final;
 };
 
 inline std::ostream& operator << ( std::ostream& os, const Zerobuf& zerobuf )
 {
-    return os << zerobuf.getZerobufType() << ": " << zerobuf.toJSON();
+    return os << zerobuf.getTypeIdentifier() << ": " << zerobuf.toJSON();
 }
 
 }

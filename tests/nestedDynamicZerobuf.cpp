@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE(changeTestNestedZerobuf)
     object.getNested()[0].setIntvalue( 5 );
     BOOST_CHECK_EQUAL( constObject.getNested()[0], test::TestNested( 5, 7 ));
     BOOST_CHECK_EQUAL( object.getNested()[0], test::TestNested( 5, 7 ));
-    BOOST_CHECK_EQUAL( object.getNested()[0].getZerobufSize(), 12 );
+    BOOST_CHECK_EQUAL( object.getNested()[0].toBinary().size, 12 );
 }
 
 BOOST_AUTO_TEST_CASE(vector)
@@ -140,22 +140,22 @@ BOOST_AUTO_TEST_CASE(compact)
                      test::TestDynamic::ZEROBUF_STATIC_SIZE() +
                      object.getDynamic().getName().size();
 
-    BOOST_CHECK_LT( minSize, object.getZerobufSize( ));
+    BOOST_CHECK_LT( minSize, object.toBinary().size );
     object.compact();
     object.check();
     object.getDynamic().check();
-    BOOST_CHECK_EQUAL( minSize, object.getZerobufSize( ));
+    BOOST_CHECK_EQUAL( minSize, object.toBinary().size );
 
     minSize = test::TestNestedZerobuf::ZEROBUF_STATIC_SIZE() +
               test::TestDynamic::ZEROBUF_STATIC_SIZE();
     object.getDynamic().getName().clear();
     object.getNested().clear();
 
-    BOOST_CHECK_LT( minSize, object.getZerobufSize( ));
+    BOOST_CHECK_LT( minSize, object.toBinary().size );
     object.compact();
     object.check();
     object.getDynamic().check();
-    BOOST_CHECK_EQUAL( minSize, object.getZerobufSize( ));
+    BOOST_CHECK_EQUAL( minSize, object.toBinary().size );
 
 }
 
@@ -183,12 +183,11 @@ BOOST_AUTO_TEST_CASE(testNestedZerobufToGeneric)
     testNestedZerobuf.getDynamic().setName( "Hugo" );
     testNestedZerobuf.getNested().push_back( test::TestNested( 1, 2 ));
     testNestedZerobuf.getNested().push_back( test::TestNested( 10, 20 ));
-    const void* data = testNestedZerobuf.getZerobufData();
-    const size_t size = testNestedZerobuf.getZerobufSize();
+    const zerobuf::Data& zerobuf = testNestedZerobuf.toBinary();
     const zerobuf::Schemas& schemas = test::TestNestedZerobuf::schemas();
 
     zerobuf::Generic generic( schemas );
-    generic.copyZerobufData( data, size );
+    generic.fromBinary( zerobuf );
     const std::string& json = generic.toJSON();
     BOOST_CHECK_EQUAL( json, expectedJSON );
 }

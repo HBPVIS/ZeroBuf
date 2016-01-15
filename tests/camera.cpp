@@ -123,12 +123,11 @@ BOOST_AUTO_TEST_CASE(cameraToGeneric)
     const zerobuf::render::Camera camera( zerobuf::render::Vector3f( 1, 0, 0 ),
                                           zerobuf::render::Vector3f( 0, 1, 0 ),
                                           zerobuf::render::Vector3f( 0, 0, 1 ));
-    const void* data = camera.getZerobufData();
-    const size_t size = camera.getZerobufSize();
+    const zerobuf::Data& zerobuf = camera.toBinary();
     const zerobuf::Schemas& schemas = zerobuf::render::Camera::schemas();
 
     zerobuf::Generic generic( schemas );
-    generic.copyZerobufData( data, size );
+    generic.fromBinary( zerobuf );
     const std::string& json = generic.toJSON();
     BOOST_CHECK_EQUAL( json, expectedJSON );
 }
@@ -139,9 +138,10 @@ BOOST_AUTO_TEST_CASE(genericToCamera)
     zerobuf::Generic generic( schemas );
     generic.fromJSON( expectedJSON );
 
-    const zerobuf::render::Camera expectedCamera( zerobuf::render::Vector3f( 1, 0, 0 ),
-                                                  zerobuf::render::Vector3f( 0, 1, 0 ),
-                                                  zerobuf::render::Vector3f( 0, 0, 1 ));
+    const zerobuf::render::Camera
+        expectedCamera( zerobuf::render::Vector3f( 1, 0, 0 ),
+                        zerobuf::render::Vector3f( 0, 1, 0 ),
+                        zerobuf::render::Vector3f( 0, 0, 1 ));
     const zerobuf::render::Camera camera( generic );
     BOOST_CHECK( camera == expectedCamera );
     BOOST_CHECK_EQUAL( camera.getZerobufNumDynamics(),

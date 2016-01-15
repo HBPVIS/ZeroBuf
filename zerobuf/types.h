@@ -1,12 +1,13 @@
 
-/* Copyright (c) 2015, Human Brain Project
- *                     Stefan.Eilemann@epfl.ch
+/* Copyright (c) 2015-2016, Human Brain Project
+ *                          Stefan.Eilemann@epfl.ch
  */
 
 #ifndef ZEROBUF_TYPES_H
 #define ZEROBUF_TYPES_H
 
 #include <servus/types.h>
+#include <servus/serializable.h> // nested Data class
 #include <memory>
 
 /**
@@ -20,20 +21,19 @@
 namespace zerobuf
 {
 class Allocator;
-class Zerobuf;
 class NonMovingAllocator;
 class NonMovingBaseAllocator;
-struct Schema;
 class Zerobuf;
+struct Schema;
+template< class T > class Vector;
 
 typedef std::unique_ptr< Allocator > AllocatorPtr;
 typedef std::unique_ptr< const Allocator > ConstAllocatorPtr;
 
-template< class T > class Vector;
-
 typedef std::vector< Schema > Schemas;
 
 using servus::uint128_t;
+typedef servus::Serializable::Data Data;
 }
 
 namespace Json

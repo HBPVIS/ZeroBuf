@@ -172,5 +172,5 @@ void checkTestObject( const test::TestSchema& object )
 
     object.getNestedMember().check();
     BOOST_CHECK_EQUAL( object.getNestedMember().getNameString(), "Hugo" );
-    BOOST_CHECK_EQUAL( object.getNestedMember().getZerobufSize(), 28 );
+    BOOST_CHECK_EQUAL( object.getNestedMember().toBinary().size, 28 );
 }

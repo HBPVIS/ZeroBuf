@@ -17,12 +17,12 @@ BOOST_AUTO_TEST_CASE(empty)
 
     BOOST_CHECK_EQUAL( empty1.getZerobufStaticSize(), 0 );
     BOOST_CHECK_EQUAL( empty1.getZerobufNumDynamics(), 0 );
-    BOOST_CHECK_EQUAL( empty1.getZerobufSize(), 0 );
-    BOOST_CHECK( empty1.getZerobufData() == nullptr );
+    BOOST_CHECK_EQUAL( empty1.toBinary().size, 0 );
+    BOOST_CHECK( empty1.toBinary().ptr == nullptr );
     BOOST_CHECK( empty1 == empty2 );
     BOOST_CHECK( empty3 == empty2 );
 
-    BOOST_CHECK_THROW( empty2.copyZerobufData( &empty1, 42 ),
+    BOOST_CHECK_THROW( empty2.fromBinary( &empty1, 42 ),
                        std::runtime_error );
     BOOST_CHECK_EQUAL( empty2.toJSON(), "{}" );
     BOOST_CHECK_THROW( empty2.fromJSON( "blubb" ), std::runtime_error );
