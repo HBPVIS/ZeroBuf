@@ -1,8 +1,6 @@
 ZeroBuf
 =======
 
-[TOC]
-
 # Overview
 
 ZeroBuf is a replacement for FlatBuffers, resolving the following
