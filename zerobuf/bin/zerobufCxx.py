@@ -623,9 +623,13 @@ def emit():
         low  = digest[ len( digest ) - 16: ]
         zerobufType = "::zerobuf::uint128_t( 0x{0}ull, 0x{1}ull )".format( high,
                                                                            low )
+        zerobufName = "{0}{1}{2}".format("::".join(emit.namespace),
+                                         "::" if emit.namespace else "",
+                                         emit.table)
         header.write( "    // Introspection\n" )
-        header.write( "    static ::zerobuf::uint128_t TYPE_IDENTIFIER() {{ return {0}; }}\n".format( zerobufType ))
+        header.write( "    std::string getTypeName() const final {{ return \"{0}\"; }}\n".format( zerobufName ))
         header.write( "    ::zerobuf::uint128_t getTypeIdentifier() const final {{ return {0}; }}\n".format( zerobufType ))
+        header.write( "    static ::zerobuf::uint128_t TYPE_IDENTIFIER() {{ return {0}; }}\n".format( zerobufType ))
         header.write( "    size_t getZerobufStaticSize() const final {{ return {0}; }}\n".format( emit.offset ))
         header.write( "    static size_t ZEROBUF_STATIC_SIZE() {{ return {0}; }}\n".format( emit.offset ))
         header.write( "    size_t getZerobufNumDynamics() const final {{ return {0}; }}\n".format( emit.numDynamic ))
