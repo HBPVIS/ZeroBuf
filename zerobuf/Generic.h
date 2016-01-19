@@ -32,6 +32,9 @@ public:
 
 private:
     const Schemas _schemas;
+
+    std::string getTypeName() const final
+        { throw std::runtime_error( "Unsupported" ); }
 };
 
 }

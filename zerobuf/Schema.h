@@ -1,6 +1,6 @@
 
-/* Copyright (c) 2015, Human Brain Project
- *                     Daniel.Nachbaur@epfl.ch
+/* Copyright (c) 2015-2016, Human Brain Project
+ *                          Daniel.Nachbaur@epfl.ch
  */
 
 #ifndef ZEROBUF_SCHEMA_H
@@ -42,7 +42,7 @@ struct Schema
 
     /**
      * The type identifier of the object.
-     * @sa ZeroBuf::getZerobufType()
+     * @sa Zerobuf::getTypeIdentifier()
      */
     const uint128_t type;
 
