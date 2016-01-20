@@ -11,12 +11,13 @@
 #include <memory>
 
 /**
- * ZeroBuf is a replacement for FlatBuffers and protobuf.
+ * Zero-copy, zero-serialize, zero-hassle protocol buffers.
  *
- * It provides direct get and set functionality on the defined data members; a
- * single, in-memory buffer storing all data members, which is directly
- * serializable; Usable, random access to the the data members; and zero copy of
- * the data used by the (C++) implementation from and to the network.
+ * Zerobuf uses a schema language (currently FlatBuffers .fbs) generating C++
+ * classes which provide direct get and set access on the defined data members;
+ * a single, in-memory buffer storing all data members, which is directly
+ * serializable; Easy to use, random access to the the data members; and zero
+ * copy of the data used by the (C++) implementation from and to the network.
  */
 namespace zerobuf
 {
