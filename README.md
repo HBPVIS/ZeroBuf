@@ -19,8 +19,11 @@ shortcomings:
   static-sized elements
 * Access to arrays using raw pointers, iterators, std::array,
   std::string and std::vector
+* Conversion to and from a JSON representation
 
 # Extensions to flatbuffers grammar
 
 * Arrays can have an optional fixed size specified as part of the type,
   e.g., ```matrix:[float:16]``` for a 16 value float array
+* byte and ubyte data is base64 encoded in JSON, int8_t and uint8_t are
+  represented as value arrays

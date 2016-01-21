@@ -6,6 +6,7 @@
 #include <zerobuf/Schema.h>
 #include <zerobuf/version.h>
 #include <zerobuf/jsoncpp/json/json.h>
+#include "base64.h"
 
 #include <cstring>
 #include <functional>
@@ -17,6 +18,8 @@ namespace zerobuf
 {
 namespace
 {
+static const uint128_t _byteType = servus::make_uint128( "::zerobuf::byte_t" );
+
 const uint128_t& _getType( const Schema::Field& field )
 {
     return std::get< Schema::FIELD_TYPE >( field );
@@ -75,6 +78,7 @@ public:
 
         addConverter< int8_t >( "int8_t" );
         addConverter< uint8_t >( "uint8_t" );
+        addConverter< byte_t >( "::zerobuf::byte_t" );
         addConverter< int16_t >( "int16_t" );
         addConverter< uint16_t >( "uint16_t" );
         addConverter< int32_t >( "int32_t" );
@@ -382,26 +386,20 @@ private:
     bool _fromPOD( const Allocator& allocator, const Schema::Field& field,
                   Json::Value& jsonValue ) const
     {
-        const size_t offset = _getOffset( field );
         const size_t nElements = _getNElements( field );
-
         switch( nElements )
         {
         case 0: // dynamic array
             return _fromPODDynamic< T >( allocator, field, jsonValue );
 
         case 1: // single element
+        {
+            const size_t offset = _getOffset( field );
             return _fromPODItem< T >( allocator.getItem< T >( offset ),
                                      jsonValue );
-        default: // static array
-        {
-            const T* data = allocator.getItemPtr< T >( offset );
-            jsonValue.resize( nElements );
-            for( size_t i = 0; i < nElements; ++i )
-                if( !_fromPODItem< T >( data[ i ], jsonValue[ uint32_t( i )]))
-                    return false;
-            return true;
         }
+        default: // static array
+            return _fromPODArray< T >( allocator, field, jsonValue );
         }
     }
 
@@ -420,9 +418,16 @@ private:
     }
 
     template< class T >
-    bool _fromPODDynamic( const Allocator& allocator,
-                          const Schema::Field& field,
+    bool _fromPODDynamic( const Allocator& allocator, const Schema::Field& field,
                           Json::Value& jsonValue ) const
+    {
+        return _fromPODDynamicSimple< T >( allocator, field, jsonValue );
+    }
+
+    template< class T >
+    bool _fromPODDynamicSimple( const Allocator& allocator,
+                                const Schema::Field& field,
+                                Json::Value& jsonValue ) const
     {
         if( _isStatic( field ))
             throw std::runtime_error( "Internal JSON converter error" );
@@ -437,37 +442,46 @@ private:
     }
 
     template< class T >
-    bool _toPOD( Allocator& allocator, const Schema::Field& field,
-                    const Json::Value& jsonValue )
+    bool _fromPODArray( const Allocator& allocator, const Schema::Field& field,
+                        Json::Value& jsonValue ) const
     {
-        const size_t offset = _getOffset( field );
-        const size_t nElements = _getNElements( field );
+        return _fromPODArraySimple< T >( allocator, field, jsonValue );
+    }
 
+    template< class T >
+    bool _fromPODArraySimple( const Allocator& allocator,
+                              const Schema::Field& field,
+                              Json::Value& jsonValue ) const
+    {
+        const size_t nElements = _getNElements( field );
+        const size_t offset = _getOffset( field );
+        const T* data = allocator.getItemPtr< T >( offset );
+
+        jsonValue.resize( nElements );
+        for( size_t i = 0; i < nElements; ++i )
+            if( !_fromPODItem< T >( data[ i ], jsonValue[ uint32_t( i )]))
+                return false;
+        return true;
+    }
+
+    template< class T >
+    bool _toPOD( Allocator& allocator, const Schema::Field& field,
+                 const Json::Value& jsonValue )
+    {
+        const size_t nElements = _getNElements( field );
         switch( nElements )
         {
         case 0: // dynamic array
             return _toPODDynamic< T >( allocator, field, jsonValue );
 
         case 1: // single element
+        {
+            const size_t offset = _getOffset( field );
             return _toPODItem< T >( allocator.getItem<T>( offset ),
                                     jsonValue );
-
-        default: // static array
-        {
-            if( jsonValue.size() != nElements )
-            {
-                std::cerr << "JSON array '" << _getName( field ) << "': '"
-                          << jsonValue << "' does not match array size "
-                          << nElements << std::endl;
-                return false;
-            }
-
-            T* data = allocator.getItemPtr< T >( offset );
-            for( size_t i = 0; i < nElements; ++i )
-                if( !_toPODItem< T >( data[ i ], jsonValue[ uint32_t( i )]))
-                    return false;
-            return true;
         }
+        default: // static array
+            return _toPODArray< T >( allocator, field, jsonValue );
         }
     }
 
@@ -487,7 +501,14 @@ private:
 
     template< class T >
     bool _toPODDynamic( Allocator& allocator, const Schema::Field& field,
-                           const Json::Value& jsonValue )
+                        const Json::Value& jsonValue )
+    {
+        return _toPODDynamicSimple< T >( allocator, field, jsonValue );
+    }
+
+    template< class T >
+    bool _toPODDynamicSimple( Allocator& allocator, const Schema::Field& field,
+                        const Json::Value& jsonValue )
     {
         if( _isStatic( field ))
             throw std::runtime_error( "Internal JSON converter error" );
@@ -500,6 +521,34 @@ private:
 
         for( size_t i = 0; i < size; ++i )
             if( !_toPODItem< T >( data[i], jsonValue[ uint32_t( i )]))
+                return false;
+        return true;
+    }
+
+    template< class T >
+    bool _toPODArray( Allocator& allocator, const Schema::Field& field,
+                      const Json::Value& jsonValue )
+    {
+        return _toPODArraySimple< T >( allocator, field, jsonValue );
+    }
+
+    template< class T >
+    bool _toPODArraySimple( Allocator& allocator, const Schema::Field& field,
+                            const Json::Value& jsonValue )
+    {
+        const size_t nElements = _getNElements( field );
+        if( jsonValue.size() != nElements )
+        {
+            std::cerr << "JSON array '" << _getName( field ) << "': '"
+                      << jsonValue << "' does not match array size " << nElements
+                      << std::endl;
+            return false;
+        }
+
+        const size_t offset = _getOffset( field );
+        T* data = allocator.getItemPtr< T >( offset );
+        for( size_t i = 0; i < nElements; ++i )
+            if( !_toPODItem< T >( data[ i ], jsonValue[ uint32_t( i )]))
                 return false;
         return true;
     }
@@ -550,6 +599,86 @@ bool JSONConverter::_toPODDynamic< char >( Allocator& allocator,
     void* array = allocator.updateAllocation( index, false /*no copy*/,
                                               value.length( ));
     ::memcpy( array, value.c_str(), value.length( ));
+    return true;
+}
+
+template<>
+bool JSONConverter::_fromPODDynamic< uint8_t >( const Allocator& allocator,
+                                                const Schema::Field& field,
+                                                Json::Value& jsonValue ) const
+{
+    if( _isStatic( field ))
+        throw std::runtime_error( "Internal JSON converter error" );
+
+    if( _getType( field ) != _byteType )
+        return _fromPODDynamicSimple< uint8_t >( allocator, field, jsonValue );
+
+    const size_t index = _getIndex( field );
+    const size_t size = allocator.getDynamicSize( index );
+    const uint8_t* data =  allocator.getDynamic< const uint8_t >( index );
+    const std::string& value = base64_encode( data, size );
+    return _fromPODItem( value, jsonValue );
+}
+
+template<>
+bool JSONConverter::_toPODDynamic< uint8_t >( Allocator& allocator,
+                                              const Schema::Field& field,
+                                              const Json::Value& jsonValue )
+{
+    if( _isStatic( field ))
+        throw std::runtime_error( "Internal JSON converter error" );
+
+    if( _getType( field ) != _byteType )
+        return _toPODDynamicSimple< uint8_t >( allocator, field, jsonValue );
+
+    const size_t index = _getIndex( field );
+    const std::string& value = jsonValue.asString();
+    const std::string& decoded = base64_decode( value );
+    void* array = allocator.updateAllocation( index, false /*no copy*/,
+                                              decoded.length( ));
+    ::memcpy( array, decoded.c_str(), decoded.length( ));
+    return true;
+}
+
+template<>
+bool JSONConverter::_fromPODArray< uint8_t >( const Allocator& allocator,
+                                              const Schema::Field& field,
+                                              Json::Value& jsonValue ) const
+{
+    if( _getType( field ) != _byteType )
+        return _fromPODArraySimple< uint8_t >( allocator, field, jsonValue );
+
+    const size_t nElements = _getNElements( field );
+    const size_t offset = _getOffset( field );
+    const uint8_t* data = allocator.getItemPtr< uint8_t >( offset );
+    const std::string& value = base64_encode( data, nElements );
+    return _fromPODItem( value, jsonValue );
+}
+
+template<>
+bool JSONConverter::_toPODArray< uint8_t >( Allocator& allocator,
+                                            const Schema::Field& field,
+                                            const Json::Value& jsonValue )
+{
+    if( _getType( field ) != _byteType )
+        return _toPODArraySimple< uint8_t >( allocator, field, jsonValue );
+
+    const size_t nElements = _getNElements( field );
+    const std::string& value = jsonValue.asString();
+    const std::string& decoded = base64_decode( value );
+
+    if( decoded.length() != nElements )
+    {
+        std::cerr << "JSON array '" << _getName( field ) << "': '" << jsonValue
+                  << "' (" << decoded.length()
+                  << " bytes) does not match array size " << nElements
+                  << std::endl;
+        return false;
+    }
+
+    const size_t offset = _getOffset( field );
+    uint8_t* data = allocator.getItemPtr< uint8_t >( offset );
+    ::memcpy( data, decoded.c_str(), decoded.length( ));
     return true;
 }
 
