@@ -353,6 +353,9 @@ def emitStaticArray( spec ):
                       cxxtype + ">( " + str( emit.offset ) +
                       " ), value.data(), value.length( ));\n" +
                       "    }" )
+    emitFunction( "size_t", "get" + cxxName + "Size() const",
+                  "return {0};".format( nElems ))
+
     # schema entry
     if cxxtype in emit.enums:
         cxxtype = "uint32_t"
@@ -459,9 +462,9 @@ def emit():
                    "uint" : ( 4, "uint32_t" ),
                    "float" : ( 4, "float" ),
                    "double" : ( 8, "double" ),
-                   "byte" : ( 1, "int8_t" ),
+                   "byte" : ( 1, "::zerobuf::byte_t" ),
                    "short" : ( 2, "int16_t" ),
-                   "ubyte" : ( 1, "uint8_t" ),
+                   "ubyte" : ( 1, "::zerobuf::byte_t" ),
                    "ushort" : ( 2, "uint16_t" ),
                    "ulong" : ( 8, "uint64_t" ),
                    "uint8_t" : ( 1, "uint8_t" ),
@@ -567,7 +570,7 @@ def emit():
                     if len(member) == 2 or len(member) == 3:
                         cxxtype = emit.types[member[1]][1] # static member
                     else:
-                        if cxxtype in emit.tables:
+                        if member[2] in emit.tables:
                             cxxtype = cxxName # static array of zerobuf
                         else:
                             cxxtype = "std::vector< {0} >".format(emit.types[member[2]][1]) # static array of POD

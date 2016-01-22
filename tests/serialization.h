@@ -46,9 +46,9 @@ test::TestSchema getTestObject()
     SETVALUES(uint32_t, Uint);
     SETVALUES(float, Float);
     SETVALUES(double, Double);
-    SETVALUES(int8_t, Byte);
+    SETVALUES(::zerobuf::byte_t, Byte);
     SETVALUES(int16_t, Short);
-    SETVALUES(uint8_t, Ubyte);
+    SETVALUES(::zerobuf::byte_t, Ubyte);
     SETVALUES(uint16_t, Ushort);
     SETVALUES(uint64_t, Ulong);
     SETVALUES(uint8_t, Uint8_t);
@@ -120,9 +120,9 @@ void checkTestObject( const test::TestSchema& object )
     TESTVALUES(uint32_t, Uint);
     TESTVALUES(float, Float);
     TESTVALUES(double, Double);
-    TESTVALUES(int8_t, Byte);
+    TESTVALUES(::zerobuf::byte_t, Byte);
     TESTVALUES(int16_t, Short);
-    TESTVALUES(uint8_t, Ubyte);
+    TESTVALUES(::zerobuf::byte_t, Ubyte);
     TESTVALUES(uint16_t, Ushort);
     TESTVALUES(uint64_t, Ulong);
     TESTVALUES(uint8_t, Uint8_t);
@@ -147,6 +147,7 @@ void checkTestObject( const test::TestSchema& object )
     checkTestObject( object.getNested( ));
 
     // Test retrieved tables
+    BOOST_CHECK_EQUAL( object.getNestedarraySize(), 4 );
     const auto& tables = object.getNestedarray();
     int32_t intMagic = 42;
     uint32_t uintMagic = 4200;

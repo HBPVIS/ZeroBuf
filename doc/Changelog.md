@@ -1,5 +1,7 @@
 # Changelog {#Changelog}
 
+* [25](https://github.com/HBPVIS/ZeroBuf/pull/25):
+  Use base64 encoding for byte and ubyte arrays (static and dynamic)
 * [19](https://github.com/HBPVIS/ZeroBuf/pull/19):
   Allow compaction of existing allocation
 * [19](https://github.com/HBPVIS/ZeroBuf/pull/19):
