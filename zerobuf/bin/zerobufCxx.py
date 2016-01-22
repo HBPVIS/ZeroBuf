@@ -353,6 +353,9 @@ def emitStaticArray( spec ):
                       cxxtype + ">( " + str( emit.offset ) +
                       " ), value.data(), value.length( ));\n" +
                       "    }" )
+    emitFunction( "size_t", "get" + cxxName + "Size() const",
+                  "return {0};".format( nElems ))
+
     # schema entry
     if cxxtype in emit.enums:
         cxxtype = "uint32_t"

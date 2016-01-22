@@ -147,6 +147,7 @@ void checkTestObject( const test::TestSchema& object )
     checkTestObject( object.getNested( ));
 
     // Test retrieved tables
+    BOOST_CHECK_EQUAL( object.getNestedarraySize(), 4 );
     const auto& tables = object.getNestedarray();
     int32_t intMagic = 42;
     uint32_t uintMagic = 4200;
