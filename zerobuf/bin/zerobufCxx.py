@@ -567,7 +567,7 @@ def emit():
                     if len(member) == 2 or len(member) == 3:
                         cxxtype = emit.types[member[1]][1] # static member
                     else:
-                        if cxxtype in emit.tables:
+                        if member[2] in emit.tables:
                             cxxtype = cxxName # static array of zerobuf
                         else:
                             cxxtype = "std::vector< {0} >".format(emit.types[member[2]][1]) # static array of POD
