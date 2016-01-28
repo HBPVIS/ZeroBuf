@@ -1,5 +1,7 @@
 # Changelog {#Changelog}
 
+* [27](https://github.com/HBPVIS/ZeroBuf/pull/27):
+  Support default values for sub-structs
 * [25](https://github.com/HBPVIS/ZeroBuf/pull/25):
   Use base64 encoding for byte and ubyte arrays (static and dynamic)
 * [19](https://github.com/HBPVIS/ZeroBuf/pull/19):

@@ -11,10 +11,12 @@
 #include <zerobuf/Generic.h>
 #include <utility>
 
-BOOST_AUTO_TEST_CASE(emptyTestNestedZerobuf)
+BOOST_AUTO_TEST_CASE(defaultValues)
 {
     const test::TestNestedZerobuf testNestedZerobuf;
     BOOST_CHECK( testNestedZerobuf.getNested().empty( ));
+    BOOST_CHECK_EQUAL( testNestedZerobuf.getNest().getIntvalue(), -17 );
+    BOOST_CHECK_EQUAL( testNestedZerobuf.getNest().getUintvalue(), 17 );
 }
 
 BOOST_AUTO_TEST_CASE(copyConstructTestNestedZerobuf)
@@ -164,6 +166,10 @@ const std::string expectedJSON =
     "   \"dynamic\" : {\n"
     "      \"intvalue\" : 7,\n"
     "      \"name\" : \"Hugo\"\n"
+    "   },\n"
+    "   \"nest\" : {\n"
+    "      \"intvalue\" : -17,\n"
+    "      \"uintvalue\" : 17\n"
     "   },\n"
     "   \"nested\" : [\n"
     "      {\n"

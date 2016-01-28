@@ -20,6 +20,7 @@ table TestEmpty {
 }
 
 table TestNestedZerobuf {
+  nest: TestNested = -17, 17;
   dynamic: TestDynamic;
   nested: [TestNested];
 }

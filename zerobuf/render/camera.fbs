@@ -12,9 +12,9 @@ table Vector3f
 
 table Camera
 {
-  origin: Vector3f;
+  origin: Vector3f = 0, 0, 1;
   lookAt: Vector3f;
-  up: Vector3f;
+  up: Vector3f = 0, 1, 0;
 }
 
 root_type Camera;
