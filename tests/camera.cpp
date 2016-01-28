@@ -1,6 +1,6 @@
 
-/* Copyright (c) 2015, Human Brain Project
- *                     Daniel Nachbaur <danielnachbaur@epfl.ch>
+/* Copyright (c) 2015-2016, Human Brain Project
+ *                          Daniel Nachbaur <danielnachbaur@epfl.ch>
  */
 
 #define BOOST_TEST_MODULE camera
@@ -14,10 +14,9 @@
 BOOST_AUTO_TEST_CASE(emptyCamera)
 {
     const zerobuf::render::Camera camera;
-    const zerobuf::render::Vector3f empty;
-    BOOST_CHECK( camera.getOrigin() == empty );
-    BOOST_CHECK( camera.getLookAt() == empty );
-    BOOST_CHECK( camera.getUp() == empty );
+    BOOST_CHECK( camera.getOrigin() == zerobuf::render::Vector3f( 0, 0, 1 ));
+    BOOST_CHECK( camera.getLookAt() == zerobuf::render::Vector3f( ));
+    BOOST_CHECK( camera.getUp() == zerobuf::render::Vector3f( 0, 1, 0 ));
 }
 
 BOOST_AUTO_TEST_CASE(initializeCamera)

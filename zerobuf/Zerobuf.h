@@ -18,8 +18,10 @@ namespace zerobuf
 /**
  * Base class for all zerobufs.
  *
- * Zerobuf objects can serialize/deserialize directly from their member storage
- * and from and to JSON.
+ * The zerobufCxx.py code generator creates subclasses of this class. Zerobuf
+ * objects can serialize/deserialize directly from their member storage and from
+ * and to JSON. All members are zero-initialized, unless they do have a default
+ * value.
  */
 class Zerobuf : public servus::Serializable
 {

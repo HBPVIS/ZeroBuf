@@ -37,7 +37,7 @@ fbsTableArray = ( ( Literal( '[' ) + fbsType + Literal( ']' )) ^
                   ( Literal( '[' ) + fbsType + Literal( ':' ) + Word( nums ) +
                     Literal( ']' )) )
 fbsTableValue = ((fbsType ^ fbsTableArray) + ZeroOrMore(Suppress('=') +
-                Or([Word("true"), Word("false"), Word(nums+".")])))
+                Or([Word("true"), Word("false"), Word(nums+"-. ,")])))
 fbsTableEntry = Group( Word( alphanums+"_" ) + Suppress( ':' ) + fbsTableValue +
                        Suppress( ';' ))
 fbsTableSpec = ZeroOrMore( fbsTableEntry )
@@ -231,7 +231,8 @@ def emitStaticMember( spec ):
     cxxtype = emit.types[ spec[1] ][1]
     elemSize = emit.types[ spec[1] ][0]
     if len(spec) == 3:
-        emit.defaultValues += "    set{0}({1});\n".format(cxxName,spec[2])
+        emit.defaultValues += "    set{0}({1}( {2} ));\n".\
+                              format(cxxName,cxxtype,spec[2])
 
     emit.md5.update( cxxtype.encode('utf-8') )
 
