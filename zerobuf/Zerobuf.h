@@ -94,7 +94,7 @@ private:
 
 inline std::ostream& operator << ( std::ostream& os, const Zerobuf& zerobuf )
 {
-    return os << zerobuf.getTypeIdentifier() << ": " << zerobuf.toJSON();
+    return os << "\"" << zerobuf.getTypeName() << "\" : " << zerobuf.toJSON();
 }
 
 }
