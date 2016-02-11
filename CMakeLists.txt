@@ -24,11 +24,17 @@ set(ZEROBUF_DEPENDENT_LIBRARIES Servus)
 
 common_package(Boost 1.49 COMPONENTS unit_test_framework)
 common_package(Servus REQUIRED)
+common_package(PythonInterp REQUIRED)
 common_package_post()
 
 set(LCOV_EXCLUDE "zerobuf/jsoncpp/*")
+
+add_subdirectory(bin)
 add_subdirectory(zerobuf)
 add_subdirectory(tests)
+
+install(FILES CMake/zerobufGenerateCxx.cmake
+  DESTINATION ${CMAKE_MODULE_INSTALL_PATH} COMPONENT dev)
 
 set(DOXYGEN_MAINPAGE_MD README.md)
 set(DOXYGEN_EXTRA_INPUT ${PROJECT_SOURCE_DIR}/README.md
