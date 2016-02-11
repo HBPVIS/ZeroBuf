@@ -1,12 +1,21 @@
-# Copyright (c) 2015 Human Brain Project
-#                    Stefan.Eilemann@epfl.ch
+# Copyright (c) 2015-2016 Human Brain Project
+#                         Stefan.Eilemann@epfl.ch
 #
 # Function to generate zerobuf C++ headers for fbs schemas
 # Outputs:
 # * ${Name}_HEADERS: names of generated header files
 # * ${Name}_SOURCES: names of generated source files
 
-set(ZEROBUF_BASE_DIR ${CMAKE_CURRENT_LIST_DIR}/../../..)
+if(NOT PYTHON_EXECUTABLE)
+  find_package(PythonInterp REQUIRED)
+endif()
+find_file(ZEROBUF_CXX zerobufCxx.py HINTS
+  ${CMAKE_CURRENT_LIST_DIR}/../../../bin # from share/zerobuf/CMake (!Windows)
+  ${CMAKE_CURRENT_LIST_DIR}/../../bin # from zerobuf/CMake (Windows)
+  ${CMAKE_CURRENT_LIST_DIR}/../bin) # from build dir
+if(NOT ZEROBUF_CXX)
+  message(FATAL_ERROR "zerobufCxx.py not found")
+endif()
 
 function(zerobuf_generate_cxx Name OutputDir)
   set(${Name}_HEADERS)
@@ -19,10 +28,10 @@ function(zerobuf_generate_cxx Name OutputDir)
     list(APPEND ${Name}_SOURCES ${ZEROBUF_SOURCE})
 
     add_custom_command(
-      COMMAND ${PYTHON_EXECUTABLE} ${ZEROBUF_BASE_DIR}/bin/zerobufCxx.py
+      COMMAND ${PYTHON_EXECUTABLE} ${ZEROBUF_CXX}
       ARGS -o "${OutputDir}" ${FILE}
       COMMENT "Building zerobuf C++ headers for ${FILE} in ${OutputDir}"
-      DEPENDS ${FILE} ${ZEROBUF_BASE_DIR}/bin/zerobufCxx.py
+      DEPENDS ${FILE} ${ZEROBUF_CXX}
       OUTPUT ${ZEROBUF_HEADER} ${ZEROBUF_SOURCE}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
   endforeach()
