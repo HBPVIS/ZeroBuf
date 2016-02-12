@@ -1,11 +1,6 @@
 
 namespace test;
 
-enum TestEnum : uint {
-  FIRST,
-  SECOND
-}
-
 table TestNested {
   intvalue: int;
   uintvalue: uint;
@@ -23,6 +18,12 @@ table TestNestedZerobuf {
   nest: TestNested = -17, 17;
   dynamic: TestDynamic;
   nested: [TestNested];
+}
+
+enum TestEnum : uint {
+  FIRST,
+  SECOND,
+  THIRD_UNDERSCORE
 }
 
 table TestSchema {

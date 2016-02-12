@@ -3,7 +3,6 @@
 # TODO:
 # * nested dynamic tables
 # * endian swap method
-# * configurable allocator class name ?
 
 # UUID is MD5 hash of namespace::namespace[<cxxtype>|<cxxtype>*|<cxxtype><size>]
 # See @ref Binary for a description of the memory layout
@@ -25,7 +24,7 @@ fbsNamespace = Group( Keyword( "namespace" ) + fbsNamespaceName +
                       Suppress( ';' ))
 
 # enum EventDirection : ubyte { Subscriber, Publisher, Both }
-fbsEnumValue = ( Word( alphanums ) + Suppress( Optional( ',' )))
+fbsEnumValue = ( Word( alphanums+"_" ) + Suppress( Optional( ',' )))
 fbsEnum = Group( Keyword( "enum" ) + Word( alphanums ) + Suppress( ':' ) +
                  fbsBaseType + Suppress( '{' ) + OneOrMore( fbsEnumValue ) +
                  Suppress( '}' ))
@@ -51,8 +50,9 @@ fbsRootType = Group( Keyword( "root_type" ) + Word( alphanums ) +
                      Suppress( ";" ))
 
 # namespace, table(s), root_type
-fbsObject = ( Optional( fbsNamespace ) + ZeroOrMore( fbsEnum ) +
-              OneOrMore( fbsTable ) + Optional( fbsRootType ))
+fbsItem = Or([fbsEnum, fbsTable])
+fbsObject = ( Optional( fbsNamespace ) + OneOrMore( fbsItem ) +
+              Optional( fbsRootType ))
 
 fbsComment = cppStyleComment
 fbsObject.ignore( fbsComment )
