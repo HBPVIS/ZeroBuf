@@ -33,6 +33,9 @@ add_subdirectory(bin)
 add_subdirectory(zerobuf)
 add_subdirectory(tests)
 
+configure_file(CMake/zerobufGenerateCxx.cmake
+  ${PROJECT_BINARY_DIR}/${CMAKE_MODULE_INSTALL_PATH}/zerobufGenerateCxx.cmake
+  COPYONLY)
 install(FILES CMake/zerobufGenerateCxx.cmake
   DESTINATION ${CMAKE_MODULE_INSTALL_PATH} COMPONENT dev)
 
