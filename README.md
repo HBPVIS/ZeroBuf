@@ -3,7 +3,8 @@ ZeroBuf
 
 # Overview
 
-ZeroBuf is a replacement for FlatBuffers, resolving the following
+ZeroBuf implements zero-copy, zero-serialize, zero-hassle protocol
+buffers. It is a replacement for FlatBuffers, resolving the following
 shortcomings:
 
 * Direct get and set functionality on the defined data members

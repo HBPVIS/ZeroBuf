@@ -136,7 +136,10 @@ bool Zerobuf::_fromJSON( const std::string& string )
 
     notifyChanging();
     JSONConverter converter( getSchemas( ));
-    return converter.fromJSON( *_allocator, json );
+    if( !converter.fromJSON( *_allocator, json ))
+        return false;
+    compact();
+    return true;
 }
 
 std::string Zerobuf::_toJSON() const
