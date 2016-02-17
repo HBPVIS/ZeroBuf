@@ -5,10 +5,9 @@
 
 #include "Zerobuf.h"
 
+#include "NonMovingAllocator.h"
 #include "NonMovingSubAllocator.h"
-#include "Schema.h"
 #include "StaticSubAllocator.h"
-#include "detail/JsonConverter.h"
 #include <zerobuf/version.h>
 #include "jsoncpp/json/json.h"
 

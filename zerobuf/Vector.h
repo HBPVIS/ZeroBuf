@@ -7,7 +7,6 @@
 #define ZEROBUF_VECTOR_H
 
 #include <zerobuf/DynamicSubAllocator.h> // used inline
-#include <zerobuf/Schema.h> // used inline
 #include <zerobuf/Zerobuf.h> // sfinae type
 #include <zerobuf/json.h> // used inline
 
@@ -137,7 +136,7 @@ private:
         typename std::enable_if< std::is_base_of< Zerobuf, Q >::value,
                                                   Q >::type* = 0 ) const
     {
-        return Q::schema().staticSize;
+        return Q::ZEROBUF_STATIC_SIZE();
     }
 
     template< class Q = T > size_t _getElementSize(

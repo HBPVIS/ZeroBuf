@@ -33,9 +33,6 @@ public:
     /** @return the number of dynamics fields of this object. */
     virtual size_t getZerobufNumDynamics() const = 0;
 
-    /** @return the schemas describing this ZeroBuf object. */
-    virtual Schemas getSchemas() const = 0;
-
     /** Called if any data in this object is about to change. */
     virtual void notifyChanging() {}
 

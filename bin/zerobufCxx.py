@@ -112,10 +112,6 @@ def emitDynamicMember(spec):
                  "notifyChanging();\n    _{0} = value;".format(cxxname))
     emit.initializers.append([cxxname, 1, cxxtype, emit.currentDyn, 0])
     emit.members.append("{0} _{1};".format(cxxtype, cxxname));
-
-    emit.schema.append("std::make_tuple( \"{0}\", {1}::TYPE_IDENTIFIER(), {2}, 0, 1 )".
-                        format(cxxname, cxxtype, emit.offset))
-    emit.nestedSchemas.add( "{0}::schema()".format(cxxtype))
     emit.fromJSON += "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ), _{0} );\n".format(cxxname)
     emit.toJSON += "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
 
@@ -215,24 +211,6 @@ def emitDynamic(spec):
         emit.fromJSON += "    _{0}.fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
         emit.toJSON += "    _{0}.toJSON( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
 
-    # schema entry
-    if cxxtype in emit.enums:
-        elemSize = 4
-        cxxtype = "uint32_t"
-
-    if cxxtype in emit.tables:
-        emit.nestedSchemas.add( "{0}::schema()".format( cxxtype ))
-        zerobufType = "{0}::TYPE_IDENTIFIER()".format( cxxtype )
-        elemSize = "( {0}::ZEROBUF_NUM_DYNAMICS() == 0 ? {1} : 0 )".format( cxxtype, emit.types[ cxxtype ][ 0 ] )
-    else:
-        digest = hashlib.md5( "{0}".format( cxxtype ).encode('utf-8')).hexdigest()
-        high = digest[ 0 : len( digest ) - 16 ]
-        low  = digest[ len( digest ) - 16: ]
-        zerobufType = "::zerobuf::uint128_t( 0x{0}ull, 0x{1}ull )".format( high, low )
-
-    emit.schema.append( "std::make_tuple( \"{0}\", {1}, {2}, {3}, 0 )".
-                        format( spec[0], zerobufType, emit.offset, elemSize ))
-
     emit.offset += 16 # 8b offset, 8b size
     emit.currentDyn += 1
     header.write( "\n" )
@@ -276,21 +254,6 @@ def emitStaticMember( spec ):
 
         emit.fromJSON += "    set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, \"{3}\" ))));\n".format(cxxName, cxxtype, "uint32_t" if cxxtype in emit.enums else cxxtype, cxxname)
         emit.toJSON += "    ::zerobuf::toJSON( {0}( get{1}( )), ::zerobuf::getJSONField( json, \"{2}\" ));\n".format("uint32_t" if cxxtype in emit.enums else cxxtype, cxxName, cxxname)
-
-    # schema entry
-    if cxxtype in emit.enums:
-        cxxtype = "uint32_t"
-    if cxxtype in emit.tables:
-        emit.nestedSchemas.add( "{0}::schema()".format( cxxtype ))
-        zerobufType = "{0}::TYPE_IDENTIFIER()".format( cxxtype )
-    else:
-        digest = hashlib.md5( "{0}".format( cxxtype ).encode('utf-8')).hexdigest()
-        high = digest[ 0 : len( digest ) - 16 ]
-        low  = digest[ len( digest ) - 16: ]
-        zerobufType = "::zerobuf::uint128_t( 0x{0}ull, 0x{1}ull )".format( high,
-                                                                        low )
-    emit.schema.append( "std::make_tuple( \"{0}\", {1}, {2}, {3}, 1 )".
-                        format( spec[0], zerobufType, emit.offset, elemSize ))
 
     emit.offset += elemSize
 
@@ -405,22 +368,6 @@ def emitStaticArray( spec ):
 
     emit.fromJSON += "    }\n"
     emit.toJSON += "    }\n"
-
-    # schema entry
-    if cxxtype in emit.enums:
-        cxxtype = "uint32_t"
-    if cxxtype in emit.tables:
-        emit.nestedSchemas.add( "{0}::schema()".format( cxxtype ))
-        zerobufType = "{0}::TYPE_IDENTIFIER()".format( cxxtype )
-    else:
-        digest = hashlib.md5( "{0}".format( cxxtype ).encode('utf-8')).hexdigest()
-        high = digest[ 0 : len( digest ) - 16 ]
-        low  = digest[ len( digest ) - 16: ]
-        zerobufType = "::zerobuf::uint128_t( 0x{0}ull, 0x{1}ull )".format( high,
-                                                                        low )
-    emit.schema.append( "std::make_tuple( \"{0}\", {1}, {2}, {3}, {4} )".
-                        format( spec[0], zerobufType, emit.offset, elemSize,
-                                nElems ))
     emit.offset += nBytes
 
 def emitStatic(spec):
@@ -506,8 +453,6 @@ def emit():
     emit.currentDyn = 0
     emit.enums = set()
     emit.tables = set()
-    emit.schema = []
-    emit.nestedSchemas = set()
     # type lookup table: fbs type : ( size, C++ type )
     emit.types = { "int" : ( 4, "int32_t" ),
                    "uint" : ( 4, "uint32_t" ),
@@ -555,10 +500,8 @@ def emit():
         emit.defaultValues = ''
         emit.members = []
         emit.initializers = []
-        emit.schema = []
         emit.fromJSON = ""
         emit.toJSON = ""
-        emit.nestedSchemas = set()
         emit.table = item[1]
         emit.md5 = hashlib.md5()
         for namespace in emit.namespace:
@@ -692,16 +635,6 @@ def emit():
         header.write( "    static size_t ZEROBUF_NUM_DYNAMICS() {{ return {0}; }}\n".format( emit.numDynamic ))
         header.write( "\n" )
 
-        # schema
-        schema = "{{ {0}, {1},\n        {2},\n        {{\n         {3}\n         }} }}".format( emit.offset, emit.currentDyn, zerobufType, ',\n         '.join( emit.schema ))
-        schemas = "return ::zerobuf::Schemas{{ ::zerobuf::Schemas{{ {0}::schema() {1} }}}}".format(
-            emit.table, (', ' + ', '.join( emit.nestedSchemas) if len(emit.nestedSchemas) > 0 else '' ))
-        emitFunction( "::zerobuf::Schema", "schema()",
-                      "return {0};".format( schema ), True )
-        emitFunction( "::zerobuf::Schemas", "schemas()",
-                      "{0};".format( schemas ), True )
-        emitFunction( "::zerobuf::Schemas", "getSchemas() const final",
-                      "return schemas();" )
         header.write( "\n" )
         if emit.fromJSON:
             emit.fromJSON = emit.fromJSON[4:]
@@ -738,8 +671,8 @@ def emit():
     header.write( "#include <array> // member\n" )
     header.write( "\n" )
     impl.write( "// Generated by zerobufCxx.py\n\n" )
-    impl.write( "#include \"" + headerbase + ".h\"\n\n" )
-    impl.write( "#include <zerobuf/Schema.h>\n" )
+    impl.write( "#include \"{0}.h\"\n\n".format(headerbase) )
+    impl.write( "#include <zerobuf/NonMovingAllocator.h>\n" )
     impl.write( "#include <zerobuf/NonMovingSubAllocator.h>\n" )
     impl.write( "#include <zerobuf/StaticSubAllocator.h>\n" )
     impl.write( "#include <zerobuf/json.h>\n" )
