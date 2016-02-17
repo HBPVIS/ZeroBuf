@@ -5,8 +5,6 @@
 
 #define BOOST_TEST_MODULE jsonSerialization
 
-#include <zerobuf/Generic.h>
-
 #include <boost/test/unit_test.hpp>
 
 #include "serialization.h"
@@ -205,30 +203,4 @@ BOOST_AUTO_TEST_CASE(zerobufFromJSON)
     test::TestSchema object;
     object.fromJSON( expectedJson );
     checkTestObject( object );
-}
-
-BOOST_AUTO_TEST_CASE(rawZerobufToJSON)
-{
-    const test::TestSchema& object( getTestObject( ));
-    const zerobuf::Data& zerobuf = object.toBinary();
-    const zerobuf::Schemas& schemas = test::TestSchema::schemas();
-
-    zerobuf::Generic generic( schemas );
-    generic.fromBinary( zerobuf.ptr.get(), zerobuf.size );
-    const std::string& json = generic.toJSON();
-    BOOST_CHECK_EQUAL( json, expectedJson );
-}
-
-BOOST_AUTO_TEST_CASE(rawZerobufFromJSON)
-{
-    const zerobuf::Schemas& schemas = test::TestSchema::schemas();
-    zerobuf::Generic generic( schemas );
-    generic.fromJSON( expectedJson );
-
-    const test::TestSchema object( generic );
-    checkTestObject( object );
-    BOOST_CHECK_EQUAL( object.getZerobufNumDynamics(),
-                       generic.getZerobufNumDynamics( ));
-    BOOST_CHECK_EQUAL( object.getZerobufStaticSize(),
-                       generic.getZerobufStaticSize( ));
 }

@@ -1,13 +1,12 @@
 
-/* Copyright (c) 2015, Human Brain Project
- *                     Daniel Nachbaur <danielnachbaur@epfl.ch>
+/* Copyright (c) 2015-2016, Human Brain Project
+ *                          Daniel Nachbaur <danielnachbaur@epfl.ch>
  */
 
 #define BOOST_TEST_MODULE vector3f
 
 #include <boost/test/unit_test.hpp>
 
-#include <zerobuf/Generic.h>
 #include <zerobuf/render/camera.h>
 #include <utility>
 
@@ -61,34 +60,6 @@ const std::string expectedJSON = "{\n"
                                  "   \"y\" : -2,\n"
                                  "   \"z\" : 4.5\n"
                                  "}\n";
-
-BOOST_AUTO_TEST_CASE(vectorToGeneric)
-{
-    const zerobuf::render::Vector3f vector( 1, -2, 4.5f );
-    const zerobuf::Data& zerobuf = vector.toBinary();
-    const zerobuf::Schemas& schemas = zerobuf::render::Vector3f::schemas();
-
-    zerobuf::Generic generic( schemas );
-    generic.fromBinary( zerobuf );
-    const std::string& json = generic.toJSON();
-    BOOST_CHECK_EQUAL( json, expectedJSON );
-}
-
-BOOST_AUTO_TEST_CASE(genericToVector)
-{
-    const zerobuf::Schemas& schemas = zerobuf::render::Vector3f::schemas();
-    zerobuf::Generic generic( schemas );
-    generic.fromJSON( expectedJSON );
-
-    const zerobuf::render::Vector3f vector( generic );
-    BOOST_CHECK_EQUAL( vector.getX(), 1.f );
-    BOOST_CHECK_EQUAL( vector.getY(), -2.f );
-    BOOST_CHECK_EQUAL( vector.getZ(), 4.5f );
-    BOOST_CHECK_EQUAL( vector.getZerobufNumDynamics(),
-                       generic.getZerobufNumDynamics( ));
-    BOOST_CHECK_EQUAL( vector.getZerobufStaticSize(),
-                       generic.getZerobufStaticSize( ));
-}
 
 BOOST_AUTO_TEST_CASE(vectorJSON)
 {

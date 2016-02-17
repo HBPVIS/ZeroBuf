@@ -9,6 +9,7 @@
 
 #include <zerobuf/api.h>
 #include <zerobuf/types.h>
+#include <zerobuf/json.h> // friend
 #include <servus/serializable.h> // base class
 #include <servus/uint128_t.h> // used inline in operator <<
 
@@ -80,6 +81,12 @@ protected:
 
     ZEROBUF_API void _copyZerobufArray( const void* data, size_t size,
                                         size_t arrayNum );
+
+    ZEROBUF_API virtual void _parseJSON( const Json::Value& json );
+    ZEROBUF_API virtual void _createJSON( Json::Value& json ) const;
+    friend void fromJSON( const Json::Value&,Zerobuf& );
+    friend void toJSON( const Zerobuf&, Json::Value& );
+
 private:
     AllocatorPtr _allocator;
 

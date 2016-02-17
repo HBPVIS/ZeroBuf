@@ -8,7 +8,6 @@
 #include <boost/test/unit_test.hpp>
 #include <testSchema.h>
 
-#include <zerobuf/Generic.h>
 #include <utility>
 
 BOOST_AUTO_TEST_CASE(defaultValues)
@@ -182,39 +181,6 @@ const std::string expectedJSON =
     "      }\n"
     "   ]\n"
     "}\n";
-
-BOOST_AUTO_TEST_CASE(testNestedZerobufToGeneric)
-{
-    test::TestNestedZerobuf testNestedZerobuf;
-    testNestedZerobuf.getDynamic().setName( "Hugo" );
-    testNestedZerobuf.getNested().push_back( test::TestNested( 1, 2 ));
-    testNestedZerobuf.getNested().push_back( test::TestNested( 10, 20 ));
-    const zerobuf::Data& zerobuf = testNestedZerobuf.toBinary();
-    const zerobuf::Schemas& schemas = test::TestNestedZerobuf::schemas();
-
-    zerobuf::Generic generic( schemas );
-    generic.fromBinary( zerobuf );
-    const std::string& json = generic.toJSON();
-    BOOST_CHECK_EQUAL( json, expectedJSON );
-}
-
-BOOST_AUTO_TEST_CASE(genericToTestNestedZerobuf)
-{
-    const zerobuf::Schemas& schemas = test::TestNestedZerobuf::schemas();
-    zerobuf::Generic generic( schemas );
-    generic.fromJSON( expectedJSON );
-
-    test::TestNestedZerobuf expected;
-    expected.getDynamic().setName( "Hugo" );
-    expected.getNested().push_back( test::TestNested( 1, 2 ));
-    expected.getNested().push_back( test::TestNested( 10, 20 ));
-    const test::TestNestedZerobuf testNestedZerobuf( generic );
-    BOOST_CHECK_EQUAL( testNestedZerobuf, expected );
-    BOOST_CHECK_EQUAL( testNestedZerobuf.getZerobufNumDynamics(),
-                       generic.getZerobufNumDynamics( ));
-    BOOST_CHECK_EQUAL( testNestedZerobuf.getZerobufStaticSize(),
-                       generic.getZerobufStaticSize( ));
-}
 
 BOOST_AUTO_TEST_CASE(testNestedZerobufJSON)
 {

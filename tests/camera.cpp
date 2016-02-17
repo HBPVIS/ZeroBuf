@@ -7,7 +7,6 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <zerobuf/Generic.h>
 #include <zerobuf/render/camera.h>
 #include <utility>
 
@@ -116,38 +115,6 @@ const std::string expectedJSON = "{\n"
                                  "      \"z\" : 1\n"
                                  "   }\n"
                                  "}\n";
-
-BOOST_AUTO_TEST_CASE(cameraToGeneric)
-{
-    const zerobuf::render::Camera camera( zerobuf::render::Vector3f( 1, 0, 0 ),
-                                          zerobuf::render::Vector3f( 0, 1, 0 ),
-                                          zerobuf::render::Vector3f( 0, 0, 1 ));
-    const zerobuf::Data& zerobuf = camera.toBinary();
-    const zerobuf::Schemas& schemas = zerobuf::render::Camera::schemas();
-
-    zerobuf::Generic generic( schemas );
-    generic.fromBinary( zerobuf );
-    const std::string& json = generic.toJSON();
-    BOOST_CHECK_EQUAL( json, expectedJSON );
-}
-
-BOOST_AUTO_TEST_CASE(genericToCamera)
-{
-    const zerobuf::Schemas& schemas = zerobuf::render::Camera::schemas();
-    zerobuf::Generic generic( schemas );
-    generic.fromJSON( expectedJSON );
-
-    const zerobuf::render::Camera
-        expectedCamera( zerobuf::render::Vector3f( 1, 0, 0 ),
-                        zerobuf::render::Vector3f( 0, 1, 0 ),
-                        zerobuf::render::Vector3f( 0, 0, 1 ));
-    const zerobuf::render::Camera camera( generic );
-    BOOST_CHECK( camera == expectedCamera );
-    BOOST_CHECK_EQUAL( camera.getZerobufNumDynamics(),
-                       generic.getZerobufNumDynamics( ));
-    BOOST_CHECK_EQUAL( camera.getZerobufStaticSize(),
-                       generic.getZerobufStaticSize( ));
-}
 
 BOOST_AUTO_TEST_CASE(cameraJSON)
 {

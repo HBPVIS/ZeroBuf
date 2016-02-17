@@ -1,4 +1,4 @@
-# Copyright (c) HBP 2015 Stefan.Eilemann@epfl.ch
+# Copyright (c) HBP 2015-2016 Stefan.Eilemann@epfl.ch
 
 set(ZEROBUF_PUBLIC_HEADERS
   Allocator.h
@@ -6,7 +6,7 @@ set(ZEROBUF_PUBLIC_HEADERS
   Schema.h
   Vector.h
   Zerobuf.h
-  jsoncpp/json/json-forwards.h
+  json.h
   types.h
   )
 
@@ -19,6 +19,7 @@ set(ZEROBUF_HEADERS
   NonMovingSubAllocator.h
   StaticSubAllocator.h
   jsoncpp/json/json.h
+  jsoncpp/json/json-forwards.h
   )
 
 set(ZEROBUF_SOURCES
@@ -31,6 +32,7 @@ set(ZEROBUF_SOURCES
   Schema.cpp
   StaticSubAllocator.cpp
   Zerobuf.cpp
+  json.cpp
   jsoncpp/jsoncpp.cpp
   )
 

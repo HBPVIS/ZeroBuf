@@ -10,7 +10,9 @@
 #include "StaticSubAllocator.h"
 #include "detail/JsonConverter.h"
 #include <zerobuf/version.h>
+#include "jsoncpp/json/json.h"
 
+#include <cstring>
 #include <iostream>
 
 namespace zerobuf
@@ -135,9 +137,7 @@ bool Zerobuf::_fromJSON( const std::string& string )
     }
 
     notifyChanging();
-    JSONConverter converter( getSchemas( ));
-    if( !converter.fromJSON( *_allocator, json ))
-        return false;
+    _parseJSON( json );
     compact();
     return true;
 }
@@ -148,14 +148,21 @@ std::string Zerobuf::_toJSON() const
         return "{}";
 
     Json::Value json;
-    JSONConverter converter( getSchemas( ));
+    _createJSON( json );
+    return json.toStyledString();
+}
 
-    if( converter.toJSON( *_allocator, json ))
-        return json.toStyledString();
+void Zerobuf::_parseJSON( const Json::Value& )
+{
+    throw std::runtime_error( std::string( "JSON parsing missing for " ) +
+                              typeid( *this ).name( ));
+}
 
-    std::cerr << "Internal error converting to JSON, got so far:\n"
-              << json.toStyledString() << std::endl;
-    return std::string();
+void Zerobuf::_createJSON( Json::Value& ) const
+{
+    throw std::runtime_error( std::string( "JSON parsing missing for " ) +
+                              typeid( *this ).name( ));
+
 }
 
 bool Zerobuf::operator == ( const Zerobuf& rhs ) const

@@ -9,6 +9,7 @@
 #include <zerobuf/DynamicSubAllocator.h> // used inline
 #include <zerobuf/Schema.h> // used inline
 #include <zerobuf/Zerobuf.h> // sfinae type
+#include <zerobuf/json.h> // used inline
 
 #include <cstring> // memcmp
 #include <stdexcept> // std::runtime_error
@@ -87,6 +88,36 @@ public:
 
     /** Remove unused memory from vector and all members. */
     void compact( float ) { /* NOP: elements are static and clear frees */ }
+
+    /** Update this vector from its JSON representation. */
+    template< class Q = T > void
+    fromJSON( const Json::Value& json, const typename std::enable_if<
+                  std::is_base_of< Zerobuf, Q >::value, Q >::type* = nullptr );
+
+    /** Update this vector from its JSON representation. */
+    template< class Q = T > void
+    fromJSON( const Json::Value& json, const typename std::enable_if<
+                  !std::is_base_of< Zerobuf, Q >::value, Q >::type* = nullptr );
+
+    /** @return the JSON representation of this vector. */
+    template< class Q = T > void
+    toJSON( Json::Value& json, const typename std::enable_if<
+             std::is_base_of< Zerobuf, Q >::value, Q >::type* = nullptr ) const;
+
+    /** @return the JSON representation of this vector. */
+    template< class Q = T > void
+    toJSON( Json::Value& json, const typename std::enable_if<
+            !std::is_base_of< Zerobuf, Q >::value, Q >::type* = nullptr ) const;
+
+    /** Update this vector from its JSON, base64-encoded representation. */
+    template< class Q = T > void
+    fromJSONBinary( const Json::Value& json, const typename std::enable_if<
+                    std::is_pod< Q >::value, Q >::type* = nullptr );
+
+    /** @return the JSON representation of this vector, with base64 encoding. */
+    template< class Q = T > void
+    toJSONBinary( Json::Value& json, const typename std::enable_if<
+                  std::is_pod< Q >::value, Q >::type* = nullptr ) const;
 
 private:
     Allocator* _alloc;
@@ -222,6 +253,62 @@ Vector<T>::push_back(
     uint8_t* newPtr = _alloc->updateAllocation( _index, true /*copy*/,
                                                size_ + zerobuf.size );
     ::memcpy( newPtr + size_, zerobuf.ptr.get(), zerobuf.size );
+}
+
+template< class T > template< class Q > inline
+void Vector< T >::fromJSON( const Json::Value& json,
+    const typename std::enable_if<std::is_base_of<Zerobuf,Q>::value, Q>::type* )
+{
+    const size_t size_ = getJSONSize( json );
+    _alloc->updateAllocation( _index, false, size_ * _getElementSize< T >( ));
+    for( size_t i = 0; i < size_; ++i )
+        zerobuf::fromJSON( getJSONField( json, i ), (*this)[i] );
+}
+
+template< class T > template< class Q > inline
+void Vector< T >::fromJSON( const Json::Value& json,
+    const typename std::enable_if<!std::is_base_of<Zerobuf,Q>::value, Q>::type*)
+{
+    const size_t size_ = getJSONSize( json );
+    T* array = reinterpret_cast< T* >(
+        _alloc->updateAllocation( _index, false /*no copy*/, size_*sizeof( T)));
+
+    for( size_t i = 0; i < size_; ++i )
+        array[i] = zerobuf::fromJSON< T >( getJSONField( json, i ));
+}
+
+template< class T > template< class Q > inline void
+Vector< T >::toJSON( Json::Value& json, const typename std::enable_if<
+                        std::is_base_of< Zerobuf, Q >::value, Q >::type* ) const
+{
+    const size_t size_ = size();
+    for( size_t i = 0; i < size_; ++i )
+        zerobuf::toJSON( static_cast< const Zerobuf& >(( *this )[ i ]),
+                         getJSONField( json, i ));
+}
+
+template< class T > template< class Q > inline void
+Vector< T >::toJSON( Json::Value& json, const typename std::enable_if<
+                       !std::is_base_of< Zerobuf, Q >::value, Q >::type* ) const
+{
+    const size_t size_ = size();
+    for( size_t i = 0; i < size_; ++i )
+        zerobuf::toJSON( (*this)[i], getJSONField( json, i ));
+}
+
+template< class T > template< class Q > inline void
+Vector< T >::fromJSONBinary( const Json::Value& json,
+    const typename std::enable_if< std::is_pod< Q >::value, Q >::type* )
+{
+    const std::string& decoded = zerobuf::fromJSONBinary( json );
+    copyBuffer( (uint8_t*)decoded.data(), decoded.length( ));
+}
+
+template< class T > template< class Q > inline void
+Vector< T >::toJSONBinary( Json::Value& json,
+    const typename std::enable_if< std::is_pod< Q >::value, Q >::type* ) const
+{
+    zerobuf::toJSONBinary( data(), _getSize(), json );
 }
 
 template< class T > inline
