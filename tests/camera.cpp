@@ -68,6 +68,14 @@ BOOST_AUTO_TEST_CASE(moveCamera)
     BOOST_CHECK_NE( camera, temporary );
 }
 
+BOOST_AUTO_TEST_CASE(moveVectorToCamera)
+{
+    zerobuf::render::Camera camera;
+    zerobuf::render::Vector3f vector( 1, 0, 0 );
+    BOOST_CHECK_THROW( camera = std::move( vector ), std::runtime_error );
+    BOOST_CHECK_THROW( vector = std::move( camera ), std::runtime_error );
+}
+
 BOOST_AUTO_TEST_CASE(changeCamera)
 {
     zerobuf::render::Camera camera;
@@ -131,4 +139,21 @@ BOOST_AUTO_TEST_CASE(cameraJSON)
     BOOST_CHECK( camera == camera2 );
 
     BOOST_CHECK( !camera.fromJSON( "blubb" ));
+}
+
+BOOST_AUTO_TEST_CASE(cameraBinary)
+{
+    zerobuf::render::Camera camera;
+    camera.setOrigin( zerobuf::render::Vector3f( 1.f, 0.f, 0.f ));
+    camera.setLookAt( zerobuf::render::Vector3f( 0.f, 1.f, 0.f ));
+    camera.setUp( zerobuf::render::Vector3f( 0.f, 0.f, 1.f ));
+
+    const zerobuf::Zerobuf::Data& data = camera.toBinary();
+    BOOST_CHECK_EQUAL( data.size, 52 );
+
+    zerobuf::render::Camera camera2;
+    camera2.fromBinary( data );
+    BOOST_CHECK( camera == camera2 );
+
+    BOOST_CHECK( !camera.fromBinary( "blubb", 5 ));
 }
