@@ -25,13 +25,10 @@ class Allocator;
 class NonMovingAllocator;
 class NonMovingBaseAllocator;
 class Zerobuf;
-struct Schema;
 template< class T > class Vector;
 
 typedef std::unique_ptr< Allocator > AllocatorPtr;
 typedef std::unique_ptr< const Allocator > ConstAllocatorPtr;
-
-typedef std::vector< Schema > Schemas;
 
 using servus::uint128_t;
 typedef uint8_t byte_t; //!< alias type for base64 encoded fields
