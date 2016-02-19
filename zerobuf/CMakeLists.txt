@@ -1,36 +1,33 @@
-# Copyright (c) HBP 2015 Stefan.Eilemann@epfl.ch
+# Copyright (c) HBP 2015-2016 Stefan.Eilemann@epfl.ch
 
 set(ZEROBUF_PUBLIC_HEADERS
   Allocator.h
-  Generic.h
-  Schema.h
   Vector.h
   Zerobuf.h
-  jsoncpp/json/json-forwards.h
+  json.h
   types.h
   )
 
 set(ZEROBUF_HEADERS
   detail/base64.h
-  detail/JsonConverter.h
   DynamicSubAllocator.h
   NonMovingAllocator.h
   NonMovingBaseAllocator.h
   NonMovingSubAllocator.h
   StaticSubAllocator.h
   jsoncpp/json/json.h
+  jsoncpp/json/json-forwards.h
   )
 
 set(ZEROBUF_SOURCES
   detail/base64.cpp
   DynamicSubAllocator.cpp
-  Generic.cpp
   NonMovingAllocator.cpp
   NonMovingBaseAllocator.cpp
   NonMovingSubAllocator.cpp
-  Schema.cpp
   StaticSubAllocator.cpp
   Zerobuf.cpp
+  json.cpp
   jsoncpp/jsoncpp.cpp
   )
 

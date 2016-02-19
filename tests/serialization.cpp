@@ -133,6 +133,18 @@ BOOST_AUTO_TEST_CASE(movedVector)
     schema.getNesteddynamic()[0].check();
 }
 
+BOOST_AUTO_TEST_CASE(vectorOOB)
+{
+    test::TestSchema schema = getTestObject();
+    BOOST_CHECK_THROW( schema.getIntdynamic()[0xC0FFEE], std::runtime_error );
+    BOOST_CHECK_THROW( schema.getNesteddynamic()[0xC0FFEE], std::runtime_error);
+
+    const test::TestSchema& chema = schema;
+    BOOST_CHECK_THROW( chema.getIntdynamic()[0xC0FFEE], std::runtime_error );
+    BOOST_CHECK_THROW( chema.getNesteddynamic()[0xC0FFEE], std::runtime_error);
+}
+
+
 BOOST_AUTO_TEST_CASE(compact)
 {
     test::TestSchema schema = getTestObject();

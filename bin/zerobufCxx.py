@@ -100,7 +100,6 @@ def emitFunction( retVal, function, body, static=False, explicit=False ):
 def emitDynamicMember(spec):
     cxxname = spec[0]
     cxxName = cxxname[0].upper() + cxxname[1:]
-    isString = (spec[1] == "string")
     cxxtype = emit.types[spec[1]][1]
 
     emit.md5.update( cxxtype.encode('utf-8'))
@@ -113,10 +112,8 @@ def emitDynamicMember(spec):
                  "notifyChanging();\n    _{0} = value;".format(cxxname))
     emit.initializers.append([cxxname, 1, cxxtype, emit.currentDyn, 0])
     emit.members.append("{0} _{1};".format(cxxtype, cxxname));
-
-    emit.schema.append("std::make_tuple( \"{0}\", {1}::TYPE_IDENTIFIER(), {2}, 0, 1 )".
-                        format(cxxname, cxxtype, emit.offset))
-    emit.nestedSchemas.add( "{0}::schema()".format(cxxtype))
+    emit.fromJSON += "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ), _{0} );\n".format(cxxname)
+    emit.toJSON += "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
 
     emit.offset += 16 # 8b offset, 8b size
     emit.currentDyn += 1
@@ -136,6 +133,7 @@ def emitDynamic(spec):
     else:
         cxxtype = emit.types[ spec[2] ][1]
         elemSize = emit.types[ spec[2] ][0]
+        isByte = (spec[2] == "byte" or spec[2] == "ubyte")
 
     emit.md5.update( cxxtype.encode('utf-8') + b"Vector" )
 
@@ -175,8 +173,8 @@ def emitDynamic(spec):
 
     else: # Dynamic array of PODs
         emitFunction( "void",
-                      "set" + cxxName + "( " + cxxtype +
-                      " const * value, size_t size )",
+                      "set{0}( {1} const * value, size_t size )".\
+                      format(cxxName, cxxtype),
                       "notifyChanging();\n    " +
                       "_copyZerobufArray( value, size * sizeof( " + cxxtype +
                       " ), " + str( emit.currentDyn ) + " );" )
@@ -202,23 +200,16 @@ def emitDynamic(spec):
                       "notifyChanging();\n    " +
                       "_copyZerobufArray( value.c_str(), value.length(), " +
                       str( emit.currentDyn ) + " );" )
-    # schema entry
-    if cxxtype in emit.enums:
-        elemSize = 4
-        cxxtype = "uint32_t"
-
-    if cxxtype in emit.tables:
-        emit.nestedSchemas.add( "{0}::schema()".format( cxxtype ))
-        zerobufType = "{0}::TYPE_IDENTIFIER()".format( cxxtype )
-        elemSize = "( {0}::ZEROBUF_NUM_DYNAMICS() == 0 ? {1} : 0 )".format( cxxtype, emit.types[ cxxtype ][ 0 ] )
+    # JSON conversion
+    if isString:
+        emit.fromJSON += "    set{0}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, \"{1}\" )));\n".format(cxxName, cxxname)
+        emit.toJSON += "    ::zerobuf::toJSON( get{0}String(), ::zerobuf::getJSONField( json, \"{1}\" ));\n".format(cxxName, cxxname)
+    elif isByte:
+        emit.fromJSON += "    _{0}.fromJSONBinary( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
+        emit.toJSON += "    _{0}.toJSONBinary( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
     else:
-        digest = hashlib.md5( "{0}".format( cxxtype ).encode('utf-8')).hexdigest()
-        high = digest[ 0 : len( digest ) - 16 ]
-        low  = digest[ len( digest ) - 16: ]
-        zerobufType = "::zerobuf::uint128_t( 0x{0}ull, 0x{1}ull )".format( high, low )
-
-    emit.schema.append( "std::make_tuple( \"{0}\", {1}, {2}, {3}, 0 )".
-                        format( spec[0], zerobufType, emit.offset, elemSize ))
+        emit.fromJSON += "    _{0}.fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
+        emit.toJSON += "    _{0}.toJSON( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
 
     emit.offset += 16 # 8b offset, 8b size
     emit.currentDyn += 1
@@ -232,7 +223,7 @@ def emitStaticMember( spec ):
     elemSize = emit.types[ spec[1] ][0]
     if len(spec) == 3:
         emit.defaultValues += "    set{0}({1}( {2} ));\n".\
-                              format(cxxName,cxxtype,spec[2])
+                              format(cxxName, cxxtype, spec[2])
 
     emit.md5.update( cxxtype.encode('utf-8') )
 
@@ -249,30 +240,20 @@ def emitStaticMember( spec ):
                       "_{0} = value;".format( cxxname ))
         emit.members.append( "{0} _{1};".format( cxxtype, cxxname ));
         emit.initializers.append([cxxname, 1, cxxtype, emit.offset, elemSize])
+        emit.fromJSON += "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ), _{0} );\n".format(cxxname)
+        emit.toJSON += "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
     else:
         emitFunction( cxxtype, "get" + cxxName + "() const",
                       "return getAllocator().template getItem< " + cxxtype +
                       " >( " + str( emit.offset ) + " );" )
         emitFunction( "void",
-                      "set"  + cxxName + "( " + cxxtype + " value )",
+                      "set{0}( {1} value )".format(cxxName, cxxtype),
                       "notifyChanging();\n    " +
-                      "getAllocator().template getItem< " + cxxtype + " >( " +
-                      str( emit.offset ) + " ) = value;" )
+                      "getAllocator().template getItem< {0} >( {1} ) = value;".\
+                      format(cxxtype, emit.offset) )
 
-    # schema entry
-    if cxxtype in emit.enums:
-        cxxtype = "uint32_t"
-    if cxxtype in emit.tables:
-        emit.nestedSchemas.add( "{0}::schema()".format( cxxtype ))
-        zerobufType = "{0}::TYPE_IDENTIFIER()".format( cxxtype )
-    else:
-        digest = hashlib.md5( "{0}".format( cxxtype ).encode('utf-8')).hexdigest()
-        high = digest[ 0 : len( digest ) - 16 ]
-        low  = digest[ len( digest ) - 16: ]
-        zerobufType = "::zerobuf::uint128_t( 0x{0}ull, 0x{1}ull )".format( high,
-                                                                        low )
-    emit.schema.append( "std::make_tuple( \"{0}\", {1}, {2}, {3}, 1 )".
-                        format( spec[0], zerobufType, emit.offset, elemSize ))
+        emit.fromJSON += "    set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, \"{3}\" ))));\n".format(cxxName, cxxtype, "uint32_t" if cxxtype in emit.enums else cxxtype, cxxname)
+        emit.toJSON += "    ::zerobuf::toJSON( {0}( get{1}( )), ::zerobuf::getJSONField( json, \"{2}\" ));\n".format("uint32_t" if cxxtype in emit.enums else cxxtype, cxxName, cxxname)
 
     emit.offset += elemSize
 
@@ -286,10 +267,16 @@ def emitStaticArray( spec ):
 
     emit.md5.update( (cxxtype + str( nElems )).encode('utf-8') )
     if nElems < 2:
-        sys.exit( "Static array of size {0} for field {1} not supported".format(nElems, cxxname))
+        sys.exit( "Static array of size {0} for field {1} not supported".
+                  format(nElems, cxxname))
     if elemSize == 0:
-        sys.exit( "Static array of dynamic elements not implemented".
-                  format( nElems ))
+        sys.exit( "Static array of {0} dynamic elements not implemented".
+                  format(nElems))
+
+    emit.fromJSON += "    {\n"
+    emit.fromJSON += "        const Json::Value& field = ::zerobuf::getJSONField( json, \"{0}\" );\n".format(cxxname)
+    emit.toJSON += "    {\n"
+    emit.toJSON += "        Json::Value& field = ::zerobuf::getJSONField( json, \"{0}\" );\n".format(cxxname)
 
     if cxxtype in emit.tables:
         if elemSize == 0:
@@ -311,6 +298,9 @@ def emitStaticArray( spec ):
         emit.members.append( "{0} _{1};".format( cxxName, cxxname ))
         emit.initializers.append([cxxname, nElems, cxxtype, emit.offset,
                                   elemSize])
+        for i in range(0, nElems):
+            emit.fromJSON += "        ::zerobuf::fromJSON( ::zerobuf::getJSONField( field, {1} ), _{0}[{1}] );\n".format(cxxname, i)
+            emit.toJSON += "        ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0}[{1}] ), ::zerobuf::getJSONField( field, {1} ));\n".format(cxxname, i)
 
     else:
         emitFunction( cxxtype + "*", "get" + cxxName + "()",
@@ -354,24 +344,30 @@ def emitStaticArray( spec ):
                       cxxtype + ">( " + str( emit.offset ) +
                       " ), value.data(), value.length( ));\n" +
                       "    }" )
-    emitFunction( "size_t", "get" + cxxName + "Size() const",
-                  "return {0};".format( nElems ))
 
-    # schema entry
-    if cxxtype in emit.enums:
-        cxxtype = "uint32_t"
-    if cxxtype in emit.tables:
-        emit.nestedSchemas.add( "{0}::schema()".format( cxxtype ))
-        zerobufType = "{0}::TYPE_IDENTIFIER()".format( cxxtype )
-    else:
-        digest = hashlib.md5( "{0}".format( cxxtype ).encode('utf-8')).hexdigest()
-        high = digest[ 0 : len( digest ) - 16 ]
-        low  = digest[ len( digest ) - 16: ]
-        zerobufType = "::zerobuf::uint128_t( 0x{0}ull, 0x{1}ull )".format( high,
-                                                                        low )
-    emit.schema.append( "std::make_tuple( \"{0}\", {1}, {2}, {3}, {4} )".
-                        format( spec[0], zerobufType, emit.offset, elemSize,
-                                nElems ))
+        isByte = (spec[2] == "byte" or spec[2] == "ubyte")
+        emit.fromJSON += "        {0}* array = ({0}*)get{1}();\n".\
+                         format("uint32_t" if cxxtype in emit.enums else cxxtype
+                                , cxxName)
+        emit.toJSON += "        const {0}* array = (const {0}*)get{1}();\n".\
+                       format("uint32_t" if cxxtype in emit.enums else cxxtype,
+                              cxxName)
+
+        if isByte:
+            emit.fromJSON += "        const std::string& decoded = ::zerobuf::fromJSONBinary( field );\n"
+            emit.fromJSON += "        ::memcpy( array, decoded.data(), std::min( decoded.length(), size_t( {0}ull )));\n".format(nElems)
+            emit.toJSON += "        ::zerobuf::toJSONBinary( array, {0}, field );\n".format(nElems)
+        else:
+            for i in range(0, nElems):
+                emit.fromJSON += "        array[{0}] = ::zerobuf::fromJSON< {1} >( ::zerobuf::getJSONField( field, {0} ));\n".format(i, "uint32_t" if cxxtype in emit.enums else cxxtype)
+                emit.toJSON += "        ::zerobuf::toJSON( array[{0}], ::zerobuf::getJSONField( field, {0} ));\n".format(i)
+
+
+    emitFunction( "size_t", "get" + cxxName + "Size() const",
+                  "return {0};".format(nElems))
+
+    emit.fromJSON += "    }\n"
+    emit.toJSON += "    }\n"
     emit.offset += nBytes
 
 def emitStatic(spec):
@@ -457,15 +453,14 @@ def emit():
     emit.currentDyn = 0
     emit.enums = set()
     emit.tables = set()
-    emit.schema = []
-    emit.nestedSchemas = set()
+    # type lookup table: fbs type : ( size, C++ type )
     emit.types = { "int" : ( 4, "int32_t" ),
                    "uint" : ( 4, "uint32_t" ),
                    "float" : ( 4, "float" ),
                    "double" : ( 8, "double" ),
-                   "byte" : ( 1, "::zerobuf::byte_t" ),
+                   "byte" : ( 1, "uint8_t" ),
                    "short" : ( 2, "int16_t" ),
-                   "ubyte" : ( 1, "::zerobuf::byte_t" ),
+                   "ubyte" : ( 1, "uint8_t" ),
                    "ushort" : ( 2, "uint16_t" ),
                    "ulong" : ( 8, "uint64_t" ),
                    "uint8_t" : ( 1, "uint8_t" ),
@@ -505,8 +500,8 @@ def emit():
         emit.defaultValues = ''
         emit.members = []
         emit.initializers = []
-        emit.schema = []
-        emit.nestedSchemas = set()
+        emit.fromJSON = ""
+        emit.toJSON = ""
         emit.table = item[1]
         emit.md5 = hashlib.md5()
         for namespace in emit.namespace:
@@ -633,24 +628,21 @@ def emit():
         header.write( "    // Introspection\n" )
         header.write( "    std::string getTypeName() const final {{ return \"{0}\"; }}\n".format( zerobufName ))
         header.write( "    ::zerobuf::uint128_t getTypeIdentifier() const final {{ return {0}; }}\n".format( zerobufType ))
-        header.write( "    static ::zerobuf::uint128_t TYPE_IDENTIFIER() {{ return {0}; }}\n".format( zerobufType ))
         header.write( "    size_t getZerobufStaticSize() const final {{ return {0}; }}\n".format( emit.offset ))
         header.write( "    static size_t ZEROBUF_STATIC_SIZE() {{ return {0}; }}\n".format( emit.offset ))
         header.write( "    size_t getZerobufNumDynamics() const final {{ return {0}; }}\n".format( emit.numDynamic ))
         header.write( "    static size_t ZEROBUF_NUM_DYNAMICS() {{ return {0}; }}\n".format( emit.numDynamic ))
         header.write( "\n" )
 
-        # schema
-        schema = "{{ {0}, {1},\n        {2},\n        {{\n         {3}\n         }} }}".format( emit.offset, emit.currentDyn, zerobufType, ',\n         '.join( emit.schema ))
-        schemas = "return ::zerobuf::Schemas{{ ::zerobuf::Schemas{{ {0}::schema() {1} }}}}".format(
-            emit.table, (', ' + ', '.join( emit.nestedSchemas) if len(emit.nestedSchemas) > 0 else '' ))
-        emitFunction( "::zerobuf::Schema", "schema()",
-                      "return {0};".format( schema ), True )
-        emitFunction( "::zerobuf::Schemas", "schemas()",
-                      "{0};".format( schemas ), True )
-        emitFunction( "::zerobuf::Schemas", "getSchemas() const final",
-                      "return schemas();" )
         header.write( "\n" )
+        if emit.fromJSON:
+            emit.fromJSON = emit.fromJSON[4:]
+            emit.toJSON = emit.toJSON[4:]
+            emitFunction( "void", "_parseJSON( const Json::Value& json ) final",
+                          emit.fromJSON )
+            emitFunction( "void",
+                          "_createJSON( Json::Value& json ) const final",
+                          emit.toJSON )
 
         # closing statements
         header.write( "private:\n    {0}\n".
@@ -678,10 +670,11 @@ def emit():
     header.write( "#include <array> // member\n" )
     header.write( "\n" )
     impl.write( "// Generated by zerobufCxx.py\n\n" )
-    impl.write( "#include \"" + headerbase + ".h\"\n\n" )
-    impl.write( "#include <zerobuf/Schema.h>\n" )
+    impl.write( "#include \"{0}.h\"\n\n".format(headerbase) )
+    impl.write( "#include <zerobuf/NonMovingAllocator.h>\n" )
     impl.write( "#include <zerobuf/NonMovingSubAllocator.h>\n" )
     impl.write( "#include <zerobuf/StaticSubAllocator.h>\n" )
+    impl.write( "#include <zerobuf/json.h>\n" )
     impl.write( "\n" )
 
     for item in schema:

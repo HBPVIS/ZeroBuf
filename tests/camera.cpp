@@ -7,7 +7,6 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <zerobuf/Generic.h>
 #include <zerobuf/render/camera.h>
 #include <utility>
 
@@ -69,6 +68,14 @@ BOOST_AUTO_TEST_CASE(moveCamera)
     BOOST_CHECK_NE( camera, temporary );
 }
 
+BOOST_AUTO_TEST_CASE(moveVectorToCamera)
+{
+    zerobuf::render::Camera camera;
+    zerobuf::render::Vector3f vector( 1, 0, 0 );
+    BOOST_CHECK_THROW( camera = std::move( vector ), std::runtime_error );
+    BOOST_CHECK_THROW( vector = std::move( camera ), std::runtime_error );
+}
+
 BOOST_AUTO_TEST_CASE(changeCamera)
 {
     zerobuf::render::Camera camera;
@@ -117,38 +124,6 @@ const std::string expectedJSON = "{\n"
                                  "   }\n"
                                  "}\n";
 
-BOOST_AUTO_TEST_CASE(cameraToGeneric)
-{
-    const zerobuf::render::Camera camera( zerobuf::render::Vector3f( 1, 0, 0 ),
-                                          zerobuf::render::Vector3f( 0, 1, 0 ),
-                                          zerobuf::render::Vector3f( 0, 0, 1 ));
-    const zerobuf::Data& zerobuf = camera.toBinary();
-    const zerobuf::Schemas& schemas = zerobuf::render::Camera::schemas();
-
-    zerobuf::Generic generic( schemas );
-    generic.fromBinary( zerobuf );
-    const std::string& json = generic.toJSON();
-    BOOST_CHECK_EQUAL( json, expectedJSON );
-}
-
-BOOST_AUTO_TEST_CASE(genericToCamera)
-{
-    const zerobuf::Schemas& schemas = zerobuf::render::Camera::schemas();
-    zerobuf::Generic generic( schemas );
-    generic.fromJSON( expectedJSON );
-
-    const zerobuf::render::Camera
-        expectedCamera( zerobuf::render::Vector3f( 1, 0, 0 ),
-                        zerobuf::render::Vector3f( 0, 1, 0 ),
-                        zerobuf::render::Vector3f( 0, 0, 1 ));
-    const zerobuf::render::Camera camera( generic );
-    BOOST_CHECK( camera == expectedCamera );
-    BOOST_CHECK_EQUAL( camera.getZerobufNumDynamics(),
-                       generic.getZerobufNumDynamics( ));
-    BOOST_CHECK_EQUAL( camera.getZerobufStaticSize(),
-                       generic.getZerobufStaticSize( ));
-}
-
 BOOST_AUTO_TEST_CASE(cameraJSON)
 {
     zerobuf::render::Camera camera;
@@ -164,4 +139,21 @@ BOOST_AUTO_TEST_CASE(cameraJSON)
     BOOST_CHECK( camera == camera2 );
 
     BOOST_CHECK( !camera.fromJSON( "blubb" ));
+}
+
+BOOST_AUTO_TEST_CASE(cameraBinary)
+{
+    zerobuf::render::Camera camera;
+    camera.setOrigin( zerobuf::render::Vector3f( 1.f, 0.f, 0.f ));
+    camera.setLookAt( zerobuf::render::Vector3f( 0.f, 1.f, 0.f ));
+    camera.setUp( zerobuf::render::Vector3f( 0.f, 0.f, 1.f ));
+
+    const zerobuf::Zerobuf::Data& data = camera.toBinary();
+    BOOST_CHECK_EQUAL( data.size, 52 );
+
+    zerobuf::render::Camera camera2;
+    camera2.fromBinary( data );
+    BOOST_CHECK( camera == camera2 );
+
+    BOOST_CHECK( !camera.fromBinary( "blubb", 5 ));
 }
