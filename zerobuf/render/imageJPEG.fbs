@@ -1,0 +1,11 @@
+// Copyright (c) 2015, Human Brain Project
+//                     Grigori Chevtchenko <grigori.chevtchenko@epfl.ch>
+
+namespace zerobuf.render;
+
+table ImageJPEG
+{
+  data:[ubyte];
+}
+
+root_type ImageJPEG;
