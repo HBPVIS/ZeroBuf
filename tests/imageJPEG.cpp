@@ -7,7 +7,6 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <zerobuf/Generic.h>
 #include <zerobuf/render/imageJPEG.h>
 #include <utility>
 
@@ -72,33 +71,6 @@ BOOST_AUTO_TEST_CASE(moveImageJPEG)
     BOOST_CHECK( imageJPEG.getData().size() == NB_BYTES );
     BOOST_CHECK( temporary.getData().size() == 0 );
     BOOST_CHECK_NE( imageJPEG, temporary );
-}
-
-BOOST_AUTO_TEST_CASE(ImageJPEGToGeneric)
-{
-    const zerobuf::render::ImageJPEG imageJPEG;
-    const zerobuf::Data& zerobuf = imageJPEG.toBinary();
-    const zerobuf::Schemas& schemas = zerobuf::render::ImageJPEG::schemas();
-
-    zerobuf::Generic generic( schemas );
-    generic.fromBinary( zerobuf );
-    const std::string& json = generic.toJSON();
-    BOOST_CHECK_EQUAL( json, expectedJSON );
-}
-
-BOOST_AUTO_TEST_CASE(genericToImageJPEG)
-{
-    const zerobuf::Schemas& schemas = zerobuf::render::ImageJPEG::schemas();
-    zerobuf::Generic generic( schemas );
-    generic.fromJSON( expectedJSON );
-
-    const zerobuf::render::ImageJPEG expectedImageJPEG;;
-    const zerobuf::render::ImageJPEG imageJPEG( generic );
-    BOOST_CHECK( imageJPEG == expectedImageJPEG );
-    BOOST_CHECK_EQUAL( imageJPEG.getZerobufNumDynamics(),
-                       generic.getZerobufNumDynamics( ));
-    BOOST_CHECK_EQUAL( imageJPEG.getZerobufStaticSize(),
-                       generic.getZerobufStaticSize( ));
 }
 
 BOOST_AUTO_TEST_CASE(ImageJPEGJSON)
