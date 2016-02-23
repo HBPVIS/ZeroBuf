@@ -8,6 +8,7 @@
 #define ZEROBUF_ZEROBUF_H
 
 #include <zerobuf/api.h>
+#include <zerobuf/Allocator.h> // MSVC needs it for std::unique_ptr
 #include <zerobuf/types.h>
 #include <zerobuf/json.h> // friend
 #include <servus/serializable.h> // base class
@@ -63,13 +64,13 @@ public:
     ZEROBUF_API bool operator != ( const Zerobuf& rhs ) const;
 
     /** @internal */
-    void reset( AllocatorPtr allocator ) { _allocator.swap( allocator ); }
+    ZEROBUF_API void reset( AllocatorPtr allocator );
 
     /** @internal Check consistency of zerobuf */
     ZEROBUF_API void check() const;
 
 protected:
-    explicit Zerobuf( AllocatorPtr alloc ); // takes ownership of alloc
+    ZEROBUF_API explicit Zerobuf( AllocatorPtr alloc ); // takes ownership of alloc
     ZEROBUF_API virtual ~Zerobuf();
 
     // used by generated ZeroBuf objects
@@ -81,8 +82,8 @@ protected:
 
     ZEROBUF_API virtual void _parseJSON( const Json::Value& json );
     ZEROBUF_API virtual void _createJSON( Json::Value& json ) const;
-    friend void fromJSON( const Json::Value&,Zerobuf& );
-    friend void toJSON( const Zerobuf&, Json::Value& );
+    ZEROBUF_API friend void fromJSON( const Json::Value&,Zerobuf& );
+    ZEROBUF_API friend void toJSON( const Zerobuf&, Json::Value& );
 
 private:
     AllocatorPtr _allocator;
@@ -90,10 +91,10 @@ private:
     Zerobuf() = delete;
     Zerobuf( const Zerobuf& zerobuf ) = delete;
 
-    bool _fromBinary( const void* data, const size_t size ) final;
-    Data _toBinary() const final;
-    bool _fromJSON( const std::string& json ) final;
-    std::string _toJSON() const final;
+    ZEROBUF_API bool _fromBinary( const void* data, const size_t size ) final;
+    ZEROBUF_API Data _toBinary() const final;
+    ZEROBUF_API bool _fromJSON( const std::string& json ) final;
+    ZEROBUF_API std::string _toJSON() const final;
 };
 
 inline std::ostream& operator << ( std::ostream& os, const Zerobuf& zerobuf )

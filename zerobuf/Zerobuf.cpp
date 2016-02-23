@@ -179,6 +179,11 @@ bool Zerobuf::operator != ( const Zerobuf& rhs ) const
     return !(*this == rhs);
 }
 
+void Zerobuf::reset( AllocatorPtr allocator )
+{
+    _allocator.swap( allocator );
+}
+
 Allocator& Zerobuf::getAllocator()
 {
     if( !_allocator )

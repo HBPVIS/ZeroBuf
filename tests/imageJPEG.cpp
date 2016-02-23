@@ -28,7 +28,7 @@ BOOST_AUTO_TEST_CASE(initializeImageJPEG)
 {
     zerobuf::render::ImageJPEG imageJPEG;
     std::vector< uint8_t > v;
-    for( size_t i = 0; i < NB_BYTES; ++i )
+    for( uint8_t i = 0; i < NB_BYTES; ++i )
         v.push_back(i);
     imageJPEG.setData( v );
     const std::string& json = imageJPEG.toJSON();
@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(copyConstructImageJPEG)
 {
     zerobuf::render::ImageJPEG temporary;
     std::vector< uint8_t > v;
-    for( size_t i = 0; i < NB_BYTES; ++i )
+    for( uint8_t i = 0; i < NB_BYTES; ++i )
         v.push_back(i);
     temporary.setData( v );
     zerobuf::render::ImageJPEG imageJPEG( temporary );
@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(moveConstructImageJPEG)
 {
     zerobuf::render::ImageJPEG temporary;
     std::vector< uint8_t > v;
-    for( size_t i = 0; i < NB_BYTES; ++i )
+    for( uint8_t i = 0; i < NB_BYTES; ++i )
         v.push_back(i);
     temporary.setData( v );
     zerobuf::render::ImageJPEG imageJPEG( std::move( temporary ));
@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(moveImageJPEG)
 {
     zerobuf::render::ImageJPEG temporary;
     std::vector< uint8_t > v;
-    for( size_t i = 0; i < NB_BYTES; ++i )
+    for( uint8_t i = 0; i < NB_BYTES; ++i )
         v.push_back(i);
     temporary.setData( v );
     zerobuf::render::ImageJPEG imageJPEG;

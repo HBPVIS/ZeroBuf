@@ -23,13 +23,18 @@ function(zerobuf_generate_cxx Name OutputDir)
   foreach(FILE ${ARGN})
     get_filename_component(ZEROBUF_OUTPUT ${FILE} NAME_WE)
     set(ZEROBUF_HEADER "${OutputDir}/${ZEROBUF_OUTPUT}.h")
-    set(ZEROBUF_SOURCE "${OutputDir}/${ZEROBUF_OUTPUT}.cpp")
+    if(MSVC)
+      set(ZEROBUF_SOURCE_EXTENSION ipp)
+    else()
+      set(ZEROBUF_SOURCE_EXTENSION cpp)
+    endif()
+    set(ZEROBUF_SOURCE "${OutputDir}/${ZEROBUF_OUTPUT}.${ZEROBUF_SOURCE_EXTENSION}")
     list(APPEND ${Name}_HEADERS ${ZEROBUF_HEADER})
     list(APPEND ${Name}_SOURCES ${ZEROBUF_SOURCE})
 
     add_custom_command(
       COMMAND ${PYTHON_EXECUTABLE} ${ZEROBUF_CXX}
-      ARGS -o "${OutputDir}" ${FILE}
+      ARGS -o "${OutputDir}" -e ${ZEROBUF_SOURCE_EXTENSION} ${FILE}
       COMMENT "Building zerobuf C++ headers for ${FILE} in ${OutputDir}"
       DEPENDS ${FILE} ${ZEROBUF_CXX}
       OUTPUT ${ZEROBUF_HEADER} ${ZEROBUF_SOURCE}

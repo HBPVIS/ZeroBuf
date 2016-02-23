@@ -22,8 +22,8 @@ ZEROBUF_API const Json::Value& getJSONField( const Json::Value& json,
 ZEROBUF_API Json::Value& getJSONField( Json::Value& json, size_t index );
 ZEROBUF_API size_t getJSONSize( const Json::Value& json );
 
-ZEROBUF_API template< class T > T fromJSON( const Json::Value& json );
-ZEROBUF_API template< class T > void toJSON( const T& value, Json::Value& json);
+template< class T > T fromJSON( const Json::Value& json );
+template< class T > void toJSON( const T& value, Json::Value& json);
 ZEROBUF_API void fromJSON( const Json::Value& json, Zerobuf& zerobuf );
 ZEROBUF_API void toJSON( const Zerobuf& zerobuf, Json::Value& json );
 ZEROBUF_API std::string fromJSONBinary( const Json::Value& json );
