@@ -1,5 +1,16 @@
 # Changelog {#Changelog}
 
+# git master
+
+# Release 0.2 (08-03-2016)
+
+* [32](https://github.com/HBPVIS/ZeroBuf/pull/32) 
+  Added JSON conversion to code generator
+* [30](https://github.com/HBPVIS/ZeroBuf/pull/30) 
+  Added ImageJPEG event
+
+# Release 0.1 (28-01-2016)
+
 * [27](https://github.com/HBPVIS/ZeroBuf/pull/27):
   Support default values for sub-structs
 * [25](https://github.com/HBPVIS/ZeroBuf/pull/25):
