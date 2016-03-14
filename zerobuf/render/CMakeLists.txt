@@ -1,11 +1,11 @@
-# Copyright (c) HBP 2015 Daniel Nachbaur <daniel.nachbaur@epfl.ch>
-# All rights reserved. Do not distribute without further notice.
+# Copyright (c) HBP 2015-2016 Daniel Nachbaur <daniel.nachbaur@epfl.ch>
 
 set(ZEROBUFRENDER_INCLUDE_NAME zerobuf/render)
 
 include(zerobufGenerateCxx)
 zerobuf_generate_cxx(ZEROBUFRENDER
-  ${OUTPUT_INCLUDE_DIR}/${ZEROBUFRENDER_INCLUDE_NAME} camera.fbs lookupTable1D.fbs imageJPEG.fbs)
+  ${OUTPUT_INCLUDE_DIR}/${ZEROBUFRENDER_INCLUDE_NAME}
+  camera.fbs frame.fbs lookOut.fbs lookupTable1D.fbs imageJPEG.fbs)
 
 set(ZEROBUFRENDER_PUBLIC_HEADERS ${ZEROBUFRENDER_HEADERS})
 set(ZEROBUFRENDER_LINK_LIBRARIES PUBLIC ZeroBuf)
