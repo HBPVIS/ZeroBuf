@@ -2,6 +2,9 @@
 
 # git master
 
+* [35](https://github.com/HBPVIS/ZeroBuf/pull/35)
+  Added LookOut and Frame events
+
 # Release 0.2 (08-03-2016)
 
 * [32](https://github.com/HBPVIS/ZeroBuf/pull/32) 

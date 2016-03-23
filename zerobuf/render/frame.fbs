@@ -1,0 +1,17 @@
+// Copyright (c) 2015, Human Brain Project
+//                     Stefan Eilemann
+//                     Grigori.Chevtchenko@epfl.ch
+//
+namespace zerobuf.render;
+
+table Frame
+{
+  // starting frame number for an animation loop
+  start:uint;
+  // current frame (wrapped into [start end])
+  current:uint;
+  // end frame number for an animation loop
+  end:uint;
+  // animation delta between start<->end
+  delta:int;
+}
