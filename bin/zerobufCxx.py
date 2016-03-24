@@ -13,7 +13,6 @@ import os
 import re
 import sys
 
-
 def create_FBS_parser():
     from pyparsing import (oneOf, Group, ZeroOrMore, Word, alphanums, Keyword,
                            Suppress, Optional, OneOrMore, Literal, nums, Or,
@@ -70,629 +69,996 @@ def create_FBS_parser():
     #fbsTableEntry.setDebug()
     return fbsObject
 
+NEXTLINE = "\n    "
 
-def isDynamic( spec ):
-    #  field is a sub-struct and field size is dynamic
-    if spec[1] in emit.tables and emit.types[spec[1]][0] == 0:
-        return True
-    elif spec[1] == "string": # strings are dynamic
-        return True
-    elif len(spec) == 4: # name : [type] dynamic array
-        return True
+"""The value type of a C++ member"""
+class ValueType():
+    def __init__(self, type, size, is_zerobuf_type=False, is_enum_type=False, is_byte_type=False):
+        self.type = type
+        self.size = size
+        self.is_zerobuf_type = is_zerobuf_type
+        self.is_enum_type = is_enum_type
+        self.is_byte_type = is_byte_type
+        self.is_string = (type == "char*")
+        if self.is_string:
+            self.type = "char"
+            self.size = 1
 
-    return False
+    def get_data_type(self):
+        return "uint32_t" if self.is_zerobuf_type or self.is_enum_type else self.type
 
 
-def countDynamic( specs ):
-    return sum(isDynamic(spec) for spec in specs)
+"""A C++ Function"""
+class Function():
+    def __init__(self, ret_val, function, body, static=False, explicit=False, virtual=False, split=True):
+        self.ret_val = ret_val
+        self.function = function
+        self.body = body
+        self.static = "static " if static else ""
+        self.explicit = "explicit " if explicit else ""
+        self.virtual = "virtual " if virtual else ""
+        self.split_implementation = split
 
+    def get_declaration(self):
+        if self.ret_val:
+            return "{0}{1} {2} {{ {3} }}".format( self.static, self.ret_val, self.function, self.body )
+        # ctor '[initializer list]{ body }'
+        return "{0}{1}{2} {3}".format( self.virtual, self.explicit, self.function, self.body )
 
-def emitFunction( retVal, function, body, static=False, explicit=False ):
-    implFunc = re.sub(r" final$", "", function) # remove ' final' keyword
-    implFunc = re.sub(r" = [0-9\.f]+ ", " ", implFunc) # remove default params
+    def get_definition(self):
+        if self.ret_val:
+            return "{0}{1} {2};".format( self.static, self.ret_val, self.function, self.body )
+        # ctor '[initializer list]{ body }'
+        return "{0}{1}{2};".format( self.virtual, self.explicit, self.function )
 
-    if retVal: # '{}'-less body
-        header.write( "    {0}{1} {2};\n".
-                      format( "static " if static else "", retVal, function ))
-        impl.write( "\n" + retVal + " " + emit.table +
-                    "::" + implFunc + "\n{\n    " + body +
-                    "\n}\n" )
-    else:      # ctor '[initializer list]{ body }'
-        header.write( "    {0}{1};\n".
-                      format( "explicit " if explicit else "", function ))
-        impl.write( "\n" + emit.table +
-                    "::" + implFunc + "\n    " + body + "\n\n" )
-
-def emitDynamicMember(spec):
-    cxxname = spec[0]
-    cxxName = cxxname[0].upper() + cxxname[1:]
-    cxxtype = emit.types[spec[1]][1]
-
-    emit.md5.update( cxxtype.encode('utf-8'))
-
-    emitFunction("{0}&".format(cxxtype), "get{0}()".format(cxxName),
-                 "notifyChanging();\n    return _{0};".format(cxxname))
-    emitFunction("const {0}&".format(cxxtype), "get{0}() const".format(cxxName),
-                 "return _{0};".format(cxxname))
-    emitFunction("void", "set{0}( const {1}& value )".format(cxxName, cxxtype),
-                 "notifyChanging();\n    _{0} = value;".format(cxxname))
-    emit.initializers.append([cxxname, 1, cxxtype, emit.currentDyn, 0])
-    emit.members.append("{0} _{1};".format(cxxtype, cxxname))
-    emit.fromJSON += "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ), _{0} );\n".format(cxxname)
-    emit.toJSON += "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
-
-    emit.offset += 16 # 8b offset, 8b size
-    emit.currentDyn += 1
-    header.write("\n")
-    impl.write("\n")
-
-def emitDynamic(spec):
-    if(len(spec) == 2 and spec[1] in emit.tables): # dynamic Zerobuf member
-        return emitDynamicMember(spec)
-
-    cxxname = spec[0]
-    cxxName = cxxname[0].upper() + cxxname[1:]
-    isString = (spec[1] == "string")
-    if isString:
-        cxxtype = "char"
-        elemSize = 1
-    else:
-        cxxtype = emit.types[ spec[2] ][1]
-        elemSize = emit.types[ spec[2] ][0]
-        isByte = (spec[2] == "byte" or spec[2] == "ubyte")
-
-    emit.md5.update( cxxtype.encode('utf-8') + b"Vector" )
-
-    header.write( "    typedef ::zerobuf::Vector< {0} > {1};\n".
-                  format( cxxtype, cxxName ))
-
-    emitFunction( "{0}::{1}&".format( emit.table, cxxName ),
-                  "get" + cxxName + "()",
-                  "notifyChanging();\n    " +
-                  "return _{0};".format( cxxname ))
-    emitFunction( "const {0}::{1}&".format( emit.table, cxxName ),
-                  "get" + cxxName + "() const",
-                  "return _{0};".format( cxxname ))
-    emit.initializers.append([cxxname, 0, cxxName, emit.currentDyn, elemSize])
-    emit.members.append( "{0} _{1};".format( cxxName, cxxname ));
-
-    if cxxtype in emit.tables: # Dynamic array of (static) Zerobufs
-        if elemSize == 0:
-            sys.exit("Dynamic arrays of empty ZeroBuf (field {0}) not supported".format(spec[0]))
-
-        emitFunction( "std::vector< " + cxxtype + " >",
-                      "get" + cxxName + "Vector() const",
-                      "const {0}& vec = get{0}();\n".format( cxxName ) +
-                      "    std::vector< " + cxxtype + " > ret;\n" +
-                      "    ret.reserve( vec.size( ));\n" +
-                      "    for( size_t i = 0; i < vec.size(); ++i )\n" +
-                      "        ret.push_back( vec[i] );\n" +
-                      "    return ret;\n" )
-        emitFunction( "void",
-                      "set" + cxxName + "( const std::vector< " +
-                      cxxtype + " >& values )",
-                      "notifyChanging();\n    " +
-                      "::zerobuf::Vector< {0} > dynamic( getAllocator(), {1} );\n".format(cxxtype, emit.currentDyn) +
-                      "    dynamic.clear();\n" +
-                      "    for( const " + cxxtype + "& data : values )\n" +
-                      "        dynamic.push_back( data );" )
-
-    else: # Dynamic array of PODs
-        emitFunction( "void",
-                      "set{0}( {1} const * value, size_t size )".\
-                      format(cxxName, cxxtype),
-                      "notifyChanging();\n    " +
-                      "_copyZerobufArray( value, size * sizeof( " + cxxtype +
-                      " ), " + str( emit.currentDyn ) + " );" )
-        emitFunction( "std::vector< " + cxxtype + " >",
-                      "get" + cxxName + "Vector() const",
-                      "return std::vector< {0} >( _{1}.data(), _{1}.data() + _{1}.size( ));".format(cxxtype, cxxname))
-        emitFunction( "void",
-                      "set" + cxxName + "( const std::vector< " +
-                      cxxtype + " >& value )",
-                      "notifyChanging();\n    " +
-                      "_copyZerobufArray( value.data(), value.size() * sizeof( " +
-                      cxxtype + " ), " + str( emit.currentDyn ) + " );" )
-        # string
-        emitFunction( "std::string",
-                      "get" + cxxName + "String() const",
-                      "const uint8_t* ptr = getAllocator().template getDynamic< " +
-                      "const uint8_t >( " + str( emit.currentDyn ) + " );\n" +
-                      "    return std::string( ptr, ptr + " +
-                      "getAllocator().template getItem< uint64_t >( " +
-                      str( emit.offset + 8 ) + " ));" )
-        emitFunction( "void",
-                      "set" + cxxName + "( const std::string& value )",
-                      "notifyChanging();\n    " +
-                      "_copyZerobufArray( value.c_str(), value.length(), " +
-                      str( emit.currentDyn ) + " );" )
-    # JSON conversion
-    if isString:
-        emit.fromJSON += "    set{0}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, \"{1}\" )));\n".format(cxxName, cxxname)
-        emit.toJSON += "    ::zerobuf::toJSON( get{0}String(), ::zerobuf::getJSONField( json, \"{1}\" ));\n".format(cxxName, cxxname)
-    elif isByte:
-        emit.fromJSON += "    _{0}.fromJSONBinary( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
-        emit.toJSON += "    _{0}.toJSONBinary( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
-    else:
-        emit.fromJSON += "    _{0}.fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
-        emit.toJSON += "    _{0}.toJSON( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
-
-    emit.offset += 16 # 8b offset, 8b size
-    emit.currentDyn += 1
-    header.write( "\n" )
-    impl.write( "\n" )
-
-def emitStaticMember( spec ):
-    cxxname = spec[0]
-    cxxName = cxxname[0].upper() + cxxname[1:]
-    cxxtype = emit.types[ spec[1] ][1]
-    elemSize = emit.types[ spec[1] ][0]
-    if len(spec) == 3:
-        emit.defaultValues += "    set{0}({1}( {2} ));\n".\
-                              format(cxxName, cxxtype, spec[2])
-
-    emit.md5.update( cxxtype.encode('utf-8') )
-
-    if cxxtype in emit.tables:
-        emitFunction( "const {0}&".format( cxxtype ),
-                      "get" + cxxName + "() const",
-                      "return _{0};".format( cxxname ))
-        emitFunction( "{0}&".format( cxxtype ), "get" + cxxName + "()",
-                      "notifyChanging();\n    " +
-                      "return _{0};".format( cxxname ))
-        emitFunction( "void",
-                      "set"  + cxxName + "( const " + cxxtype + "& value )",
-                      "notifyChanging();\n    " +
-                      "_{0} = value;".format( cxxname ))
-        emit.members.append( "{0} _{1};".format( cxxtype, cxxname ));
-        emit.initializers.append([cxxname, 1, cxxtype, emit.offset, elemSize])
-        emit.fromJSON += "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ), _{0} );\n".format(cxxname)
-        emit.toJSON += "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
-    else:
-        emitFunction( cxxtype, "get" + cxxName + "() const",
-                      "return getAllocator().template getItem< " + cxxtype +
-                      " >( " + str( emit.offset ) + " );" )
-        emitFunction( "void",
-                      "set{0}( {1} value )".format(cxxName, cxxtype),
-                      "notifyChanging();\n    " +
-                      "getAllocator().template getItem< {0} >( {1} ) = value;".\
-                      format(cxxtype, emit.offset) )
-
-        emit.fromJSON += "    set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, \"{3}\" ))));\n".format(cxxName, cxxtype, "uint32_t" if cxxtype in emit.enums else cxxtype, cxxname)
-        emit.toJSON += "    ::zerobuf::toJSON( {0}( get{1}( )), ::zerobuf::getJSONField( json, \"{2}\" ));\n".format("uint32_t" if cxxtype in emit.enums else cxxtype, cxxName, cxxname)
-
-    emit.offset += elemSize
-
-def emitStaticArray( spec ):
-    cxxname = spec[0]
-    cxxName = cxxname[0].upper() + cxxname[1:]
-    cxxtype = emit.types[ spec[2] ][1]
-    elemSize = int( emit.types[ spec[2] ][0] )
-    nElems = int( spec[4] )
-    nBytes = elemSize * nElems
-
-    emit.md5.update( (cxxtype + str( nElems )).encode('utf-8') )
-    if nElems < 2:
-        sys.exit( "Static array of size {0} for field {1} not supported".
-                  format(nElems, cxxname))
-    if elemSize == 0:
-        sys.exit( "Static array of {0} dynamic elements not implemented".
-                  format(nElems))
-
-    emit.fromJSON += "    {\n"
-    emit.fromJSON += "        const Json::Value& field = ::zerobuf::getJSONField( json, \"{0}\" );\n".format(cxxname)
-    emit.toJSON += "    {\n"
-    emit.toJSON += "        Json::Value& field = ::zerobuf::getJSONField( json, \"{0}\" );\n".format(cxxname)
-
-    if cxxtype in emit.tables:
-        if elemSize == 0:
-            sys.exit("Static arrays of empty ZeroBuf (field {0}) not supported".format(spec[0]))
-
-        header.write( "    typedef std::array< {0}, {1} > {2};\n".
-                      format( cxxtype, nElems, cxxName ))
-        emitFunction( "const {0}::{1}&".format( emit.table, cxxName ),
-                      "get" + cxxName + "() const",
-                      "return _{0};".format( cxxname ))
-        emitFunction( "{0}::{1}&".format( emit.table, cxxName ),
-                      "get" + cxxName + "()",
-                      "notifyChanging();\n    " +
-                      "return _{0};".format( cxxname ))
-        emitFunction( "void",
-                      "set{0}( const {0}& value )".format( cxxName ),
-                      "notifyChanging();\n    " +
-                      "_{0} = value;".format( cxxname ))
-        emit.members.append( "{0} _{1};".format( cxxName, cxxname ))
-        emit.initializers.append([cxxname, nElems, cxxtype, emit.offset,
-                                  elemSize])
-        for i in range(0, nElems):
-            emit.fromJSON += "        ::zerobuf::fromJSON( ::zerobuf::getJSONField( field, {1} ), _{0}[{1}] );\n".format(cxxname, i)
-            emit.toJSON += "        ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0}[{1}] ), ::zerobuf::getJSONField( field, {1} ));\n".format(cxxname, i)
-
-    else:
-        emitFunction( cxxtype + "*", "get" + cxxName + "()",
-                      "notifyChanging();\n    " +
-                      "return getAllocator().template getItemPtr< " + cxxtype +
-                      " >( " + str( emit.offset ) + " );" )
-        emitFunction( "const " + cxxtype + "*",
-                      "get" + cxxName + "() const",
-                      "return getAllocator().template getItemPtr< " + cxxtype +
-                      " >( " + str( emit.offset ) + " );" )
-        emitFunction( "std::vector< " + cxxtype + " >",
-                      "get" + cxxName + "Vector() const",
-                      "const " + cxxtype + "* ptr = getAllocator().template " +
-                      "getItemPtr< " + cxxtype + " >( " + str( emit.offset ) +
-                      " );\n    return std::vector< " + cxxtype +
-                      " >( ptr, ptr + " + str( nElems ) + " );" )
-        emitFunction( "void",
-                      "set"  + cxxName + "( " + cxxtype + " value[ " +
-                      spec[4] + " ] )",
-                      "notifyChanging();\n    " +
-                      "::memcpy( getAllocator().template getItemPtr< " +
-                      cxxtype + " >( " + str( emit.offset ) + " ), value, " +
-                      spec[4] + " * sizeof( " + cxxtype + " ));" )
-        emitFunction( "void",
-                      "set" + cxxName + "( const std::vector< " +
-                      cxxtype + " >& value )",
-                      "if( " + str( nElems ) + " >= value.size( ))\n" +
-                      "    {\n" +
-                      "        notifyChanging();" +
-                      "        ::memcpy( getAllocator().template getItemPtr<" +
-                      cxxtype + ">( " + str( emit.offset ) +
-                      " ), value.data(), value.size() * sizeof( " + cxxtype +
-                      "));\n" +
-                      "    }" )
-        emitFunction( "void",
-                      "set" + cxxName + "( const std::string& value )",
-                      "if( " + str( nBytes ) + " >= value.length( ))\n" +
-                      "    {\n" +
-                      "        notifyChanging();\n" +
-                      "        ::memcpy( getAllocator().template getItemPtr<" +
-                      cxxtype + ">( " + str( emit.offset ) +
-                      " ), value.data(), value.length( ));\n" +
-                      "    }" )
-
-        isByte = (spec[2] == "byte" or spec[2] == "ubyte")
-        emit.fromJSON += "        {0}* array = ({0}*)get{1}();\n".\
-                         format("uint32_t" if cxxtype in emit.enums else cxxtype
-                                , cxxName)
-        emit.toJSON += "        const {0}* array = (const {0}*)get{1}();\n".\
-                       format("uint32_t" if cxxtype in emit.enums else cxxtype,
-                              cxxName)
-
-        if isByte:
-            emit.fromJSON += "        const std::string& decoded = ::zerobuf::fromJSONBinary( field );\n"
-            emit.fromJSON += "        ::memcpy( array, decoded.data(), std::min( decoded.length(), size_t( {0}ull )));\n".format(nElems)
-            emit.toJSON += "        ::zerobuf::toJSONBinary( array, {0}, field );\n".format(nElems)
+    def write_declaration(self, file):
+        if self.split_implementation:
+            file.write( "    {0}\n".format(self.get_definition()))
         else:
-            for i in range(0, nElems):
-                emit.fromJSON += "        array[{0}] = ::zerobuf::fromJSON< {1} >( ::zerobuf::getJSONField( field, {0} ));\n".format(i, "uint32_t" if cxxtype in emit.enums else cxxtype)
-                emit.toJSON += "        ::zerobuf::toJSON( array[{0}], ::zerobuf::getJSONField( field, {0} ));\n".format(i)
+            file.write( "    {0}\n".format(self.get_declaration()))
+
+    def write_implementation(self, file, classname):
+        if not self.split_implementation:
+            return
+
+        impl_function = re.sub(r" final$", "", self.function) # remove ' final' keyword
+        impl_function = re.sub(r" = [0-9\.f]+ ", " ", impl_function) # remove default params
+
+        if self.ret_val: # '{}'-less body
+            file.write( "\n" + self.ret_val + " " + classname +
+                        "::" + impl_function +
+                        "\n{" +
+                        NEXTLINE + self.body +
+                        "\n}\n" )
+        else:      # ctor '[initializer list]{ body }'
+            file.write( "\n" + classname +
+                        "::" + impl_function + NEXTLINE + self.body + "\n\n" )
 
 
-    emitFunction( "size_t", "get" + cxxName + "Size() const",
-                  "return {0};".format(nElems))
+"""A member of a C++ class"""
+class ClassMember(object):
+    def __init__(self, name, value_type):
+        assert(isinstance(value_type, ValueType))
+        self.cxxname = name
+        self.cxxName = name[0].upper() + str(name[1:])
+        self.value_type = value_type
+        self.allocator_offset = 0
 
-    emit.fromJSON += "    }\n"
-    emit.toJSON += "    }\n"
-    emit.offset += nBytes
+    def write_accessors_declaration(self, file):
+        for function in self.accessor_functions():
+            function.write_declaration(file)
+        file.write("\n")
 
-def emitStatic(spec):
-    if len(spec) == 2 or len(spec) == 3:
-        emitStaticMember(spec)
-    else:
-        emitStaticArray(spec)
-    header.write( "\n" )
-    impl.write( "\n" )
+    def write_accessors_implementation(self, file, classname):
+        for function in self.accessor_functions():
+            function.write_implementation(file, classname)
+        file.write("\n")
 
-def move_statics(emit):
-    movers = ''
-    # [cxxname, nElems, cxxtype, emit.offset|index, elemSize]
-    for initializer in emit.initializers:
-        if initializer[1] == 1: # single member
-            if initializer[4] == 0: # dynamic member
-                allocator = "::zerobuf::NonMovingSubAllocator( {{0}}, {0}, {1}::ZEROBUF_NUM_DYNAMICS(), {1}::ZEROBUF_STATIC_SIZE( ))".format(initializer[3], initializer[2])
+    def get_unique_identifier(self):
+        return self.value_type.type.encode('utf-8')
+
+    def accessor_functions(self):
+        return self.getters() + self.setters()
+
+    def qualified_type(self, classname):
+        return "{0}::{1}".format(classname, self.get_cxxtype())
+
+    def const_ref_getter(self, classname=None):
+        val_type = self.qualified_type(classname) if classname else self.get_cxxtype()
+        return Function("const {0}&".format(val_type),
+                        "get" + self.cxxName + "() const",
+                        "return _{0};".format(self.cxxname))
+
+    def ref_getter(self, classname=None):
+        val_type = self.qualified_type(classname) if classname else self.get_cxxtype()
+        return Function("{0}&".format(val_type),
+                        "get" + self.cxxName + "()",
+                        "notifyChanging();" + NEXTLINE +
+                        "return _{0};".format(self.cxxname))
+
+    def ptr_getter(self):
+        return Function(self.value_type.type + "*",
+                        "get" + self.cxxName + "()",
+                        "notifyChanging();" + NEXTLINE +
+                        "return getAllocator().template getItemPtr< {0} >( {1} );".\
+                        format(self.value_type.type, self.allocator_offset))
+
+    def const_ptr_getter(self):
+        return Function("const {0}*".format(self.value_type.type),
+                        "get" + self.cxxName + "() const",
+                        "return getAllocator().template getItemPtr< {0} >( {1} );".\
+                        format(self.value_type.type, self.allocator_offset))
+
+    def value_getter(self):
+        return Function(self.get_cxxtype(),
+                        "get{0}() const".format(self.cxxName),
+                        "return getAllocator().template getItem< {0} >( {1} );".\
+                        format(self.get_cxxtype(), self.allocator_offset))
+
+    def vector_getter(self, elem_count):
+        return Function(self.get_cxxtype(),
+                        "get{0}Vector() const".format(self.cxxName),
+                        "const {0}* ptr = getAllocator().template getItemPtr< {0} >( {1} );".\
+                        format(self.value_type.type, self.allocator_offset) + NEXTLINE +
+                        "return {0}( ptr, ptr + {1} );".format(self.get_cxxtype(), elem_count))
+
+    def ref_setter(self):
+        return Function("void",
+                        "set{0}( const {1}& value )".format(self.cxxName, self.get_cxxtype()),
+                        "notifyChanging();" + NEXTLINE +
+                        "_{0} = value;".format(self.cxxname))
+
+    def value_setter(self):
+        return Function("void",
+                        "set{0}( {1} value )".format(self.cxxName, self.get_cxxtype()),
+                        "notifyChanging();" + NEXTLINE +
+                        "getAllocator().template getItem< {0} >( {1} ) = value;".\
+                        format(self.get_cxxtype(), self.allocator_offset))
+
+    def c_array_setter(self, elem_count):
+        return Function("void",
+                        "set{0}( {1} value[ {2} ] )".format(self.cxxName, self.value_type.type, elem_count),
+                        "notifyChanging();" + NEXTLINE +
+                        "::memcpy( getAllocator().template getItemPtr< {0} >( {1} ), value, {2} * sizeof( {0} ));".\
+                        format(self.value_type.type, self.allocator_offset, elem_count))
+
+    def vector_setter(self, elem_count):
+        return Function("void",
+                        "set{0}( const std::vector< {1} >& value )".format(self.cxxName, self.value_type.type),
+                        "if( {0} >= value.size( ))".format(elem_count) + NEXTLINE +
+                        "{" + NEXTLINE +
+                        "    notifyChanging();" +
+                        "        ::memcpy( getAllocator().template getItemPtr<{0}>( {1} ), value.data(), value.size() * sizeof( {0}));"\
+                        .format(self.value_type.type, self.allocator_offset) + NEXTLINE +
+                        "}")
+
+    def string_setter(self):
+        return Function("void",
+                        "set{0}( const std::string& value )".format(self.cxxName),
+                        "if( {0} >= value.length( ))".format(self.get_byte_size()) + NEXTLINE +
+                        "{" + NEXTLINE +
+                        "    notifyChanging();" + NEXTLINE +
+                        "    ::memcpy( getAllocator().template getItemPtr<{0}>( {1} ), value.data(), value.length( ));"\
+                        .format(self.value_type.type,self.allocator_offset) + NEXTLINE +
+                        "}")
+
+
+"""A member of a class which has a fixed size (such as a POD type)"""
+class FixedSizeMember(ClassMember):
+    def __init__(self, name, type):
+        super(FixedSizeMember, self).__init__(name, type)
+
+    def getters(self):
+        if self.value_type.is_zerobuf_type:
+            return [self.const_ref_getter(), self.ref_getter()]
+        return [self.value_getter()]
+
+    def setters(self):
+        if self.value_type.is_zerobuf_type:
+            return [self.ref_setter()]
+        return [self.value_setter()]
+
+    def get_byte_size(self):
+        return self.value_type.size
+
+    def get_cxxtype(self):
+        return self.value_type.type
+
+    def get_initializer(self):
+        return [self.cxxname, 1, self.value_type.type, self.allocator_offset, self.value_type.size]
+
+    def get_declaration(self):
+        return "{0} _{1};".format(self.value_type.type, self.cxxname)
+
+    def from_json(self):
+        if self.value_type.is_zerobuf_type:
+            return "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ), _{0} );\n".format(self.cxxname)
+        else:
+            return "    set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, \"{3}\" ))));\n".format(self.cxxName, self.value_type.type, self.value_type.get_data_type(), self.cxxname)
+
+    def to_json(self):
+        if self.value_type.is_zerobuf_type:
+            return "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(self.cxxname)
+        else:
+            return "    ::zerobuf::toJSON( {0}( get{1}( )), ::zerobuf::getJSONField( json, \"{2}\" ));\n".format(self.value_type.get_data_type(), self.cxxName, self.cxxname)
+
+
+"""A member of a class which is a fixed size array"""
+class FixedSizeArray(ClassMember):
+    def __init__(self, name, type, elem_count, classname):
+        super(FixedSizeArray, self).__init__(name, type)
+        self.nElems = elem_count
+        self.classname = classname
+
+        if self.nElems < 2:
+            sys.exit( "Static array of size {0} for field {1} not supported".
+                      format(self.nElems, self.cxxname))
+        if self.value_type.size == 0:
+            sys.exit( "Static array of {0} dynamic elements not implemented".
+                      format(self.nElems))
+        if self.value_type.is_zerobuf_type:
+            if self.value_type.size == 0:
+                sys.exit("Static arrays of empty ZeroBuf (field {0}) not supported".format(self.cxxname))
+
+    def size_getter(self):
+        return Function("size_t", "get{0}Size() const".format(self.cxxName),
+                        "return {0};".format(self.nElems))
+
+    def getters(self):
+        if self.value_type.is_zerobuf_type:
+            return [self.const_ref_getter(self.classname),
+                    self.ref_getter(self.classname),
+                    self.size_getter()]
+        return [self.ptr_getter(),
+                self.const_ptr_getter(),
+                self.vector_getter(self.nElems),
+                self.size_getter()]
+
+    def setters(self):
+        if self.value_type.is_zerobuf_type:
+            return [self.ref_setter()]
+        return [self.c_array_setter(self.nElems),
+                self.vector_setter(self.nElems),
+                self.string_setter()]
+
+    def accessor_functions(self):
+        """Override ClassMember.accessor_functions for legacy ordering of functions"""
+        if self.value_type.is_zerobuf_type:
+            return [self.const_ref_getter(self.classname),
+                    self.ref_getter(self.classname),
+                    self.ref_setter(),
+                    self.size_getter()]
+        # Dynamic array of PODs
+        return [self.ptr_getter(),
+                self.const_ptr_getter(),
+                self.vector_getter(self.nElems),
+                self.c_array_setter(self.nElems),
+                self.vector_setter(self.nElems),
+                self.string_setter(),
+                self.size_getter()]
+
+    def get_byte_size(self):
+        return self.value_type.size * self.nElems
+
+    def get_unique_identifier(self):
+        return super(FixedSizeArray, self).get_unique_identifier() + str(self.nElems).encode('utf-8')
+
+    def get_cxxtype(self):
+        if self.value_type.is_zerobuf_type:
+            # use the typedef for the std::array< T >
+            return self.cxxName
+        # static array of POD
+        return "std::vector< {0} >".format(self.value_type.type)
+
+    def write_accessors_declaration(self, file):
+        if self.value_type.is_zerobuf_type:
+            file.write( "    typedef std::array< {0}, {1} > {2};\n".
+                          format( self.value_type.type, self.nElems, self.cxxName ))
+        super(FixedSizeArray, self).write_accessors_declaration(file)
+
+    def get_initializer(self):
+        return [self.cxxname, self.nElems, self.value_type.type, self.allocator_offset, self.value_type.size]
+
+    def get_declaration(self):
+        return "{0} _{1};".format(self.cxxName, self.cxxname)
+
+    def from_json(self):
+        fromJSON = "    {\n"
+        fromJSON += "        const Json::Value& field = ::zerobuf::getJSONField( json, \"{0}\" );\n".format(self.cxxname)
+
+        if self.value_type.is_zerobuf_type and not self.value_type.is_enum_type:
+            for i in range(0, self.nElems):
+                fromJSON += "        ::zerobuf::fromJSON( ::zerobuf::getJSONField( field, {1} ), _{0}[{1}] );\n".format(self.cxxname, i)
+        else:
+            fromJSON += "        {0}* array = ({0}*)get{1}();\n". \
+                format(self.value_type.get_data_type(), self.cxxName)
+
+            if self.value_type.is_byte_type:
+                fromJSON += "        const std::string& decoded = ::zerobuf::fromJSONBinary( field );\n"
+                fromJSON += "        ::memcpy( array, decoded.data(), std::min( decoded.length(), size_t( {0}ull )));\n".format(self.nElems)
             else:
-                allocator = "::zerobuf::StaticSubAllocator( {{0}}, {0}, {1} )".format(initializer[3], initializer[4])
-            movers += "    _{0}.reset( ::zerobuf::AllocatorPtr( new {1}));\n"\
-                .format(initializer[0], allocator ).format( "getAllocator()" )
-            movers += "    rhs._{0}.reset( ::zerobuf::AllocatorPtr( new {1}));\n"\
-                .format(initializer[0], allocator ).format( "rhs.getAllocator()" )
-        elif initializer[1] != 0: # static array
-            for i in range(0, initializer[1]):
-                movers += "    _{0}[{1}].reset( ::zerobuf::AllocatorPtr( "\
-                    "new ::zerobuf::StaticSubAllocator( getAllocator(), {2}, {3} )));\n"\
-                    .format(initializer[0], i, initializer[3], initializer[3] + i * initializer[4])
-                movers += "    rhs._{0}[{1}].reset( ::zerobuf::AllocatorPtr( "\
-                    "new ::zerobuf::StaticSubAllocator( rhs.getAllocator(), {2}, {3} )));\n"\
-                    .format(initializer[0], i, initializer[3], initializer[3] + i * initializer[4])
-    return movers
+                for i in range(0, self.nElems):
+                    fromJSON += "        array[{0}] = ::zerobuf::fromJSON< {1} >( ::zerobuf::getJSONField( field, {0} ));\n".format(i, self.value_type.get_data_type())
 
-def move_operator(emit):
-    movers = ''
-    # [cxxname, nElems, cxxtype, emit.offset|index, elemSize]
-    for initializer in emit.initializers:
-        if initializer[1] == 0: # dynamic array
-            movers += "    _{0}.reset( getAllocator( ));\n".format(initializer[0])
-            movers += "    rhs._{0}.reset( rhs.getAllocator( ));\n".format(initializer[0])
-    movers += move_statics(emit)
-    return movers
+        fromJSON += "    }\n"
+        return fromJSON
 
-def move_initializer(emit):
-    initializers = ''
-    # [cxxname, nElems, cxxtype, emit.offset|index, elemSize]
-    for initializer in emit.initializers:
-        if initializer[1] == 0: # dynamic array
-            initializers += "    , _{0}( getAllocator(), {1} )\n".format(initializer[0], initializer[3])
-    initializers += "{\n"
-    initializers += move_operator(emit)
-    initializers += "}"
-    return initializers
+    def to_json(self):
+        toJSON = "    {\n"
+        toJSON += "        Json::Value& field = ::zerobuf::getJSONField( json, \"{0}\" );\n".format(self.cxxname)
 
+        if self.value_type.is_zerobuf_type and not self.value_type.is_enum_type:
+            for i in range(0, self.nElems):
+                toJSON += "        ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0}[{1}] ), ::zerobuf::getJSONField( field, {1} ));\n".format(self.cxxname, i)
+        else:
+            toJSON += "        const {0}* array = (const {0}*)get{1}();\n". \
+                format(self.value_type.get_data_type(), self.cxxName)
 
-def initializer_list(emit):
-    initializers = ''
-
-    # [cxxname, nElems, cxxtype, emit.offset, elemSize]
-    for initializer in emit.initializers:
-        if initializer[1] == 0: # dynamic array
-            initializers += "    , _{0}( getAllocator(), {1} )\n".format(initializer[0], initializer[3])
-        elif initializer[1] == 1: # single member
-            if initializer[4] == 0: # dynamic member
-                allocator = "::zerobuf::NonMovingSubAllocator( getAllocator(), {0}, {1}::ZEROBUF_NUM_DYNAMICS(), {1}::ZEROBUF_STATIC_SIZE( ))".format(initializer[3], initializer[2])
+            if self.value_type.is_byte_type:
+                toJSON += "        ::zerobuf::toJSONBinary( array, {0}, field );\n".format(self.nElems)
             else:
-                allocator = "::zerobuf::StaticSubAllocator( getAllocator(), {0}, {1} )".format(initializer[3], initializer[4])
-            initializers += "    , _{0}( ::zerobuf::AllocatorPtr( new {1}))\n"\
-                .format(initializer[0], allocator)
-        else: # static array
-            initializers += "    , _{0}{1}".format(initializer[0], "{{")
-            for i in range( 0, initializer[1] ):
-                initializers += "\n        {0}( ::zerobuf::AllocatorPtr( "\
-                    "new ::zerobuf::StaticSubAllocator( getAllocator(), {1}, {2} ))){3} "\
-                    .format(initializer[2], initializer[3] + i * initializer[4], initializer[4], "}}\n" if i == initializer[1] - 1 else ",")
+                for i in range(0, self.nElems):
+                    toJSON += "        ::zerobuf::toJSON( array[{0}], ::zerobuf::getJSONField( field, {0} ));\n".format(i)
+        toJSON += "    }\n"
+        return toJSON
 
-    return initializers
 
-def emit(inline):
-    emit.namespace = ""
-    emit.offset = 0
-    emit.numDynamic = 0
-    emit.currentDyn = 0
-    emit.enums = set()
-    emit.tables = set()
-    # type lookup table: fbs type : ( size, C++ type )
-    emit.types = { "int" : ( 4, "int32_t" ),
-                   "uint" : ( 4, "uint32_t" ),
-                   "float" : ( 4, "float" ),
-                   "double" : ( 8, "double" ),
-                   "byte" : ( 1, "uint8_t" ),
-                   "short" : ( 2, "int16_t" ),
-                   "ubyte" : ( 1, "uint8_t" ),
-                   "ushort" : ( 2, "uint16_t" ),
-                   "ulong" : ( 8, "uint64_t" ),
-                   "uint8_t" : ( 1, "uint8_t" ),
-                   "uint16_t" : ( 2, "uint16_t" ),
-                   "uint32_t" : ( 4, "uint32_t" ),
-                   "uint64_t" : ( 8, "uint64_t" ),
-                   "uint128_t" : ( 16, "::zerobuf::uint128_t" ),
-                   "int8_t" : ( 1, "int8_t" ),
-                   "int16_t" : ( 2, "int16_t" ),
-                   "int32_t" : ( 4, "int32_t" ),
-                   "int64_t" : ( 8, "int64_t" ),
-                   "bool" : ( 1, "bool" ),
-                   "string" : ( 1, "char*" )
-    }
+"""A member of a class which has a dynamic size and is a ZeroBuf type"""
+class DynamicZeroBufMember(ClassMember):
+    def __init__(self, name, type, dynamic_type_index):
+        super(DynamicZeroBufMember,self).__init__(name, type)
+        self.dynamic_type_index = dynamic_type_index
 
-    def namespace():
-        for namespace in emit.namespace:
-            header.write( "}\n" )
-            impl.write( "}\n" )
-        emit.namespace = item[1]
-        for namespace in emit.namespace:
-            header.write( "namespace " + namespace + "\n{\n" )
-            impl.write( "namespace " + namespace + "\n{\n" )
+    def getters(self):
+        return [self.ref_getter(),
+                self.const_ref_getter()]
 
-    def enum():
-        emit.types[ item[1] ] = ( 4, item[1] )
-        header.write( "enum " + item[1] + "\n{\n" )
-        for enumValue in item[3:]:
-            header.write( "    " + item[1] + "_" + enumValue + ",\n" )
+    def setters(self):
+        return [self.ref_setter()]
+
+    def get_byte_size(self):
+        return 16 # 8b offset, 8b size
+
+    def get_cxxtype(self):
+        # dynamic Zerobuf member, use the ZeroBuf type
+        return self.value_type.type
+
+    def get_initializer(self):
+        return [self.cxxname, 1, self.value_type.type, self.dynamic_type_index, 0]
+
+    def get_declaration(self):
+        return "{0} _{1};".format(self.value_type.type, self.cxxname)
+
+    def from_json(self):
+        return "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ), _{0} );\n".format(self.cxxname)
+
+    def to_json(self):
+        return "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(self.cxxname)
+
+
+"""A member of a class which has a dynamic size (vector or string type)"""
+class DynamicMember(ClassMember):
+    def __init__(self, name, type, dynamic_type_index, classname):
+        super(DynamicMember, self).__init__(name, type)
+        self.dynamic_type_index = dynamic_type_index
+        self.classname = classname
+
+        if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
+            if self.value_type.size == 0:
+                sys.exit("Dynamic arrays of empty ZeroBuf (field {0}) not supported".format(self.cxxname))
+
+    def vector_dynamic_getter(self):
+        return Function(self.vector_type(),
+                        "get{0}Vector() const".format(self.cxxName),
+                        "const {0}& vec = get{0}();".format(self.cxxName) + NEXTLINE +
+                        "{0} ret;".format(self.vector_type()) + NEXTLINE +
+                        "ret.reserve( vec.size( ));" + NEXTLINE +
+                        "for( size_t i = 0; i < vec.size(); ++i )" + NEXTLINE +
+                        "    ret.push_back( vec[i] );" + NEXTLINE +
+                        "return ret;\n")
+
+    def vector_dynamic_setter(self):
+        return Function("void",
+                        "set{0}( const {1}& values )".format(self.cxxName, self.vector_type()),
+                        "notifyChanging();" + NEXTLINE +
+                        "::zerobuf::Vector< {0} > dynamic( getAllocator(), {1} );".\
+                        format(self.value_type.type, self.dynamic_type_index) + NEXTLINE +
+                        "dynamic.clear();" + NEXTLINE +
+                        "for( const " + self.value_type.type + "& data : values )" + NEXTLINE +
+                        "    dynamic.push_back( data );")
+
+    def c_pointer_setter(self):
+        return Function("void",
+                        "set{0}( {1} const * value, size_t size )".\
+                        format(self.cxxName, self.value_type.type),
+                        "notifyChanging();" + NEXTLINE +
+                        "_copyZerobufArray( value, size * sizeof( {0} ), {1} );".\
+                        format(self.value_type.type, self.dynamic_type_index))
+
+    def vector_pod_getter(self):
+        return Function(self.vector_type(),
+                        "get{0}Vector() const".format(self.cxxName),
+                        "return {0}( _{1}.data(), _{1}.data() + _{1}.size( ));".\
+                        format(self.vector_type(), self.cxxname))
+
+    def vector_pod_setter(self):
+        return Function("void",
+                        "set{0}( const {1}& value )".format(self.cxxName, self.vector_type()),
+                        "notifyChanging();" + NEXTLINE +
+                        "_copyZerobufArray( value.data(), value.size() * sizeof( {0} ), {1} );".\
+                        format(self.value_type.type, self.dynamic_type_index))
+
+    def string_getter(self):
+        return Function("std::string",
+                        "get{0}String() const".format(self.cxxName),
+                        "const uint8_t* ptr = getAllocator().template getDynamic< const uint8_t >( {0} );".\
+                        format(self.dynamic_type_index) + NEXTLINE +
+                        "return std::string( ptr, ptr + getAllocator().template getItem< uint64_t >( {0} ));".\
+                        format(self.allocator_offset + 8))
+
+    def string_setter(self):
+        return Function("void",
+                        "set{0}( const std::string& value )".format(self.cxxName),
+                        "notifyChanging();" + NEXTLINE +
+                        "_copyZerobufArray( value.c_str(), value.length(), {0} );".\
+                        format(self.dynamic_type_index))
+
+    def getters(self):
+        if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
+            return [self.ref_getter(self.classname),
+                    self.const_ref_getter(self.classname),
+                    self.vector_dynamic_getter()]
+        # Dynamic array of PODs
+        return [self.ref_getter(self.classname),
+                self.const_ref_getter(self.classname),
+                self.vector_pod_getter(),
+                self.string_getter()]
+
+    def setters(self):
+        if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
+            return [self.vector_dynamic_setter()]
+        # Dynamic array of PODs
+        return [self.c_pointer_setter(),
+                self.vector_pod_setter(),
+                self.string_setter()]
+
+    def accessor_functions(self):
+        """Override ClassMember.accessor_functions for legacy ordering of functions"""
+        if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
+            return self.getters() + self.setters()
+        # Dynamic array of PODs
+        return [self.ref_getter(self.classname),
+                self.const_ref_getter(self.classname),
+                self.c_pointer_setter(),
+                self.vector_pod_getter(),
+                self.vector_pod_setter(),
+                self.string_getter(),
+                self.string_setter()]
+
+    def get_byte_size(self):
+        return 16 # 8b offset, 8b size
+
+    def get_unique_identifier(self):
+        return super(DynamicMember, self).get_unique_identifier() + b"Vector"
+
+    def get_cxxtype(self):
+        if self.value_type.is_string:
+            return "std::string"
+        # vector of any type
+        return self.vector_type()
+
+    def vector_type(self):
+        return "std::vector< {0} >".format(self.value_type.type)
+
+    def qualified_type(self, classname):
+        return "{0}::{1}".format(classname, self.cxxName)
+
+    def get_initializer(self):
+        return [self.cxxname, 0, self.cxxName, self.dynamic_type_index, self.value_type.size]
+
+    def get_declaration(self):
+        return "{0} _{1};".format(self.cxxName, self.cxxname)
+
+    def write_accessors_declaration(self, file):
+        file.write( "    typedef ::zerobuf::Vector< {0} > {1};\n".
+                      format(self.value_type.type, self.cxxName))
+        super(DynamicMember, self).write_accessors_declaration(file)
+
+    def from_json(self):
+        if self.value_type.is_string:
+            return "    set{0}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, \"{1}\" )));\n".format(self.cxxName, self.cxxname)
+        elif self.value_type.is_byte_type:
+            return "    _{0}.fromJSONBinary( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(self.cxxname)
+        else:
+            return "    _{0}.fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(self.cxxname)
+
+    def to_json(self):
+        if self.value_type.is_string:
+            return "    ::zerobuf::toJSON( get{0}String(), ::zerobuf::getJSONField( json, \"{1}\" ));\n".format(self.cxxName, self.cxxname)
+        elif self.value_type.is_byte_type:
+            return "    _{0}.toJSONBinary( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(self.cxxname)
+        else:
+            return "    _{0}.toJSON( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(self.cxxname)
+
+
+"""An fbs enum which can be written as a C++ enum."""
+class FbsEnum():
+    def __init__(self, item):
+        self.name = item[1]
+        self.type = item[2]
+        self.values = item[3:]
+
+    def write_declaration(self, file):
+        file.write( "enum " + self.name + "\n{\n" )
+        for enumValue in self.values:
+            file.write( "    " + self.name + "_" + enumValue + ",\n" )
         header.write( "};\n\n" )
-        emit.enums.add( item[1] )
 
-    def table():
-        emit.offset = 4 # 4b version header in host endianness
-        emit.numDynamic = countDynamic( item[2:] )
-        emit.currentDyn = 0
-        emit.defaultValues = ''
-        emit.members = []
-        emit.initializers = []
-        emit.fromJSON = ""
-        emit.toJSON = ""
-        emit.table = item[1]
-        emit.md5 = hashlib.md5()
-        for namespace in emit.namespace:
-            emit.md5.update( namespace.encode('utf-8') + b"::" )
-        emit.md5.update( item[1].encode('utf-8') )
 
-        # class header
-        header.write( "class " + item[1] + " : public ::zerobuf::Zerobuf\n" +
-                      "{\npublic:\n" )
+"""An fbs Table (class) which can be written to a C++ implementation."""
+class FbsTable():
+    def __init__(self, item, namespace, fbsFile):
+        self.name = item[1]
+        self.attributes = item[2:]
+        self.namespace = namespace
+        self.offset = 0
+        self.dynamic_members = []
+        self.static_members = []
+        self.all_members = []
+        self.initializers = []
+        self.default_value_setters = []
+        self.md5 = hashlib.md5()
 
-        # member access
-        for member in item[2:]:
-            if isDynamic( member ):
-                emitDynamic( member )
-        for member in item[2:]:
-            if not isDynamic( member ):
-                emitStatic( member )
+        self.parse_members(fbsFile)
+        self.compute_offsets()
+        self.compute_md5()
+        self.fill_initializer_list()
 
-        # Recursive compaction
-        if emit.numDynamic > 0:
-            compact = ''
-            for member in item[2:]:
-                if isDynamic( member ):
-                    compact += "    _{0}.compact( threshold );\n".format(member[0])
-            compact += "    ::zerobuf::Zerobuf::compact( threshold );"
-            compact = compact[4:]
-            emitFunction("void", "compact( float threshold = 0.1f ) final",
-                         compact)
+    def is_dynamic(self, attirb, fbsFile):
+        #  field is a sub-struct and field size is dynamic (==0)
+        if attirb[1] in fbsFile.table_names and fbsFile.types[attirb[1]][0] == 0:
+            return True
 
-        # ctors, dtor and assignment operator
-        if emit.offset == 4: # OPT: table has no data
-            emit.offset = 0
-            emitFunction(None, "{0}()".format( item[1] ),
-                         ": ::zerobuf::Zerobuf( ::zerobuf::AllocatorPtr( )){}")
-            emitFunction(None,
-                         "{0}( const {0}& )".format( item[1] ),
-                         ": ::zerobuf::Zerobuf( ::zerobuf::AllocatorPtr( )){}")
-            header.write("    virtual ~" + item[1] + "() {}\n\n")
-            header.write("    " + item[1] + "& operator = ( const " +
-                         item[1] + "& ) { return *this; }\n\n")
-        else:
-            # default ctor
-            emitFunction(None, "{0}()".format(item[1]),
-                         ": {0}( ::zerobuf::AllocatorPtr( new ::zerobuf::NonMovingAllocator( {1}, {2} )))\n{{}}".format(item[1], emit.offset, emit.numDynamic))
+        if attirb[1] == "string": # strings are dynamic
+            return True
 
-            # member initialization ctor
-            memberArgs = []
-            initializers = ''
-            for member in item[2:]:
-                cxxname = member[0]
-                cxxName = cxxname[0].upper() + cxxname[1:]
-                if isDynamic( member ):
-                    isString = (member[1] == "string")
-                    if isString:
-                        cxxtype = "std::string"
-                    elif(len(member) == 2 and member[1] in emit.tables):
-                        # dynamic Zerobuf member
-                        cxxtype = emit.types[member[1]][1]
-                    else:
-                        cxxtype = "std::vector< {0} >".format(emit.types[member[2]][1])
+        if len(attirb) == 4: # name : [type] dynamic array
+            return True
+
+        return False
+
+    def parse_members(self, fbsFile):
+        dynamic_type_index = 0
+        for attirb in self.attributes:
+            name = attirb[0]
+            fbs_type = attirb[1] if len(attirb) < 4 else attirb[2]
+            cxxtype = fbsFile.types[fbs_type][1]
+            cxxtype_size = fbsFile.types[fbs_type][0]
+            is_zerobuf_type = cxxtype in fbsFile.table_names
+            is_enum_type = cxxtype in fbsFile.enum_names
+            is_byte_type = fbs_type == "byte" or fbs_type == "ubyte"
+            value_type = ValueType(cxxtype, cxxtype_size, is_zerobuf_type, is_enum_type, is_byte_type)
+
+            if self.is_dynamic(attirb, fbsFile):
+                if len(attirb) == 2 and is_zerobuf_type:
+                    member = DynamicZeroBufMember(name, value_type, dynamic_type_index)
                 else:
-                    if len(member) == 2 or len(member) == 3:
-                        cxxtype = emit.types[member[1]][1] # static member
-                    else:
-                        if member[2] in emit.tables:
-                            cxxtype = cxxName # static array of zerobuf
-                        else:
-                            cxxtype = "std::vector< {0} >".format(emit.types[member[2]][1]) # static array of POD
+                    member = DynamicMember(name, value_type, dynamic_type_index, self.name)
+                dynamic_type_index += 1
+                self.dynamic_members.append(member)
+            else:
+                if len(attirb) == 2 or len(attirb) == 3:
+                    member = FixedSizeMember(name, value_type)
+                    if len(attirb) == 3:
+                        default_values = attirb[2]
+                        setter = "set{0}({1}( {2} ));".format(member.cxxName, cxxtype, default_values)
+                        self.default_value_setters.append(setter)
+                else:
+                    elem_count = int(attirb[4])
+                    member = FixedSizeArray(name, value_type, elem_count, self.name)
+                self.static_members.append(member)
 
-                valueName = cxxname + 'Value'
-                memberArgs.append("const {0}& {1}".format(cxxtype, valueName))
-                initializers += "    set{0}( {1} );\n".format(cxxName, valueName)
+            self.all_members.append(member)
 
-            emitFunction( None,
-                          "{0}( {1} )".format(item[1], ', '.join(memberArgs)),
-                          ": {0}( ::zerobuf::AllocatorPtr( new ::zerobuf::NonMovingAllocator( {1}, {2} )))\n"
-                          "{{\n{3}}}".format( item[1], emit.offset, emit.numDynamic, initializers ))
+    def compute_offsets(self):
+        self.offset = 4 # 4b version header in host endianness
+        for member in self.dynamic_members:
+            member.allocator_offset = self.offset
+            self.offset += member.get_byte_size()
+        for member in self.static_members:
+            member.allocator_offset = self.offset
+            self.offset += member.get_byte_size()
+        if self.offset == 4: # OPT: table has no data
+            self.offset = 0
 
-            # copy ctor
-            emitFunction(None,
-                         "{0}( const {0}& rhs )".format(item[1]),
-                         ": {0}( ::zerobuf::AllocatorPtr( new ::zerobuf::NonMovingAllocator( {1}, {2} )))\n".format(item[1], emit.offset, emit.numDynamic) +
-                         "{\n    *this = rhs;\n}")
+    def compute_md5(self):
+        for namespace in self.namespace:
+            self.md5.update(namespace.encode('utf-8') + b"::")
+        self.md5.update(self.name.encode('utf-8'))
+        for member in self.dynamic_members:
+            self.md5.update(member.get_unique_identifier())
+        for member in self.static_members:
+            self.md5.update(member.get_unique_identifier())
 
-            # move ctor
-            emitFunction(None,
-                         "{0}( {0}&& rhs ) throw()".format(item[1]),
-                         ": ::zerobuf::Zerobuf( std::move( rhs ))\n" +
-                         move_initializer(emit))
+    def get_virtual_destructor(self):
+        return Function(None, "~" + self.name + "()", "{}", virtual=True, split=False)
 
-            # copy-from-baseclass ctor
-            emitFunction(None,
-                         "{0}( const ::zerobuf::Zerobuf& rhs )".format(item[1]),
-                         ": {0}( ::zerobuf::AllocatorPtr( new ::zerobuf::NonMovingAllocator( {1}, {2} )))\n".format(item[1], emit.offset, emit.numDynamic) +
-                         "{\n" +
-                         "    ::zerobuf::Zerobuf::operator = ( rhs );\n" +
-                         "}")
+    def empty_constructors(self):
+        functions = []
+        functions.append(Function(None, "{0}()".format(self.name),
+                                  ": ::zerobuf::Zerobuf( ::zerobuf::AllocatorPtr( )){}"))
+        functions.append(Function(None, "{0}( const {0}& )".format(self.name),
+                                  ": ::zerobuf::Zerobuf( ::zerobuf::AllocatorPtr( )){}"))
+        functions.append(self.get_virtual_destructor())
+        functions.append(Function(self.name+"&", "operator = ( const " + self.name + "& )",
+                                  "return *this;", split=False))
+        return functions
 
-            # Zerobuf object owns allocator!
-            emitFunction(None,
-                         "{0}( ::zerobuf::AllocatorPtr allocator )".format( item[1] ),
-                         ": ::zerobuf::Zerobuf( std::move( allocator ))\n{0}".format(initializer_list(emit)) +
-                         "{{\n{3}}}".format(item[1], emit.offset, emit.numDynamic, emit.defaultValues),
-                         explicit = True)
+    def special_member_functions(self):
+        functions = []
+        allocator_init = ": {0}( ::zerobuf::AllocatorPtr( new ::zerobuf::NonMovingAllocator( {1}, {2} )))\n". \
+                                       format(self.name, self.offset, len(self.dynamic_members))
+        # default ctor
+        functions.append(Function(None, "{0}()".format(self.name),
+                                  allocator_init + "{}"))
+        # member initialization ctor
+        memberArgs = []
+        setters = []
+        for member in self.all_members:
+            valueName = member.cxxname + 'Value'
+            memberArgs.append("const {0}& {1}".format(member.get_cxxtype(), valueName))
+            setters.append("set{0}( {1} );".format(member.cxxName, valueName))
+        functions.append(Function(None,
+                                  "{0}( {1} )".format(self.name, ', '.join(memberArgs)),
+                                  allocator_init +
+                                  "{" + NEXTLINE +
+                                  NEXTLINE.join(setters) +
+                                  "\n}"))
+        # copy ctor
+        functions.append(Function(None,
+                                  "{0}( const {0}& rhs )".format(self.name),
+                                  allocator_init +
+                                  "{\n" +
+                                  "    *this = rhs;\n" +
+                                  "}"))
+        # move ctor
+        functions.append(Function(None,
+                                  "{0}( {0}&& rhs ) throw()".format(self.name),
+                                  ": ::zerobuf::Zerobuf( std::move( rhs ))\n" +
+                                  self.get_move_initializer()))
+        # copy-from-baseclass ctor
+        functions.append(Function(None,
+                                  "{0}( const ::zerobuf::Zerobuf& rhs )".format(self.name),
+                                  allocator_init +
+                                  "{\n" +
+                                  "    ::zerobuf::Zerobuf::operator = ( rhs );\n" +
+                                  "}"))
+        # Zerobuf object owns allocator!
+        functions.append(Function(None,
+                                  "{0}( ::zerobuf::AllocatorPtr allocator )".format(self.name),
+                                  ": ::zerobuf::Zerobuf( std::move( allocator ))\n" +
+                                  self.get_initializer_list() +
+                                  "{" + (NEXTLINE if len(self.default_value_setters) > 0 else "") +
+                                  NEXTLINE.join(self.default_value_setters) +
+                                  "\n}",
+                                  explicit = True))
 
-            header.write( "    virtual ~" + item[1] + "() {}\n\n" )
-            header.write( "    " + item[1] + "& operator = ( const " + item[1] + "& rhs )\n"+
-                          "        { ::zerobuf::Zerobuf::operator = ( rhs ); return *this; }\n\n" )
-            emitFunction("{0}&".format(item[1]),
-                         "operator = ( {0}&& rhs )".format(item[1]),
-                         "::zerobuf::Zerobuf::operator = ( std::move( rhs ));\n" +
-                         move_operator(emit) +
-                         "    return *this;")
+        functions.append(self.get_virtual_destructor())
 
-        # introspection
-        digest = emit.md5.hexdigest()
+        # copy ctor and copy assignment operator
+        functions.append(Function(self.name+"&",
+                                  "operator = ( const " + self.name + "& rhs )",
+                                  "::zerobuf::Zerobuf::operator = ( rhs ); return *this;",
+                                  split=False))
+        functions.append(Function("{0}&".format(self.name),
+                                  "operator = ( {0}&& rhs )".format(self.name),
+                                  "::zerobuf::Zerobuf::operator = ( std::move( rhs ));\n" +
+                                  self.get_move_operator() +
+                                  "    return *this;"))
+        return functions
+
+    def introspection_functions(self):
+        digest = self.md5.hexdigest()
         high = digest[ 0 : len( digest ) - 16 ]
         low  = digest[ len( digest ) - 16: ]
-        zerobufType = "::zerobuf::uint128_t( 0x{0}ull, 0x{1}ull )".format( high,
-                                                                           low )
-        zerobufName = "{0}{1}{2}".format("::".join(emit.namespace),
-                                         "::" if emit.namespace else "",
-                                         emit.table)
-        header.write( "    // Introspection\n" )
-        header.write( "    std::string getTypeName() const final {{ return \"{0}\"; }}\n".format( zerobufName ))
-        header.write( "    ::zerobuf::uint128_t getTypeIdentifier() const final {{ return {0}; }}\n".format( zerobufType ))
-        header.write( "    size_t getZerobufStaticSize() const final {{ return {0}; }}\n".format( emit.offset ))
-        header.write( "    static size_t ZEROBUF_STATIC_SIZE() {{ return {0}; }}\n".format( emit.offset ))
-        header.write( "    size_t getZerobufNumDynamics() const final {{ return {0}; }}\n".format( emit.numDynamic ))
-        header.write( "    static size_t ZEROBUF_NUM_DYNAMICS() {{ return {0}; }}\n".format( emit.numDynamic ))
+        zerobufType = "::zerobuf::uint128_t( 0x{0}ull, 0x{1}ull )".format(high, low)
+        zerobufName = "{0}{1}{2}".format("::".join(self.namespace),
+                                         "::" if self.namespace else "",
+                                         self.name)
+        functions = []
+        functions.append(Function("std::string", "getTypeName() const final",
+                                  "return \"{0}\";".format(zerobufName), split=False))
+        functions.append(Function("::zerobuf::uint128_t", "getTypeIdentifier() const final",
+                                  "return {0};".format(zerobufType), split=False))
+        functions.append(Function("size_t", "getZerobufStaticSize() const final",
+                                  "return {0};".format(self.offset), split=False))
+        functions.append(Function("size_t", "ZEROBUF_STATIC_SIZE()",
+                                  "return {0};".format(self.offset), static=True, split=False))
+        functions.append(Function("size_t", "getZerobufNumDynamics() const final",
+                                  "return {0};".format(len(self.dynamic_members)), split=False))
+        functions.append(Function("size_t", "ZEROBUF_NUM_DYNAMICS()",
+                                  "return {0};".format(len(self.dynamic_members)), static=True, split=False))
+        return functions
+
+    def json_functions(self):
+        from_json = ""
+        to_json = ""
+
+        for member in self.dynamic_members:
+            from_json += member.from_json()
+            to_json += member.to_json()
+        for member in self.static_members:
+            from_json += member.from_json()
+            to_json += member.to_json()
+
+        if not from_json or not to_json:
+            return []
+
+        from_json = from_json[4:]
+        to_json = to_json[4:]
+        return [Function("void", "_parseJSON( const Json::Value& json ) final", from_json),
+                Function("void", "_createJSON( Json::Value& json ) const final", to_json)]
+
+    def write_declarations(self, functions, file):
+        for function in functions:
+            function.write_declaration(file)
+
+    def write_declaration(self, file):
+        self.write_class_begin(file)
+
+        # members accessors
+        for member in self.dynamic_members:
+            member.write_accessors_declaration(file)
+        for member in self.static_members:
+            member.write_accessors_declaration(file)
+
+        # class functions
+        if len(self.dynamic_members) > 0:
+            self.compact_function().write_declaration(file)
+
+        if self.offset == 0: # OPT: table has no data
+            self.write_declarations(self.empty_constructors(), file)
+        else:
+            self.write_declarations(self.special_member_functions(), file)
+        file.write(NEXTLINE + "// Introspection\n")
+        self.write_declarations(self.introspection_functions(), file)
+        file.write("\n\n")
+        self.write_declarations(self.json_functions(), file)
+
+        self.write_class_end(file)
+
+    def write_class_begin(self, file):
+        file.write( "class " + self.name + " : public ::zerobuf::Zerobuf\n" +
+                    "{\npublic:\n" )
+
+    def write_class_end(self, file):
+        member_declarations = []
+
+        for member in self.dynamic_members:
+            member_declarations.append(member.get_declaration())
+        for member in self.static_members:
+            if member.value_type.is_zerobuf_type:
+                member_declarations.append(member.get_declaration())
+
+        file.write("private:" + NEXTLINE)
+        file.write(NEXTLINE.join(member_declarations))
+        file.write("\n};\n\n")
+
+    def write_implementations(self, functions, file):
+        for function in functions:
+            function.write_implementation(file, self.name)
+
+    def write_implementation(self, file):
+        # members accessors
+        for member in self.dynamic_members:
+            member.write_accessors_implementation(file, self.name)
+        for member in self.static_members:
+            member.write_accessors_implementation(file, self.name)
+
+        # class functions
+        if len(self.dynamic_members) > 0:
+            self.compact_function().write_implementation(file, self.name)
+
+        if self.offset == 0: # OPT: table has no data
+            self.write_implementations(self.empty_constructors(), file)
+        else:
+            self.write_implementations(self.special_member_functions(), file)
+
+        self.write_implementations(self.introspection_functions(), file)
+        self.write_implementations(self.json_functions(), file)
+
+    def compact_function(self):
+        # Recursive compaction
+        compact = ''
+        for dynamic_member in self.dynamic_members:
+            compact += "    _{0}.compact( threshold );\n".format(dynamic_member.cxxname)
+        compact += "    ::zerobuf::Zerobuf::compact( threshold );"
+        compact = compact[4:]
+        return Function("void", "compact( float threshold = 0.1f ) final", compact)
+
+    def fill_initializer_list(self):
+        for member in self.dynamic_members:
+            self.initializers.append(member.get_initializer())
+        for member in self.static_members:
+            if member.value_type.is_zerobuf_type:
+                self.initializers.append(member.get_initializer())
+
+    def get_move_statics(self):
+        movers = ''
+        # [cxxname, nElems, cxxtype, offset|index, elemSize]
+        for initializer in self.initializers:
+            if initializer[1] == 1: # single member
+                if initializer[4] == 0: # dynamic member
+                    allocator = "::zerobuf::NonMovingSubAllocator( {{0}}, {0}, {1}::ZEROBUF_NUM_DYNAMICS(), {1}::ZEROBUF_STATIC_SIZE( ))".format(initializer[3], initializer[2])
+                else:
+                    allocator = "::zerobuf::StaticSubAllocator( {{0}}, {0}, {1} )".format(initializer[3], initializer[4])
+                movers += "    _{0}.reset( ::zerobuf::AllocatorPtr( new {1}));\n" \
+                    .format(initializer[0], allocator ).format( "getAllocator()" )
+                movers += "    rhs._{0}.reset( ::zerobuf::AllocatorPtr( new {1}));\n" \
+                    .format(initializer[0], allocator ).format( "rhs.getAllocator()" )
+            elif initializer[1] != 0: # static array
+                for i in range(0, initializer[1]):
+                    movers += "    _{0}[{1}].reset( ::zerobuf::AllocatorPtr( " \
+                              "new ::zerobuf::StaticSubAllocator( getAllocator(), {2}, {3} )));\n" \
+                        .format(initializer[0], i, initializer[3], initializer[3] + i * initializer[4])
+                    movers += "    rhs._{0}[{1}].reset( ::zerobuf::AllocatorPtr( " \
+                              "new ::zerobuf::StaticSubAllocator( rhs.getAllocator(), {2}, {3} )));\n" \
+                        .format(initializer[0], i, initializer[3], initializer[3] + i * initializer[4])
+        return movers
+
+    def get_move_operator(self):
+        movers = ''
+        # [cxxname, nElems, cxxtype, offset|index, elem_size]
+        for initializer in self.initializers:
+            if initializer[1] == 0: # dynamic array
+                movers += "    _{0}.reset( getAllocator( ));\n".format(initializer[0])
+                movers += "    rhs._{0}.reset( rhs.getAllocator( ));\n".format(initializer[0])
+        movers += self.get_move_statics()
+        return movers
+
+    def get_move_initializer(self):
+        initializers = ''
+        # [cxxname, nElems, cxxtype, offset|index, elem_size]
+        for initializer in self.initializers:
+            if initializer[1] == 0: # dynamic array
+                initializers += "    , _{0}( getAllocator(), {1} )\n".format(initializer[0], initializer[3])
+        initializers += "{\n"
+        initializers += self.get_move_operator()
+        initializers += "}"
+        return initializers
+
+    def get_initializer_list(self):
+        initializers = ''
+
+        # [cxxname, nElems, cxxtype, offset, elem_size]
+        for initializer in self.initializers:
+            if initializer[1] == 0: # dynamic array
+                initializers += "    , _{0}( getAllocator(), {1} )\n".format(initializer[0], initializer[3])
+            elif initializer[1] == 1: # single member
+                if initializer[4] == 0: # dynamic member
+                    allocator = "::zerobuf::NonMovingSubAllocator( getAllocator(), {0}, {1}::ZEROBUF_NUM_DYNAMICS(), {1}::ZEROBUF_STATIC_SIZE( ))".format(initializer[3], initializer[2])
+                else:
+                    allocator = "::zerobuf::StaticSubAllocator( getAllocator(), {0}, {1} )".format(initializer[3], initializer[4])
+                initializers += "    , _{0}( ::zerobuf::AllocatorPtr( new {1}))\n" \
+                    .format(initializer[0], allocator)
+            else: # static array
+                initializers += "    , _{0}{1}".format(initializer[0], "{{")
+                for i in range( 0, initializer[1] ):
+                    initializers += "\n        {0}( ::zerobuf::AllocatorPtr( " \
+                                    "new ::zerobuf::StaticSubAllocator( getAllocator(), {1}, {2} ))){3} " \
+                        .format(initializer[2], initializer[3] + i * initializer[4], initializer[4], "}}\n" if i == initializer[1] - 1 else ",")
+        return initializers
+
+
+"""An fbs file which can be written to C++ header and implementation files."""
+class FbsFile():
+    def __init__(self, schema):
+        self.generate_qobject = False
+        self.namespace = []
+        self.enums = []
+        self.enum_names = set()
+        self.tables = []
+        self.table_names = set()
+        # type lookup table: fbs type : ( size, C++ type )
+        self.types = { "int" : ( 4, "int32_t" ),
+                       "uint" : ( 4, "uint32_t" ),
+                       "float" : ( 4, "float" ),
+                       "double" : ( 8, "double" ),
+                       "byte" : ( 1, "uint8_t" ),
+                       "short" : ( 2, "int16_t" ),
+                       "ubyte" : ( 1, "uint8_t" ),
+                       "ushort" : ( 2, "uint16_t" ),
+                       "ulong" : ( 8, "uint64_t" ),
+                       "uint8_t" : ( 1, "uint8_t" ),
+                       "uint16_t" : ( 2, "uint16_t" ),
+                       "uint32_t" : ( 4, "uint32_t" ),
+                       "uint64_t" : ( 8, "uint64_t" ),
+                       "uint128_t" : ( 16, "::zerobuf::uint128_t" ),
+                       "int8_t" : ( 1, "int8_t" ),
+                       "int16_t" : ( 2, "int16_t" ),
+                       "int32_t" : ( 4, "int32_t" ),
+                       "int64_t" : ( 8, "int64_t" ),
+                       "bool" : ( 1, "bool" ),
+                       "string" : ( 1, "char*" )
+                      }
+        self.parse(schema)
+
+    def parse(self, schema):
+        """
+        [['namespace', ['tide', 'rest']],
+        ['enum', 'CommandType', 'uint', 'OpenContent', 'OpenWebbrowser'],
+        ['table', 'Command', ['key', 'string'], ['value', 'string']],
+        ['root_type', 'Command']]
+        """
+        root_options = { "namespace" : self.set_namespace,
+                         "enum" : self.add_enum,
+                         "table" : self.add_table,
+                         "root_type" : self.set_root_type,
+                        }
+        for item in schema:
+            root_options[ item[0] ]( item )
+
+    def set_namespace(self, item):
+        self.namespace = item[1]
+
+    def add_enum(self, item):
+        enum = FbsEnum(item)
+        self.types[ enum.name ] = (4, enum.name)
+        self.enum_names.add(enum.name)
+        self.enums.append(enum)
+
+    def add_table(self, item):
+        table = FbsTable(item, self.namespace, self)
+        self.tables.append(table)
+        self.table_names.add(table.name)
+        # record size in type lookup table, 0 if dynamically sized
+        self.types[ table.name ] = ( table.offset if len(table.dynamic_members) == 0 else 0, table.name )
+
+    def set_root_type(self, item):
+        # Nothing to do with this statement
+        return
+
+    def write_namespace_opening(self, file):
+        for namespace in self.namespace:
+            file.write( "namespace " + namespace + "\n{\n" )
+
+    def write_namespace_closing(self, file):
+        for namespace in self.namespace:
+            file.write( "}\n" )
+
+    """Write the C++ header file."""
+    def write_declaration(self, header):
+        header.write( "// Generated by zerobufCxx.py\n\n" )
+        header.write( "#pragma once\n" )
+        header.write( "#include <zerobuf/Zerobuf.h> // base class\n" )
+        header.write( "#include <zerobuf/Vector.h> // member\n" )
+        header.write( "#include <array> // member\n" )
         header.write( "\n" )
 
-        header.write( "\n" )
-        if emit.fromJSON:
-            emit.fromJSON = emit.fromJSON[4:]
-            emit.toJSON = emit.toJSON[4:]
-            emitFunction( "void", "_parseJSON( const Json::Value& json ) final",
-                          emit.fromJSON )
-            emitFunction( "void",
-                          "_createJSON( Json::Value& json ) const final",
-                          emit.toJSON )
+        self.write_namespace_opening(header)
 
-        # closing statements
-        header.write( "private:\n    {0}\n".
-                      format( '\n    '.join( emit.members )))
-        header.write( "};\n\n" )
+        for enum in self.enums:
+            enum.write_declaration(header)
 
-        # record size of myself in type lookup table, 0 if dynamically sized
-        emit.types[ item[1] ] = ( emit.offset if emit.numDynamic == 0 else 0,
-                                  item[1] )
-        emit.tables.add( item[1] )
+        for table in self.tables:
+            table.write_declaration(header)
 
-    def root_type():
-        header.write( "" )
+        self.write_namespace_closing(header)
 
-    rootOptions = { "namespace" : namespace,
-                    "enum" : enum,
-                    "table" : table,
-                    "root_type" : root_type,
-                    }
+    """Write the C++ implementation file."""
+    def write_implementation(self, cppsource):
+        cppsource.write("#include <zerobuf/NonMovingAllocator.h>\n")
+        cppsource.write("#include <zerobuf/NonMovingSubAllocator.h>\n")
+        cppsource.write("#include <zerobuf/StaticSubAllocator.h>\n")
+        cppsource.write("#include <zerobuf/json.h>\n")
+        cppsource.write("\n")
 
-    header.write( "// Generated by zerobufCxx.py\n\n" )
-    header.write( "#pragma once\n" )
-    header.write( "#include <zerobuf/Zerobuf.h> // base class\n" )
-    header.write( "#include <zerobuf/Vector.h> // member\n" )
-    header.write( "#include <array> // member\n" )
-    header.write( "\n" )
-    impl.write( "// Generated by zerobufCxx.py\n\n" )
-    if not inline:
-        impl.write( "#include \"{0}.h\"\n\n".format(headerbase) )
-    impl.write( "#include <zerobuf/NonMovingAllocator.h>\n" )
-    impl.write( "#include <zerobuf/NonMovingSubAllocator.h>\n" )
-    impl.write( "#include <zerobuf/StaticSubAllocator.h>\n" )
-    impl.write( "#include <zerobuf/json.h>\n" )
-    impl.write( "\n" )
+        self.write_namespace_opening(cppsource)
 
-    for item in schema:
-        rootOptions[ item[0] ]()
+        for table in self.tables:
+            table.write_implementation(cppsource)
 
-    for namespace in emit.namespace:
-        header.write( "}\n" )
-        impl.write( "}\n" )
-
-    if inline:
-        header.write( "#include \"{0}.ipp\"\n\n".format(headerbase) )
+        self.write_namespace_closing(cppsource)
 
 
 if __name__ == "__main__":
@@ -702,11 +1068,15 @@ if __name__ == "__main__":
     parser.add_argument( "files", nargs = "+" )
     parser.add_argument( '-o', '--outputdir', action='store', default = "",
                          help = "Prefix directory for all generated files.")
+    parser.add_argument( '-q', '--qobject', action='store_true',
+                         help = "Generate a QObject with signals and slots.")
     parser.add_argument( '-e', '--extension', action='store', default = "cpp",
-                         help = "Extension for generated source files.")
+                         help = "Extension for generated source files. (default: cpp)")
 
     # Parse, interpret and validate arguments
     args = parser.parse_args()
+
+    inline_implementation = args.extension == "ipp"
 
     fbsObject = create_FBS_parser()
     for _file in args.files:
@@ -725,7 +1095,17 @@ if __name__ == "__main__":
             header = open( basename + ".h" , 'w' )
             impl = open( basename + "." + args.extension, 'w' )
 
+        impl.write( "// Generated by zerobufCxx.py\n\n" )
+        if not inline_implementation:
+            impl.write( "#include \"{0}.h\"\n\n".format(headerbase) )
+
         schema = fbsObject.parseFile(_file)
         # import pprint
         # pprint.pprint( schema.asList( ))
-        emit(args.extension == "ipp")
+        fbsFile = FbsFile(schema)
+        fbsFile.generate_qobject = args.qobject
+        fbsFile.write_declaration(header)
+        fbsFile.write_implementation(impl)
+
+        if inline_implementation:
+            header.write( "#include \"{0}.ipp\"\n\n".format(headerbase) )
