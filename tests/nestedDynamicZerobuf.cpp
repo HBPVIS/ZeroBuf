@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(changeTestNestedZerobuf)
     object.getNested()[0] = test::TestNested( 8, 9 );
     BOOST_CHECK_EQUAL( object.getNested()[0], test::TestNested( 8, 9 ));
 
-    object.getNested()[0] = std::move( test::TestNested( 10, 11 ));
+    object.getNested()[0] = test::TestNested( 10, 11 );
     BOOST_CHECK_EQUAL( object.getNested()[0], test::TestNested( 10, 11 ));
 
     object.getNested()[0] = std::move( threeFour );
