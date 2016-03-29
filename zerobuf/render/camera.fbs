@@ -5,9 +5,9 @@ namespace zerobuf.render;
 
 table Vector3f
 {
-    x: float;
-    y: float;
-    z: float;
+  x: float;
+  y: float;
+  z: float;
 }
 
 table Camera
