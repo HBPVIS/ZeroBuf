@@ -2,6 +2,8 @@
 
 # git master
 
+* [42](https://github.com/HBPVIS/ZeroBuf/pull/42):
+  zerobufCxx.py can generate QObjects
 * [40](https://github.com/HBPVIS/ZeroBuf/pull/40):
   Add data.Progress event and logic
 * [38](https://github.com/HBPVIS/ZeroBuf/pull/38):

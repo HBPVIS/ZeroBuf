@@ -117,7 +117,7 @@ class Function():
         else:
             file.write( "    {0}\n".format(self.get_declaration()))
 
-    def write_implementation(self, file, classname):
+    def write_implementation(self, file, classname, extra_op = ""):
         if not self.split_implementation:
             return
 
@@ -125,14 +125,16 @@ class Function():
         impl_function = re.sub(r" = [0-9\.f]+ ", " ", impl_function) # remove default params
 
         if self.ret_val: # '{}'-less body
-            file.write( "\n" + self.ret_val + " " + classname +
-                        "::" + impl_function +
-                        "\n{" +
-                        NEXTLINE + self.body +
-                        "\n}\n" )
+            file.write("\n" + self.ret_val + " " + classname +
+                       "::" + impl_function +
+                       "\n{" +
+                       NEXTLINE + self.body)
+            if extra_op:
+                file.write(NEXTLINE + extra_op)
+            file.write("\n}\n")
         else:      # ctor '[initializer list]{ body }'
-            file.write( "\n" + classname +
-                        "::" + impl_function + NEXTLINE + self.body + "\n\n" )
+            file.write("\n" + classname +
+                       "::" + impl_function + NEXTLINE + self.body + "\n\n")
 
 
 """A member of a C++ class"""
@@ -143,16 +145,38 @@ class ClassMember(object):
         self.cxxName = name[0].upper() + str(name[1:])
         self.value_type = value_type
         self.allocator_offset = 0
+        self.qsignal = self.cxxname + "Changed();"
+
+    def write_typedefs(self, file):
+        """Derived classes may implement this function to declare typedefs"""
+        return
 
     def write_accessors_declaration(self, file):
+        self.write_typedefs(file)
         for function in self.accessor_functions():
             function.write_declaration(file)
-        file.write("\n")
 
-    def write_accessors_implementation(self, file, classname):
-        for function in self.accessor_functions():
-            function.write_implementation(file, classname)
-        file.write("\n")
+    def write_qt_getters(self, file):
+        self.write_typedefs(file)
+        for function in self.const_getters():
+            function.write_declaration(file)
+
+    def write_qt_setters(self, file):
+        for function in self.setters():
+            function.write_declaration(file)
+
+    def write_qt_signals(self, file):
+        file.write(NEXTLINE + "void " + self.qsignal)
+
+    def write_accessors_implementation(self, file, classname, generate_qobject):
+        if generate_qobject:
+            for function in self.const_getters():
+                function.write_implementation(file, classname)
+            for function in self.setters(qproperty=True):
+                function.write_implementation(file, classname)
+        else:
+            for function in self.accessor_functions():
+                function.write_implementation(file, classname)
 
     def get_unique_identifier(self):
         return self.value_type.type.encode('utf-8')
@@ -162,6 +186,13 @@ class ClassMember(object):
 
     def qualified_type(self, classname):
         return "{0}::{1}".format(classname, self.get_cxxtype())
+
+    def check_value_changed(self, value_name):
+        return "if( {0} == value )".format(value_name) + NEXTLINE +\
+               "    return;" + NEXTLINE
+
+    def emit_value_changed(self, qproperty):
+        return NEXTLINE + "emit " + self.qsignal if qproperty else ""
 
     def const_ref_getter(self, classname=None):
         val_type = self.qualified_type(classname) if classname else self.get_cxxtype()
@@ -176,71 +207,14 @@ class ClassMember(object):
                         "notifyChanging();" + NEXTLINE +
                         "return _{0};".format(self.cxxname))
 
-    def ptr_getter(self):
-        return Function(self.value_type.type + "*",
-                        "get" + self.cxxName + "()",
-                        "notifyChanging();" + NEXTLINE +
-                        "return getAllocator().template getItemPtr< {0} >( {1} );".\
-                        format(self.value_type.type, self.allocator_offset))
-
-    def const_ptr_getter(self):
-        return Function("const {0}*".format(self.value_type.type),
-                        "get" + self.cxxName + "() const",
-                        "return getAllocator().template getItemPtr< {0} >( {1} );".\
-                        format(self.value_type.type, self.allocator_offset))
-
-    def value_getter(self):
-        return Function(self.get_cxxtype(),
-                        "get{0}() const".format(self.cxxName),
-                        "return getAllocator().template getItem< {0} >( {1} );".\
-                        format(self.get_cxxtype(), self.allocator_offset))
-
-    def vector_getter(self, elem_count):
-        return Function(self.get_cxxtype(),
-                        "get{0}Vector() const".format(self.cxxName),
-                        "const {0}* ptr = getAllocator().template getItemPtr< {0} >( {1} );".\
-                        format(self.value_type.type, self.allocator_offset) + NEXTLINE +
-                        "return {0}( ptr, ptr + {1} );".format(self.get_cxxtype(), elem_count))
-
-    def ref_setter(self):
+    def ref_setter(self, qproperty=False):
+        current_value = "_{0}".format(self.cxxname)
         return Function("void",
                         "set{0}( const {1}& value )".format(self.cxxName, self.get_cxxtype()),
+                        (self.check_value_changed(current_value) if qproperty else "") +
                         "notifyChanging();" + NEXTLINE +
-                        "_{0} = value;".format(self.cxxname))
-
-    def value_setter(self):
-        return Function("void",
-                        "set{0}( {1} value )".format(self.cxxName, self.get_cxxtype()),
-                        "notifyChanging();" + NEXTLINE +
-                        "getAllocator().template getItem< {0} >( {1} ) = value;".\
-                        format(self.get_cxxtype(), self.allocator_offset))
-
-    def c_array_setter(self, elem_count):
-        return Function("void",
-                        "set{0}( {1} value[ {2} ] )".format(self.cxxName, self.value_type.type, elem_count),
-                        "notifyChanging();" + NEXTLINE +
-                        "::memcpy( getAllocator().template getItemPtr< {0} >( {1} ), value, {2} * sizeof( {0} ));".\
-                        format(self.value_type.type, self.allocator_offset, elem_count))
-
-    def vector_setter(self, elem_count):
-        return Function("void",
-                        "set{0}( const std::vector< {1} >& value )".format(self.cxxName, self.value_type.type),
-                        "if( {0} >= value.size( ))".format(elem_count) + NEXTLINE +
-                        "{" + NEXTLINE +
-                        "    notifyChanging();" +
-                        "        ::memcpy( getAllocator().template getItemPtr<{0}>( {1} ), value.data(), value.size() * sizeof( {0}));"\
-                        .format(self.value_type.type, self.allocator_offset) + NEXTLINE +
-                        "}")
-
-    def string_setter(self):
-        return Function("void",
-                        "set{0}( const std::string& value )".format(self.cxxName),
-                        "if( {0} >= value.length( ))".format(self.get_byte_size()) + NEXTLINE +
-                        "{" + NEXTLINE +
-                        "    notifyChanging();" + NEXTLINE +
-                        "    ::memcpy( getAllocator().template getItemPtr<{0}>( {1} ), value.data(), value.length( ));"\
-                        .format(self.value_type.type,self.allocator_offset) + NEXTLINE +
-                        "}")
+                        "{0} = value;".format(current_value) +
+                        self.emit_value_changed(qproperty))
 
 
 """A member of a class which has a fixed size (such as a POD type)"""
@@ -248,15 +222,36 @@ class FixedSizeMember(ClassMember):
     def __init__(self, name, type):
         super(FixedSizeMember, self).__init__(name, type)
 
+    def value_getter(self):
+        return Function(self.get_cxxtype(),
+                        "get{0}() const".format(self.cxxName),
+                        "return getAllocator().template getItem< {0} >( {1} );".\
+                        format(self.get_cxxtype(), self.allocator_offset))
+
+    def value_setter(self, qproperty=False):
+        current_value = "getAllocator().template getItem< {0} >( {1} )".\
+                        format(self.get_cxxtype(), self.allocator_offset)
+        return Function("void",
+                        "set{0}( {1} value )".format(self.cxxName, self.get_cxxtype()),
+                        (self.check_value_changed(current_value) if qproperty else "") +
+                        "notifyChanging();" + NEXTLINE +
+                        "{0} = value;".format(current_value) +
+                        self.emit_value_changed(qproperty))
+
     def getters(self):
         if self.value_type.is_zerobuf_type:
             return [self.const_ref_getter(), self.ref_getter()]
         return [self.value_getter()]
 
-    def setters(self):
+    def const_getters(self):
         if self.value_type.is_zerobuf_type:
-            return [self.ref_setter()]
-        return [self.value_setter()]
+            return [self.const_ref_getter()]
+        return self.getters()
+
+    def setters(self, qproperty=False):
+        if self.value_type.is_zerobuf_type:
+            return [self.ref_setter(qproperty)]
+        return [self.value_setter(qproperty)]
 
     def get_byte_size(self):
         return self.value_type.size
@@ -300,9 +295,74 @@ class FixedSizeArray(ClassMember):
             if self.value_type.size == 0:
                 sys.exit("Static arrays of empty ZeroBuf (field {0}) not supported".format(self.cxxname))
 
+    def check_array_changed(self, dst_ptr):
+        return "if( ::memcmp( {0}, {1}, {2} * sizeof( {3} )) == 0 )".\
+               format(self.data_ptr(), dst_ptr, self.nElems, self.value_type.type) + NEXTLINE +\
+               "    return;" + NEXTLINE
+
+    def data_ptr(self):
+        return "getAllocator().template getItemPtr< {0} >( {1} )".\
+                format(self.value_type.type, self.allocator_offset)
+
     def size_getter(self):
         return Function("size_t", "get{0}Size() const".format(self.cxxName),
                         "return {0};".format(self.nElems))
+
+    def ptr_getter(self):
+        return Function(self.value_type.type + "*",
+                        "get" + self.cxxName + "()",
+                        "notifyChanging();" + NEXTLINE +
+                        "return getAllocator().template getItemPtr< {0} >( {1} );".\
+                        format(self.value_type.type, self.allocator_offset))
+
+    def const_ptr_getter(self):
+        return Function("const {0}*".format(self.value_type.type),
+                        "get" + self.cxxName + "() const",
+                        "return getAllocator().template getItemPtr< {0} >( {1} );".\
+                        format(self.value_type.type, self.allocator_offset))
+
+    def vector_getter(self):
+        return Function(self.get_cxxtype(),
+                        "get{0}Vector() const".format(self.cxxName),
+                        "const {0}* ptr = getAllocator().template getItemPtr< {0} >( {1} );".\
+                        format(self.value_type.type, self.allocator_offset) + NEXTLINE +
+                        "return {0}( ptr, ptr + {1} );".format(self.get_cxxtype(), self.nElems))
+
+    def c_array_setter(self, qproperty=False):
+        src_ptr = "value"
+        return Function("void",
+                        "set{0}( {1} value[ {2} ] )".format(self.cxxName, self.value_type.type, self.nElems),
+                        (self.check_array_changed(src_ptr) if qproperty else "") +
+                        "notifyChanging();" + NEXTLINE +
+                        "::memcpy( {0}, {1}, {2} * sizeof( {3} ));".\
+                        format(self.data_ptr(), src_ptr, self.nElems, self.value_type.type) +
+                        self.emit_value_changed(qproperty))
+
+    def vector_setter(self, qproperty=False):
+        src_ptr = "value.data()"
+        return Function("void",
+                        "set{0}( const std::vector< {1} >& value )".format(self.cxxName, self.value_type.type),
+                        "if( {0} >= value.size( ))".format(self.nElems) + NEXTLINE +
+                        "{" + NEXTLINE +
+                        (self.check_array_changed(src_ptr) if qproperty else "") +
+                        "    notifyChanging();" + NEXTLINE +
+                        "    ::memcpy( {0}, {1}, value.size() * sizeof( {3} ));".\
+                        format(self.data_ptr(), src_ptr, self.nElems, self.value_type.type) +
+                        self.emit_value_changed(qproperty) + NEXTLINE +
+                        "}")
+
+    def data_string_setter(self, qproperty=False):
+        src_ptr = "value.data()"
+        return Function("void",
+                        "set{0}( const std::string& value )".format(self.cxxName),
+                        "if( {0} >= value.length( ))".format(self.get_byte_size()) + NEXTLINE +
+                        "{" + NEXTLINE +
+                        (self.check_array_changed(src_ptr) if qproperty else "") +
+                        "    notifyChanging();" + NEXTLINE +
+                        "    ::memcpy( {0}, {1}, value.length( ));"\
+                        .format(self.data_ptr(), src_ptr) +
+                        self.emit_value_changed(qproperty) + NEXTLINE +
+                        "}")
 
     def getters(self):
         if self.value_type.is_zerobuf_type:
@@ -311,15 +371,23 @@ class FixedSizeArray(ClassMember):
                     self.size_getter()]
         return [self.ptr_getter(),
                 self.const_ptr_getter(),
-                self.vector_getter(self.nElems),
+                self.vector_getter(),
                 self.size_getter()]
 
-    def setters(self):
+    def const_getters(self):
         if self.value_type.is_zerobuf_type:
-            return [self.ref_setter()]
-        return [self.c_array_setter(self.nElems),
-                self.vector_setter(self.nElems),
-                self.string_setter()]
+            return [self.const_ref_getter(self.classname),
+                    self.size_getter()]
+        return [self.const_ptr_getter(),
+                self.vector_getter(),
+                self.size_getter()]
+
+    def setters(self, qproperty=False):
+        if self.value_type.is_zerobuf_type:
+            return [self.ref_setter(qproperty)]
+        return [self.c_array_setter(qproperty),
+                self.vector_setter(qproperty),
+                self.data_string_setter(qproperty)]
 
     def accessor_functions(self):
         """Override ClassMember.accessor_functions for legacy ordering of functions"""
@@ -331,10 +399,10 @@ class FixedSizeArray(ClassMember):
         # Dynamic array of PODs
         return [self.ptr_getter(),
                 self.const_ptr_getter(),
-                self.vector_getter(self.nElems),
-                self.c_array_setter(self.nElems),
-                self.vector_setter(self.nElems),
-                self.string_setter(),
+                self.vector_getter(),
+                self.c_array_setter(),
+                self.vector_setter(),
+                self.data_string_setter(),
                 self.size_getter()]
 
     def get_byte_size(self):
@@ -350,11 +418,10 @@ class FixedSizeArray(ClassMember):
         # static array of POD
         return "std::vector< {0} >".format(self.value_type.type)
 
-    def write_accessors_declaration(self, file):
+    def write_typedefs(self, file):
         if self.value_type.is_zerobuf_type:
-            file.write( "    typedef std::array< {0}, {1} > {2};\n".
-                          format( self.value_type.type, self.nElems, self.cxxName ))
-        super(FixedSizeArray, self).write_accessors_declaration(file)
+            file.write("    typedef std::array< {0}, {1} > {2};\n".
+                       format(self.value_type.type, self.nElems, self.cxxName))
 
     def get_initializer(self):
         return [self.cxxname, self.nElems, self.value_type.type, self.allocator_offset, self.value_type.size]
@@ -413,8 +480,11 @@ class DynamicZeroBufMember(ClassMember):
         return [self.ref_getter(),
                 self.const_ref_getter()]
 
-    def setters(self):
-        return [self.ref_setter()]
+    def const_getters(self):
+        return [self.const_ref_getter()]
+
+    def setters(self, qproperty=False):
+        return [self.ref_setter(qproperty)]
 
     def get_byte_size(self):
         return 16 # 8b offset, 8b size
@@ -457,23 +527,33 @@ class DynamicMember(ClassMember):
                         "    ret.push_back( vec[i] );" + NEXTLINE +
                         "return ret;\n")
 
-    def vector_dynamic_setter(self):
+    def vector_dynamic_setter(self, qproperty=False):
+        current_value = "get{0}Vector()".format(self.cxxName)
         return Function("void",
-                        "set{0}( const {1}& values )".format(self.cxxName, self.vector_type()),
+                        "set{0}( const {1}& value )".format(self.cxxName, self.vector_type()),
+                        (self.check_value_changed(current_value) if qproperty else "") +
                         "notifyChanging();" + NEXTLINE +
                         "::zerobuf::Vector< {0} > dynamic( getAllocator(), {1} );".\
                         format(self.value_type.type, self.dynamic_type_index) + NEXTLINE +
                         "dynamic.clear();" + NEXTLINE +
-                        "for( const " + self.value_type.type + "& data : values )" + NEXTLINE +
-                        "    dynamic.push_back( data );")
+                        "for( const " + self.value_type.type + "& data : value )" + NEXTLINE +
+                        "    dynamic.push_back( data );" +
+                        self.emit_value_changed(qproperty))
 
-    def c_pointer_setter(self):
+    def check_c_array_changed(self):
+        return "if( ::memcmp( _{0}.data(), value, size * sizeof( {1} )) == 0 )".\
+               format(self.cxxname, self.value_type.type) + NEXTLINE +\
+               "    return;" + NEXTLINE
+
+    def c_pointer_setter(self, qproperty=False):
         return Function("void",
                         "set{0}( {1} const * value, size_t size )".\
                         format(self.cxxName, self.value_type.type),
+                        (self.check_c_array_changed() if qproperty else "") +
                         "notifyChanging();" + NEXTLINE +
                         "_copyZerobufArray( value, size * sizeof( {0} ), {1} );".\
-                        format(self.value_type.type, self.dynamic_type_index))
+                        format(self.value_type.type, self.dynamic_type_index) +
+                        self.emit_value_changed(qproperty))
 
     def vector_pod_getter(self):
         return Function(self.vector_type(),
@@ -481,12 +561,15 @@ class DynamicMember(ClassMember):
                         "return {0}( _{1}.data(), _{1}.data() + _{1}.size( ));".\
                         format(self.vector_type(), self.cxxname))
 
-    def vector_pod_setter(self):
+    def vector_pod_setter(self, qproperty=False):
+        current_value = "get{0}Vector()".format(self.cxxName)
         return Function("void",
                         "set{0}( const {1}& value )".format(self.cxxName, self.vector_type()),
+                        (self.check_value_changed(current_value) if qproperty else "") +
                         "notifyChanging();" + NEXTLINE +
                         "_copyZerobufArray( value.data(), value.size() * sizeof( {0} ), {1} );".\
-                        format(self.value_type.type, self.dynamic_type_index))
+                        format(self.value_type.type, self.dynamic_type_index) +
+                        self.emit_value_changed(qproperty))
 
     def string_getter(self):
         return Function("std::string",
@@ -496,12 +579,15 @@ class DynamicMember(ClassMember):
                         "return std::string( ptr, ptr + getAllocator().template getItem< uint64_t >( {0} ));".\
                         format(self.allocator_offset + 8))
 
-    def string_setter(self):
+    def string_setter(self, qproperty=False):
+        current_value = "get{0}String()".format(self.cxxName)
         return Function("void",
                         "set{0}( const std::string& value )".format(self.cxxName),
+                        (self.check_value_changed(current_value) if qproperty else "") +
                         "notifyChanging();" + NEXTLINE +
                         "_copyZerobufArray( value.c_str(), value.length(), {0} );".\
-                        format(self.dynamic_type_index))
+                        format(self.dynamic_type_index) +
+                        self.emit_value_changed(qproperty))
 
     def getters(self):
         if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
@@ -514,13 +600,22 @@ class DynamicMember(ClassMember):
                 self.vector_pod_getter(),
                 self.string_getter()]
 
-    def setters(self):
+    def const_getters(self):
         if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
-            return [self.vector_dynamic_setter()]
+            return [self.const_ref_getter(self.classname),
+                    self.vector_dynamic_getter()]
         # Dynamic array of PODs
-        return [self.c_pointer_setter(),
-                self.vector_pod_setter(),
-                self.string_setter()]
+        return [self.const_ref_getter(self.classname),
+                self.vector_pod_getter(),
+                self.string_getter()]
+
+    def setters(self, qproperty=False):
+        if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
+            return [self.vector_dynamic_setter(qproperty)]
+        # Dynamic array of PODs
+        return [self.c_pointer_setter(qproperty),
+                self.vector_pod_setter(qproperty),
+                self.string_setter(qproperty)]
 
     def accessor_functions(self):
         """Override ClassMember.accessor_functions for legacy ordering of functions"""
@@ -559,10 +654,9 @@ class DynamicMember(ClassMember):
     def get_declaration(self):
         return "{0} _{1};".format(self.cxxName, self.cxxname)
 
-    def write_accessors_declaration(self, file):
-        file.write( "    typedef ::zerobuf::Vector< {0} > {1};\n".
-                      format(self.value_type.type, self.cxxName))
-        super(DynamicMember, self).write_accessors_declaration(file)
+    def write_typedefs(self, file):
+        file.write("    typedef ::zerobuf::Vector< {0} > {1};\n".
+                   format(self.value_type.type, self.cxxName))
 
     def from_json(self):
         if self.value_type.is_string:
@@ -803,14 +897,13 @@ class FbsTable():
         for function in functions:
             function.write_declaration(file)
 
-    def write_declaration(self, file):
-        self.write_class_begin(file)
+    def write_declaration(self, file, generate_qobject):
+        self.write_class_begin(file, generate_qobject)
 
-        # members accessors
-        for member in self.dynamic_members:
-            member.write_accessors_declaration(file)
-        for member in self.static_members:
-            member.write_accessors_declaration(file)
+        if(generate_qobject):
+            self.write_qobject_members_declarations(file)
+        else:
+            self.write_members(file)
 
         # class functions
         if len(self.dynamic_members) > 0:
@@ -827,9 +920,49 @@ class FbsTable():
 
         self.write_class_end(file)
 
-    def write_class_begin(self, file):
-        file.write( "class " + self.name + " : public ::zerobuf::Zerobuf\n" +
-                    "{\npublic:\n" )
+    def write_class_begin(self, file, generate_qobject):
+        parent_classes = ["public ::zerobuf::Zerobuf"]
+        if generate_qobject:
+            parent_classes.insert(0, "public QObject")
+        parents = ", ".join(parent_classes)
+        file.write( "class {0} : {1}\n".format(self.name, parents))
+        file.write( "{\n" )
+        if generate_qobject:
+            file.write( "    Q_OBJECT\n\n" )
+        file.write( "public:\n" )
+
+    def write_qobject_members_declarations(self, file):
+        if len(self.all_members) == 0:
+            return
+
+        for member in self.dynamic_members:
+            member.write_qt_getters(file)
+        for member in self.static_members:
+            member.write_qt_getters(file)
+        file.write("\n")
+
+        file.write("public slots:\n")
+        for member in self.dynamic_members:
+            member.write_qt_setters(file)
+        for member in self.static_members:
+            member.write_qt_setters(file)
+        file.write("\n")
+
+        file.write("signals:")
+        for member in self.dynamic_members:
+            member.write_qt_signals(file)
+        for member in self.static_members:
+            member.write_qt_signals(file)
+        file.write("\n\n")
+        file.write( "public:\n" )
+
+    def write_members(self, file):
+        for member in self.dynamic_members:
+            member.write_accessors_declaration(file)
+            file.write("\n")
+        for member in self.static_members:
+            member.write_accessors_declaration(file)
+            file.write("\n")
 
     def write_class_end(self, file):
         member_declarations = []
@@ -848,12 +981,14 @@ class FbsTable():
         for function in functions:
             function.write_implementation(file, self.name)
 
-    def write_implementation(self, file):
+    def write_implementation(self, file, generate_qobject):
         # members accessors
         for member in self.dynamic_members:
-            member.write_accessors_implementation(file, self.name)
+            member.write_accessors_implementation(file, self.name, generate_qobject)
+            file.write("\n")
         for member in self.static_members:
-            member.write_accessors_implementation(file, self.name)
+            member.write_accessors_implementation(file, self.name, generate_qobject)
+            file.write("\n")
 
         # class functions
         if len(self.dynamic_members) > 0:
@@ -1030,6 +1165,8 @@ class FbsFile():
     def write_declaration(self, header):
         header.write( "// Generated by zerobufCxx.py\n\n" )
         header.write( "#pragma once\n" )
+        if self.generate_qobject:
+            header.write( "#include <QObject> // base class\n" )
         header.write( "#include <zerobuf/Zerobuf.h> // base class\n" )
         header.write( "#include <zerobuf/Vector.h> // member\n" )
         header.write( "#include <array> // member\n" )
@@ -1041,24 +1178,24 @@ class FbsFile():
             enum.write_declaration(header)
 
         for table in self.tables:
-            table.write_declaration(header)
+            table.write_declaration(header, self.generate_qobject)
 
         self.write_namespace_closing(header)
 
     """Write the C++ implementation file."""
-    def write_implementation(self, cppsource):
-        cppsource.write("#include <zerobuf/NonMovingAllocator.h>\n")
-        cppsource.write("#include <zerobuf/NonMovingSubAllocator.h>\n")
-        cppsource.write("#include <zerobuf/StaticSubAllocator.h>\n")
-        cppsource.write("#include <zerobuf/json.h>\n")
-        cppsource.write("\n")
+    def write_implementation(self, file):
+        file.write("#include <zerobuf/NonMovingAllocator.h>\n")
+        file.write("#include <zerobuf/NonMovingSubAllocator.h>\n")
+        file.write("#include <zerobuf/StaticSubAllocator.h>\n")
+        file.write("#include <zerobuf/json.h>\n")
+        file.write("\n")
 
-        self.write_namespace_opening(cppsource)
+        self.write_namespace_opening(file)
 
         for table in self.tables:
-            table.write_implementation(cppsource)
+            table.write_implementation(file, self.generate_qobject)
 
-        self.write_namespace_closing(cppsource)
+        self.write_namespace_closing(file)
 
 
 if __name__ == "__main__":
