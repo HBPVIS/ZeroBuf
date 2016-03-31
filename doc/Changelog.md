@@ -2,15 +2,17 @@
 
 # git master
 
-* [35](https://github.com/HBPVIS/ZeroBuf/pull/35)
-  Added LookOut and Frame events
+* [38](https://github.com/HBPVIS/ZeroBuf/pull/38):
+  Add data.Frame event
+* [35](https://github.com/HBPVIS/ZeroBuf/pull/35):
+  Add LookOut and render.Frame events
 
 # Release 0.2 (08-03-2016)
 
-* [32](https://github.com/HBPVIS/ZeroBuf/pull/32) 
-  Added JSON conversion to code generator
-* [30](https://github.com/HBPVIS/ZeroBuf/pull/30) 
-  Added ImageJPEG event
+* [32](https://github.com/HBPVIS/ZeroBuf/pull/32):
+  Add JSON conversion to code generator
+* [30](https://github.com/HBPVIS/ZeroBuf/pull/30):
+  Add ImageJPEG event
 
 # Release 0.1 (28-01-2016)
 
