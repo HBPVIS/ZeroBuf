@@ -16,7 +16,7 @@ Progress::Progress( const unsigned long expected )
     _update();
 }
 
-Progress::Progress( const std::string& operation, unsigned long expected )
+Progress::Progress( const std::string& operation, const unsigned long expected )
     : detail::Progress( operation, 0.f )
     , _expected( expected )
     , _count( 0 )
@@ -31,7 +31,7 @@ void Progress::restart( const unsigned long expected )
     _update();
 }
 
-unsigned long Progress::operator+=( unsigned long inc )
+unsigned long Progress::operator+=( const unsigned long inc )
 {
     _count += inc;
     return _update();
