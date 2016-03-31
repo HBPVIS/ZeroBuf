@@ -1,5 +1,5 @@
-# Copyright (c) HBP 2015 Daniel.Nachbaur@epfl.ch
-# Change this number when adding tests to force a CMake run: 4
+# Copyright (c) HBP 2015-2016 Daniel.Nachbaur@epfl.ch
+# Change this number when adding tests to force a CMake run: 0
 
 if(NOT BOOST_FOUND)
   return()
@@ -15,5 +15,6 @@ set(TESTSCHEMA_LINK_LIBRARIES ZeroBuf)
 set(TESTSCHEMA_OMIT_EXPORT ON)
 common_library(testschema)
 
-set(TEST_LIBRARIES ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ZeroBuf testschema ZeroBufRender)
+set(TEST_LIBRARIES ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+  ZeroBuf testschema ZeroBufRender ZeroBufData)
 include(CommonCTest)
