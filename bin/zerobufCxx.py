@@ -9,77 +9,83 @@
 
 import argparse
 import hashlib
-import re
-from pyparsing import *
-import sys
 import os
+import re
+import sys
 
-fbsBaseType = oneOf( "int uint float double byte short ubyte ushort ulong uint8_t uint16_t " +
-                     "uint32_t uint64_t uint128_t int8_t int16_t int32_t int64_t bool string" )
 
-# namespace foo.bar
-fbsNamespaceName = Group( ZeroOrMore( Word( alphanums ) + Suppress( '.' )) +
-                          Word( alphanums ))
-fbsNamespace = Group( Keyword( "namespace" ) + fbsNamespaceName +
-                      Suppress( ';' ))
+def create_FBS_parser():
+    from pyparsing import (oneOf, Group, ZeroOrMore, Word, alphanums, Keyword,
+                           Suppress, Optional, OneOrMore, Literal, nums, Or,
+                           alphas, cppStyleComment)
 
-# enum EventDirection : ubyte { Subscriber, Publisher, Both }
-fbsEnumValue = ( Word( alphanums+"_" ) + Suppress( Optional( ',' )))
-fbsEnum = Group( Keyword( "enum" ) + Word( alphanums ) + Suppress( ':' ) +
-                 fbsBaseType + Suppress( '{' ) + OneOrMore( fbsEnumValue ) +
-                 Suppress( '}' ))
+    types = ("int uint float double byte short ubyte ushort ulong "
+             "uint8_t uint16_t uint32_t uint64_t uint128_t int8_t "
+             "int16_t int32_t int64_t bool string")
 
-# value:[type] = defaultValue; entries in table
-# TODO: support more default values other than numbers and booleans
-fbsType = ( fbsBaseType ^ Word( alphanums ))
-fbsTableArray = ( ( Literal( '[' ) + fbsType + Literal( ']' )) ^
-                  ( Literal( '[' ) + fbsType + Literal( ':' ) + Word( nums ) +
-                    Literal( ']' )) )
-fbsTableValue = ((fbsType ^ fbsTableArray) + ZeroOrMore(Suppress('=') +
-                Or([Word("true"), Word("false"), Word(nums+"-. ,")])))
-fbsTableEntry = Group( Word( alphanums+"_" ) + Suppress( ':' ) + fbsTableValue +
-                       Suppress( ';' ))
-fbsTableSpec = ZeroOrMore( fbsTableEntry )
+    fbsBaseType = oneOf(types)
 
-# table Foo { entries }
-fbsTable = Group( Keyword( "table" ) + Word( alphas, alphanums ) +
-                  Suppress( '{' ) + fbsTableSpec + Suppress( '}' ))
+    # namespace foo.bar
+    fbsNamespaceName = Group( ZeroOrMore( Word( alphanums ) + Suppress( '.' )) +
+                             Word( alphanums ))
+    fbsNamespace = Group( Keyword( "namespace" ) + fbsNamespaceName +
+                         Suppress( ';' ))
 
-# root_type foo;
-fbsRootType = Group( Keyword( "root_type" ) + Word( alphanums ) +
-                     Suppress( ";" ))
+    # enum EventDirection : ubyte { Subscriber, Publisher, Both }
+    fbsEnumValue = ( Word( alphanums+"_" ) + Suppress( Optional( ',' )))
+    fbsEnum = Group( Keyword( "enum" ) + Word( alphanums ) + Suppress( ':' ) +
+                    fbsBaseType + Suppress( '{' ) + OneOrMore( fbsEnumValue ) +
+                    Suppress( '}' ))
 
-# namespace, table(s), root_type
-fbsItem = Or([fbsEnum, fbsTable])
-fbsObject = ( Optional( fbsNamespace ) + OneOrMore( fbsItem ) +
-              Optional( fbsRootType ))
+    # value:[type] = defaultValue; entries in table
+    # TODO: support more default values other than numbers and booleans
+    fbsType = ( fbsBaseType ^ Word( alphanums ))
+    fbsTableArray = ( ( Literal( '[' ) + fbsType + Literal( ']' )) ^
+                     ( Literal( '[' ) + fbsType + Literal( ':' ) + Word( nums ) +
+                      Literal( ']' )) )
+    fbsTableValue = ((fbsType ^ fbsTableArray) +
+                     ZeroOrMore(Suppress('=') + Or([Word("true"), Word("false"), Word(nums+"-. ,")])))
+    fbsTableEntry = Group( Word( alphanums+"_" ) + Suppress( ':' ) + fbsTableValue +
+                          Suppress( ';' ))
+    fbsTableSpec = ZeroOrMore( fbsTableEntry )
 
-fbsComment = cppStyleComment
-fbsObject.ignore( fbsComment )
+    # table Foo { entries }
+    fbsTable = Group( Keyword( "table" ) + Word( alphas, alphanums ) +
+                    Suppress( '{' ) + fbsTableSpec + Suppress( '}' ))
 
-#fbsTableArray.setDebug()
-#fbsTableValue.setDebug()
-#fbsTableEntry.setDebug()
+    # root_type foo;
+    fbsRootType = Group( Keyword( "root_type" ) + Word( alphanums ) +
+                        Suppress( ";" ))
+
+    # namespace, table(s), root_type
+    fbsItem = Or([fbsEnum, fbsTable])
+    fbsObject = ( Optional( fbsNamespace ) + OneOrMore( fbsItem ) +
+                Optional( fbsRootType ))
+
+    fbsComment = cppStyleComment
+    fbsObject.ignore( fbsComment )
+
+    #fbsTableArray.setDebug()
+    #fbsTableValue.setDebug()
+    #fbsTableEntry.setDebug()
+    return fbsObject
+
 
 def isDynamic( spec ):
     #  field is a sub-struct and field size is dynamic
     if spec[1] in emit.tables and emit.types[spec[1]][0] == 0:
         return True
-
-    if spec[1] == "string": # strings are dynamic
+    elif spec[1] == "string": # strings are dynamic
         return True
-
-    if len(spec) == 4: # name : [type] dynamic array
+    elif len(spec) == 4: # name : [type] dynamic array
         return True
 
     return False
 
+
 def countDynamic( specs ):
-    numDynamic = 0
-    for spec in specs:
-        if isDynamic( spec ):
-            numDynamic += 1
-    return numDynamic
+    return sum(isDynamic(spec) for spec in specs)
+
 
 def emitFunction( retVal, function, body, static=False, explicit=False ):
     implFunc = re.sub(r" final$", "", function) # remove ' final' keyword
@@ -111,7 +117,7 @@ def emitDynamicMember(spec):
     emitFunction("void", "set{0}( const {1}& value )".format(cxxName, cxxtype),
                  "notifyChanging();\n    _{0} = value;".format(cxxname))
     emit.initializers.append([cxxname, 1, cxxtype, emit.currentDyn, 0])
-    emit.members.append("{0} _{1};".format(cxxtype, cxxname));
+    emit.members.append("{0} _{1};".format(cxxtype, cxxname))
     emit.fromJSON += "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ), _{0} );\n".format(cxxname)
     emit.toJSON += "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(cxxname)
 
@@ -122,7 +128,7 @@ def emitDynamicMember(spec):
 
 def emitDynamic(spec):
     if(len(spec) == 2 and spec[1] in emit.tables): # dynamic Zerobuf member
-       return emitDynamicMember(spec)
+        return emitDynamicMember(spec)
 
     cxxname = spec[0]
     cxxName = cxxname[0].upper() + cxxname[1:]
@@ -688,13 +694,12 @@ def emit(inline):
     if inline:
         header.write( "#include \"{0}.ipp\"\n\n".format(headerbase) )
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2 :
-        sys.exit("ERROR - " + sys.argv[0] + " - too few input arguments!")
 
-    parser = argparse.ArgumentParser( description =
-                                      "zerobufCxx.py: A zerobuf C++ code generator for extended flatbuffers schemas" )
-    parser.add_argument( "files", nargs = "*" )
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description=("zerobufCxx.py: A zerobuf C++ code generator for "
+                     "extended flatbuffers schemas"))
+    parser.add_argument( "files", nargs = "+" )
     parser.add_argument( '-o', '--outputdir', action='store', default = "",
                          help = "Prefix directory for all generated files.")
     parser.add_argument( '-e', '--extension', action='store', default = "cpp",
@@ -702,11 +707,10 @@ if __name__ == "__main__":
 
     # Parse, interpret and validate arguments
     args = parser.parse_args()
-    if len(args.files) == 0 :
-        sys.exit("ERROR - " + sys.argv[0] + " - no input .fbs files given!")
 
-    for file in args.files:
-        basename = os.path.splitext( file )[0]
+    fbsObject = create_FBS_parser()
+    for _file in args.files:
+        basename = os.path.splitext( _file )[0]
         headerbase = os.path.basename( basename )
         if args.outputdir:
             if args.outputdir == '-':
@@ -721,7 +725,7 @@ if __name__ == "__main__":
             header = open( basename + ".h" , 'w' )
             impl = open( basename + "." + args.extension, 'w' )
 
-        schema = fbsObject.parseFile( file )
+        schema = fbsObject.parseFile(_file)
         # import pprint
         # pprint.pprint( schema.asList( ))
         emit(args.extension == "ipp")
