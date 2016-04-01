@@ -12,6 +12,30 @@ import hashlib
 import os
 import re
 import sys
+from collections import namedtuple
+
+TypeDescription = namedtuple("TypeDescription", "size cxxtype")
+DEFAULT_TYPES = {"int" : TypeDescription(4, "int32_t"),
+                 "uint" : TypeDescription(4, "uint32_t"),
+                 "float" : TypeDescription(4, "float"),
+                 "double" : TypeDescription(8, "double"),
+                 "byte" : TypeDescription(1, "uint8_t"),
+                 "short" : TypeDescription(2, "int16_t"),
+                 "ubyte" : TypeDescription(1, "uint8_t"),
+                 "ushort" : TypeDescription(2, "uint16_t"),
+                 "ulong" : TypeDescription(8, "uint64_t"),
+                 "uint8_t" : TypeDescription(1, "uint8_t"),
+                 "uint16_t" : TypeDescription(2, "uint16_t"),
+                 "uint32_t" : TypeDescription(4, "uint32_t"),
+                 "uint64_t" : TypeDescription(8, "uint64_t"),
+                 "uint128_t" : TypeDescription(16, "::zerobuf::uint128_t"),
+                 "int8_t" : TypeDescription(1, "int8_t"),
+                 "int16_t" : TypeDescription(2, "int16_t"),
+                 "int32_t" : TypeDescription(4, "int32_t"),
+                 "int64_t" : TypeDescription(8, "int64_t"),
+                 "bool" : TypeDescription(1, "bool"),
+                 "string" : TypeDescription(1, "char*"),
+                 }
 
 
 def create_FBS_parser():
@@ -19,9 +43,7 @@ def create_FBS_parser():
                            Suppress, Optional, OneOrMore, Literal, nums, Or,
                            alphas, cppStyleComment)
 
-    types = ("int uint float double byte short ubyte ushort ulong "
-             "uint8_t uint16_t uint32_t uint64_t uint128_t int8_t "
-             "int16_t int32_t int64_t bool string")
+    types = DEFAULT_TYPES.keys()
 
     fbsBaseType = oneOf(types)
 
@@ -73,7 +95,7 @@ def create_FBS_parser():
 
 def isDynamic( spec ):
     #  field is a sub-struct and field size is dynamic
-    if spec[1] in emit.tables and emit.types[spec[1]][0] == 0:
+    if spec[1] in emit.tables and emit.types[spec[1]].size == 0:
         return True
     elif spec[1] == "string": # strings are dynamic
         return True
@@ -106,7 +128,7 @@ def emitFunction( retVal, function, body, static=False, explicit=False ):
 def emitDynamicMember(spec):
     cxxname = spec[0]
     cxxName = cxxname[0].upper() + cxxname[1:]
-    cxxtype = emit.types[spec[1]][1]
+    cxxtype = emit.types[spec[1]].cxxtype
 
     emit.md5.update( cxxtype.encode('utf-8'))
 
@@ -127,7 +149,7 @@ def emitDynamicMember(spec):
     impl.write("\n")
 
 def emitDynamic(spec):
-    if(len(spec) == 2 and spec[1] in emit.tables): # dynamic Zerobuf member
+    if len(spec) == 2 and spec[1] in emit.tables: # dynamic Zerobuf member
         return emitDynamicMember(spec)
 
     cxxname = spec[0]
@@ -137,8 +159,8 @@ def emitDynamic(spec):
         cxxtype = "char"
         elemSize = 1
     else:
-        cxxtype = emit.types[ spec[2] ][1]
-        elemSize = emit.types[ spec[2] ][0]
+        cxxtype = emit.types[spec[2]].cxxtype
+        elemSize = emit.types[spec[2]].size
         isByte = (spec[2] == "byte" or spec[2] == "ubyte")
 
     emit.md5.update( cxxtype.encode('utf-8') + b"Vector" )
@@ -225,8 +247,8 @@ def emitDynamic(spec):
 def emitStaticMember( spec ):
     cxxname = spec[0]
     cxxName = cxxname[0].upper() + cxxname[1:]
-    cxxtype = emit.types[ spec[1] ][1]
-    elemSize = emit.types[ spec[1] ][0]
+    cxxtype = emit.types[spec[1]].cxxtype
+    elemSize = emit.types[spec[1]].size
     if len(spec) == 3:
         emit.defaultValues += "    set{0}({1}( {2} ));\n".\
                               format(cxxName, cxxtype, spec[2])
@@ -266,8 +288,8 @@ def emitStaticMember( spec ):
 def emitStaticArray( spec ):
     cxxname = spec[0]
     cxxName = cxxname[0].upper() + cxxname[1:]
-    cxxtype = emit.types[ spec[2] ][1]
-    elemSize = int( emit.types[ spec[2] ][0] )
+    cxxtype = emit.types[spec[2]].cxxtype
+    elemSize = emit.types[spec[2]].size
     nElems = int( spec[4] )
     nBytes = elemSize * nElems
 
@@ -460,27 +482,7 @@ def emit(inline):
     emit.enums = set()
     emit.tables = set()
     # type lookup table: fbs type : ( size, C++ type )
-    emit.types = { "int" : ( 4, "int32_t" ),
-                   "uint" : ( 4, "uint32_t" ),
-                   "float" : ( 4, "float" ),
-                   "double" : ( 8, "double" ),
-                   "byte" : ( 1, "uint8_t" ),
-                   "short" : ( 2, "int16_t" ),
-                   "ubyte" : ( 1, "uint8_t" ),
-                   "ushort" : ( 2, "uint16_t" ),
-                   "ulong" : ( 8, "uint64_t" ),
-                   "uint8_t" : ( 1, "uint8_t" ),
-                   "uint16_t" : ( 2, "uint16_t" ),
-                   "uint32_t" : ( 4, "uint32_t" ),
-                   "uint64_t" : ( 8, "uint64_t" ),
-                   "uint128_t" : ( 16, "::zerobuf::uint128_t" ),
-                   "int8_t" : ( 1, "int8_t" ),
-                   "int16_t" : ( 2, "int16_t" ),
-                   "int32_t" : ( 4, "int32_t" ),
-                   "int64_t" : ( 8, "int64_t" ),
-                   "bool" : ( 1, "bool" ),
-                   "string" : ( 1, "char*" )
-    }
+    emit.types = DEFAULT_TYPES.copy()
 
     def namespace():
         for namespace in emit.namespace:
@@ -492,7 +494,7 @@ def emit(inline):
             impl.write( "namespace " + namespace + "\n{\n" )
 
     def enum():
-        emit.types[ item[1] ] = ( 4, item[1] )
+        emit.types[item[1]] = TypeDescription( 4, item[1] )
         header.write( "enum " + item[1] + "\n{\n" )
         for enumValue in item[3:]:
             header.write( "    " + item[1] + "_" + enumValue + ",\n" )
@@ -565,17 +567,17 @@ def emit(inline):
                         cxxtype = "std::string"
                     elif(len(member) == 2 and member[1] in emit.tables):
                         # dynamic Zerobuf member
-                        cxxtype = emit.types[member[1]][1]
+                        cxxtype = emit.types[member[1]].cxxtype
                     else:
-                        cxxtype = "std::vector< {0} >".format(emit.types[member[2]][1])
+                        cxxtype = "std::vector< {0} >".format(emit.types[member[2]].cxxtype)
                 else:
                     if len(member) == 2 or len(member) == 3:
-                        cxxtype = emit.types[member[1]][1] # static member
+                        cxxtype = emit.types[member[1]].cxxtype # static member
                     else:
                         if member[2] in emit.tables:
                             cxxtype = cxxName # static array of zerobuf
                         else:
-                            cxxtype = "std::vector< {0} >".format(emit.types[member[2]][1]) # static array of POD
+                            cxxtype = "std::vector< {0} >".format(emit.types[member[2]].cxxtype) # static array of POD
 
                 valueName = cxxname + 'Value'
                 memberArgs.append("const {0}& {1}".format(cxxtype, valueName))
@@ -656,8 +658,7 @@ def emit(inline):
         header.write( "};\n\n" )
 
         # record size of myself in type lookup table, 0 if dynamically sized
-        emit.types[ item[1] ] = ( emit.offset if emit.numDynamic == 0 else 0,
-                                  item[1] )
+        emit.types[ item[1] ] = TypeDescription(emit.offset if emit.numDynamic == 0 else 0, item[1])
         emit.tables.add( item[1] )
 
     def root_type():
