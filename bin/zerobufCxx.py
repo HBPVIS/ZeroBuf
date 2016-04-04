@@ -12,17 +12,39 @@ import hashlib
 import os
 import re
 import sys
+from collections import namedtuple
+
+TypeDescription = namedtuple("TypeDescription", "size cxxtype")
+DEFAULT_TYPES = {"int" : TypeDescription(4, "int32_t"),
+                 "uint" : TypeDescription(4, "uint32_t"),
+                 "float" : TypeDescription(4, "float"),
+                 "double" : TypeDescription(8, "double"),
+                 "byte" : TypeDescription(1, "uint8_t"),
+                 "short" : TypeDescription(2, "int16_t"),
+                 "ubyte" : TypeDescription(1, "uint8_t"),
+                 "ushort" : TypeDescription(2, "uint16_t"),
+                 "ulong" : TypeDescription(8, "uint64_t"),
+                 "uint8_t" : TypeDescription(1, "uint8_t"),
+                 "uint16_t" : TypeDescription(2, "uint16_t"),
+                 "uint32_t" : TypeDescription(4, "uint32_t"),
+                 "uint64_t" : TypeDescription(8, "uint64_t"),
+                 "uint128_t" : TypeDescription(16, "::zerobuf::uint128_t"),
+                 "int8_t" : TypeDescription(1, "int8_t"),
+                 "int16_t" : TypeDescription(2, "int16_t"),
+                 "int32_t" : TypeDescription(4, "int32_t"),
+                 "int64_t" : TypeDescription(8, "int64_t"),
+                 "bool" : TypeDescription(1, "bool"),
+                 "string" : TypeDescription(1, "char*"),
+                 }
+
+NEXTLINE = "\n    "
 
 def create_FBS_parser():
     from pyparsing import (oneOf, Group, ZeroOrMore, Word, alphanums, Keyword,
                            Suppress, Optional, OneOrMore, Literal, nums, Or,
                            alphas, cppStyleComment)
 
-    types = ("int uint float double byte short ubyte ushort ulong "
-             "uint8_t uint16_t uint32_t uint64_t uint128_t int8_t "
-             "int16_t int32_t int64_t bool string")
-
-    fbsBaseType = oneOf(types)
+    fbsBaseType = oneOf(list(DEFAULT_TYPES.keys()))
 
     # namespace foo.bar
     fbsNamespaceName = Group( ZeroOrMore( Word( alphanums ) + Suppress( '.' )) +
@@ -69,7 +91,6 @@ def create_FBS_parser():
     #fbsTableEntry.setDebug()
     return fbsObject
 
-NEXTLINE = "\n    "
 
 """The value type of a C++ member"""
 class ValueType():
@@ -99,13 +120,13 @@ class Function():
         self.virtual = "virtual " if virtual else ""
         self.split_implementation = split
 
-    def get_declaration(self):
+    def declaration(self):
         if self.ret_val:
             return "{0}{1} {2} {{ {3} }}".format( self.static, self.ret_val, self.function, self.body )
         # ctor '[initializer list]{ body }'
         return "{0}{1}{2} {3}".format( self.virtual, self.explicit, self.function, self.body )
 
-    def get_definition(self):
+    def definition(self):
         if self.ret_val:
             return "{0}{1} {2};".format( self.static, self.ret_val, self.function, self.body )
         # ctor '[initializer list]{ body }'
@@ -113,9 +134,9 @@ class Function():
 
     def write_declaration(self, file):
         if self.split_implementation:
-            file.write( "    {0}\n".format(self.get_definition()))
+            file.write(NEXTLINE + self.definition())
         else:
-            file.write( "    {0}\n".format(self.get_declaration()))
+            file.write(NEXTLINE + self.declaration())
 
     def write_implementation(self, file, classname, extra_op = ""):
         if not self.split_implementation:
@@ -133,8 +154,8 @@ class Function():
                 file.write(NEXTLINE + extra_op)
             file.write("\n}\n")
         else:      # ctor '[initializer list]{ body }'
-            file.write("\n" + classname +
-                       "::" + impl_function + NEXTLINE + self.body + "\n\n")
+            file.write("\n" + classname + "::" + impl_function +
+                       NEXTLINE + self.body + "\n")
 
 
 """A member of a C++ class"""
@@ -267,15 +288,19 @@ class FixedSizeMember(ClassMember):
 
     def from_json(self):
         if self.value_type.is_zerobuf_type:
-            return "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ), _{0} );\n".format(self.cxxname)
+            return "::zerobuf::fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ), _{0} );".\
+                format(self.cxxname)
         else:
-            return "    set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, \"{3}\" ))));\n".format(self.cxxName, self.value_type.type, self.value_type.get_data_type(), self.cxxname)
+            return "set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, \"{3}\" ))));".\
+                format(self.cxxName, self.value_type.type, self.value_type.get_data_type(), self.cxxname)
 
     def to_json(self):
         if self.value_type.is_zerobuf_type:
-            return "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(self.cxxname)
+            return "::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, \"{0}\" ));".\
+                format(self.cxxname)
         else:
-            return "    ::zerobuf::toJSON( {0}( get{1}( )), ::zerobuf::getJSONField( json, \"{2}\" ));\n".format(self.value_type.get_data_type(), self.cxxName, self.cxxname)
+            return "::zerobuf::toJSON( {0}( get{1}( )), ::zerobuf::getJSONField( json, \"{2}\" ));".\
+                format(self.value_type.get_data_type(), self.cxxName, self.cxxname)
 
 
 """A member of a class which is a fixed size array"""
@@ -342,27 +367,25 @@ class FixedSizeArray(ClassMember):
         src_ptr = "value.data()"
         return Function("void",
                         "set{0}( const std::vector< {1} >& value )".format(self.cxxName, self.value_type.type),
-                        "if( {0} >= value.size( ))".format(self.nElems) + NEXTLINE +
-                        "{" + NEXTLINE +
+                        "if( {0} < value.size( ))".format(self.nElems) + NEXTLINE +
+                        "    return;" + NEXTLINE +
                         (self.check_array_changed(src_ptr) if qproperty else "") +
-                        "    notifyChanging();" + NEXTLINE +
-                        "    ::memcpy( {0}, {1}, value.size() * sizeof( {3} ));".\
+                        "notifyChanging();" + NEXTLINE +
+                        "::memcpy( {0}, {1}, value.size() * sizeof( {3} ));".\
                         format(self.data_ptr(), src_ptr, self.nElems, self.value_type.type) +
-                        self.emit_value_changed(qproperty) + NEXTLINE +
-                        "}")
+                        self.emit_value_changed(qproperty))
 
     def data_string_setter(self, qproperty=False):
         src_ptr = "value.data()"
         return Function("void",
                         "set{0}( const std::string& value )".format(self.cxxName),
-                        "if( {0} >= value.length( ))".format(self.get_byte_size()) + NEXTLINE +
-                        "{" + NEXTLINE +
+                        "if( {0} < value.length( ))".format(self.get_byte_size()) + NEXTLINE +
+                        "    return;" + NEXTLINE +
                         (self.check_array_changed(src_ptr) if qproperty else "") +
-                        "    notifyChanging();" + NEXTLINE +
-                        "    ::memcpy( {0}, {1}, value.length( ));"\
-                        .format(self.data_ptr(), src_ptr) +
-                        self.emit_value_changed(qproperty) + NEXTLINE +
-                        "}")
+                        "notifyChanging();" + NEXTLINE +
+                        "::memcpy( {0}, {1}, value.length( ));".\
+                        format(self.data_ptr(), src_ptr) +
+                        self.emit_value_changed(qproperty))
 
     def getters(self):
         if self.value_type.is_zerobuf_type:
@@ -420,7 +443,7 @@ class FixedSizeArray(ClassMember):
 
     def write_typedefs(self, file):
         if self.value_type.is_zerobuf_type:
-            file.write("    typedef std::array< {0}, {1} > {2};\n".
+            file.write(NEXTLINE + "typedef std::array< {0}, {1} > {2};".
                        format(self.value_type.type, self.nElems, self.cxxName))
 
     def get_initializer(self):
@@ -430,43 +453,47 @@ class FixedSizeArray(ClassMember):
         return "{0} _{1};".format(self.cxxName, self.cxxname)
 
     def from_json(self):
-        fromJSON = "    {\n"
-        fromJSON += "        const Json::Value& field = ::zerobuf::getJSONField( json, \"{0}\" );\n".format(self.cxxname)
+        fromJSON = "{"
+        fromJSON += NEXTLINE + "    const Json::Value& field = ::zerobuf::getJSONField( json, \"{0}\" );".format(self.cxxname)
 
         if self.value_type.is_zerobuf_type and not self.value_type.is_enum_type:
             for i in range(0, self.nElems):
-                fromJSON += "        ::zerobuf::fromJSON( ::zerobuf::getJSONField( field, {1} ), _{0}[{1}] );\n".format(self.cxxname, i)
+                fromJSON += NEXTLINE + "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( field, {1} ), _{0}[{1}] );".\
+                    format(self.cxxname, i)
         else:
-            fromJSON += "        {0}* array = ({0}*)get{1}();\n". \
+            fromJSON += NEXTLINE + "    {0}* array = ({0}*)get{1}();".\
                 format(self.value_type.get_data_type(), self.cxxName)
 
             if self.value_type.is_byte_type:
-                fromJSON += "        const std::string& decoded = ::zerobuf::fromJSONBinary( field );\n"
-                fromJSON += "        ::memcpy( array, decoded.data(), std::min( decoded.length(), size_t( {0}ull )));\n".format(self.nElems)
+                fromJSON += NEXTLINE + "    const std::string& decoded = ::zerobuf::fromJSONBinary( field );"
+                fromJSON += NEXTLINE + "    ::memcpy( array, decoded.data(), std::min( decoded.length(), size_t( {0}ull )));".format(self.nElems)
             else:
                 for i in range(0, self.nElems):
-                    fromJSON += "        array[{0}] = ::zerobuf::fromJSON< {1} >( ::zerobuf::getJSONField( field, {0} ));\n".format(i, self.value_type.get_data_type())
+                    fromJSON += NEXTLINE + "    array[{0}] = ::zerobuf::fromJSON< {1} >( ::zerobuf::getJSONField( field, {0} ));".\
+                        format(i, self.value_type.get_data_type())
 
-        fromJSON += "    }\n"
+        fromJSON += NEXTLINE + "}"
         return fromJSON
 
     def to_json(self):
-        toJSON = "    {\n"
-        toJSON += "        Json::Value& field = ::zerobuf::getJSONField( json, \"{0}\" );\n".format(self.cxxname)
+        toJSON = "{"
+        toJSON += NEXTLINE + "    Json::Value& field = ::zerobuf::getJSONField( json, \"{0}\" );".\
+            format(self.cxxname)
 
         if self.value_type.is_zerobuf_type and not self.value_type.is_enum_type:
             for i in range(0, self.nElems):
-                toJSON += "        ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0}[{1}] ), ::zerobuf::getJSONField( field, {1} ));\n".format(self.cxxname, i)
+                toJSON += NEXTLINE + "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0}[{1}] ), ::zerobuf::getJSONField( field, {1} ));".\
+                    format(self.cxxname, i)
         else:
-            toJSON += "        const {0}* array = (const {0}*)get{1}();\n". \
+            toJSON += NEXTLINE + "    const {0}* array = (const {0}*)get{1}();".\
                 format(self.value_type.get_data_type(), self.cxxName)
 
             if self.value_type.is_byte_type:
-                toJSON += "        ::zerobuf::toJSONBinary( array, {0}, field );\n".format(self.nElems)
+                toJSON += NEXTLINE + "    ::zerobuf::toJSONBinary( array, {0}, field );".format(self.nElems)
             else:
                 for i in range(0, self.nElems):
-                    toJSON += "        ::zerobuf::toJSON( array[{0}], ::zerobuf::getJSONField( field, {0} ));\n".format(i)
-        toJSON += "    }\n"
+                    toJSON += NEXTLINE + "    ::zerobuf::toJSON( array[{0}], ::zerobuf::getJSONField( field, {0} ));".format(i)
+        toJSON += NEXTLINE + "}"
         return toJSON
 
 
@@ -500,10 +527,12 @@ class DynamicZeroBufMember(ClassMember):
         return "{0} _{1};".format(self.value_type.type, self.cxxname)
 
     def from_json(self):
-        return "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ), _{0} );\n".format(self.cxxname)
+        return "::zerobuf::fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ), _{0} );".\
+            format(self.cxxname)
 
     def to_json(self):
-        return "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(self.cxxname)
+        return "::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, \"{0}\" ));".\
+            format(self.cxxname)
 
 
 """A member of a class which has a dynamic size (vector or string type)"""
@@ -525,7 +554,7 @@ class DynamicMember(ClassMember):
                         "ret.reserve( vec.size( ));" + NEXTLINE +
                         "for( size_t i = 0; i < vec.size(); ++i )" + NEXTLINE +
                         "    ret.push_back( vec[i] );" + NEXTLINE +
-                        "return ret;\n")
+                        "return ret;")
 
     def vector_dynamic_setter(self, qproperty=False):
         current_value = "get{0}Vector()".format(self.cxxName)
@@ -655,24 +684,24 @@ class DynamicMember(ClassMember):
         return "{0} _{1};".format(self.cxxName, self.cxxname)
 
     def write_typedefs(self, file):
-        file.write("    typedef ::zerobuf::Vector< {0} > {1};\n".
+        file.write(NEXTLINE + "typedef ::zerobuf::Vector< {0} > {1};".
                    format(self.value_type.type, self.cxxName))
 
     def from_json(self):
         if self.value_type.is_string:
-            return "    set{0}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, \"{1}\" )));\n".format(self.cxxName, self.cxxname)
+            return "set{0}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, \"{1}\" )));".format(self.cxxName, self.cxxname)
         elif self.value_type.is_byte_type:
-            return "    _{0}.fromJSONBinary( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(self.cxxname)
+            return "_{0}.fromJSONBinary( ::zerobuf::getJSONField( json, \"{0}\" ));".format(self.cxxname)
         else:
-            return "    _{0}.fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(self.cxxname)
+            return "_{0}.fromJSON( ::zerobuf::getJSONField( json, \"{0}\" ));".format(self.cxxname)
 
     def to_json(self):
         if self.value_type.is_string:
-            return "    ::zerobuf::toJSON( get{0}String(), ::zerobuf::getJSONField( json, \"{1}\" ));\n".format(self.cxxName, self.cxxname)
+            return "::zerobuf::toJSON( get{0}String(), ::zerobuf::getJSONField( json, \"{1}\" ));".format(self.cxxName, self.cxxname)
         elif self.value_type.is_byte_type:
-            return "    _{0}.toJSONBinary( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(self.cxxname)
+            return "_{0}.toJSONBinary( ::zerobuf::getJSONField( json, \"{0}\" ));".format(self.cxxname)
         else:
-            return "    _{0}.toJSON( ::zerobuf::getJSONField( json, \"{0}\" ));\n".format(self.cxxname)
+            return "_{0}.toJSON( ::zerobuf::getJSONField( json, \"{0}\" ));".format(self.cxxname)
 
 
 """An fbs enum which can be written as a C++ enum."""
@@ -683,10 +712,10 @@ class FbsEnum():
         self.values = item[3:]
 
     def write_declaration(self, file):
-        file.write( "enum " + self.name + "\n{\n" )
+        file.write("enum " + self.name + "\n{")
         for enumValue in self.values:
-            file.write( "    " + self.name + "_" + enumValue + ",\n" )
-        header.write( "};\n\n" )
+            file.write(NEXTLINE + self.name + "_" + enumValue + ",")
+        header.write("\n};\n\n")
 
 
 """An fbs Table (class) which can be written to a C++ implementation."""
@@ -710,7 +739,7 @@ class FbsTable():
 
     def is_dynamic(self, attirb, fbsFile):
         #  field is a sub-struct and field size is dynamic (==0)
-        if attirb[1] in fbsFile.table_names and fbsFile.types[attirb[1]][0] == 0:
+        if attirb[1] in fbsFile.table_names and fbsFile.types[attirb[1]].size == 0:
             return True
 
         if attirb[1] == "string": # strings are dynamic
@@ -726,8 +755,8 @@ class FbsTable():
         for attirb in self.attributes:
             name = attirb[0]
             fbs_type = attirb[1] if len(attirb) < 4 else attirb[2]
-            cxxtype = fbsFile.types[fbs_type][1]
-            cxxtype_size = fbsFile.types[fbs_type][0]
+            cxxtype = fbsFile.types[fbs_type].cxxtype
+            cxxtype_size = fbsFile.types[fbs_type].size
             is_zerobuf_type = cxxtype in fbsFile.table_names
             is_enum_type = cxxtype in fbsFile.enum_names
             is_byte_type = fbs_type == "byte" or fbs_type == "ubyte"
@@ -875,27 +904,31 @@ class FbsTable():
         return functions
 
     def json_functions(self):
-        from_json = ""
-        to_json = ""
+        from_json = []
+        to_json = []
 
         for member in self.dynamic_members:
-            from_json += member.from_json()
-            to_json += member.to_json()
+            from_json.append(member.from_json())
+            to_json.append(member.to_json())
         for member in self.static_members:
-            from_json += member.from_json()
-            to_json += member.to_json()
+            from_json.append(member.from_json())
+            to_json.append(member.to_json())
 
         if not from_json or not to_json:
             return []
 
-        from_json = from_json[4:]
-        to_json = to_json[4:]
-        return [Function("void", "_parseJSON( const Json::Value& json ) final", from_json),
-                Function("void", "_createJSON( Json::Value& json ) const final", to_json)]
+        return [Function("void", "_parseJSON( const Json::Value& json ) final", NEXTLINE.join(from_json)),
+                Function("void", "_createJSON( Json::Value& json ) const final", NEXTLINE.join(to_json))]
 
     def write_declarations(self, functions, file):
         for function in functions:
             function.write_declaration(file)
+
+    def write_json_declarations(self, file):
+        functions = self.json_functions()
+        if( len(functions) > 0 ):
+            file.write("\n")
+            self.write_declarations(functions, file)
 
     def write_declaration(self, file, generate_qobject):
         self.write_class_begin(file, generate_qobject)
@@ -913,11 +946,10 @@ class FbsTable():
             self.write_declarations(self.empty_constructors(), file)
         else:
             self.write_declarations(self.special_member_functions(), file)
-        file.write(NEXTLINE + "// Introspection\n")
+        file.write("\n")
+        file.write(NEXTLINE + "// Introspection")
         self.write_declarations(self.introspection_functions(), file)
-        file.write("\n\n")
-        self.write_declarations(self.json_functions(), file)
-
+        self.write_json_declarations(file)
         self.write_class_end(file)
 
     def write_class_begin(self, file, generate_qobject):
@@ -925,11 +957,11 @@ class FbsTable():
         if generate_qobject:
             parent_classes.insert(0, "public QObject")
         parents = ", ".join(parent_classes)
-        file.write( "class {0} : {1}\n".format(self.name, parents))
-        file.write( "{\n" )
+        file.write("class {0} : {1}\n".format(self.name, parents))
+        file.write("{\n")
         if generate_qobject:
-            file.write( "    Q_OBJECT\n\n" )
-        file.write( "public:\n" )
+            file.write("    Q_OBJECT\n\n")
+        file.write("public:")
 
     def write_qobject_members_declarations(self, file):
         if len(self.all_members) == 0:
@@ -939,14 +971,14 @@ class FbsTable():
             member.write_qt_getters(file)
         for member in self.static_members:
             member.write_qt_getters(file)
-        file.write("\n")
+        file.write("\n\n")
 
-        file.write("public slots:\n")
+        file.write("public slots:")
         for member in self.dynamic_members:
             member.write_qt_setters(file)
         for member in self.static_members:
             member.write_qt_setters(file)
-        file.write("\n")
+        file.write("\n\n")
 
         file.write("signals:")
         for member in self.dynamic_members:
@@ -954,7 +986,7 @@ class FbsTable():
         for member in self.static_members:
             member.write_qt_signals(file)
         file.write("\n\n")
-        file.write( "public:\n" )
+        file.write("public:")
 
     def write_members(self, file):
         for member in self.dynamic_members:
@@ -973,8 +1005,10 @@ class FbsTable():
             if member.value_type.is_zerobuf_type:
                 member_declarations.append(member.get_declaration())
 
-        file.write("private:" + NEXTLINE)
-        file.write(NEXTLINE.join(member_declarations))
+        if(len(member_declarations) > 0):
+            file.write("\n\n")
+            file.write("private:" + NEXTLINE)
+            file.write(NEXTLINE.join(member_declarations))
         file.write("\n};\n\n")
 
     def write_implementations(self, functions, file):
@@ -985,10 +1019,8 @@ class FbsTable():
         # members accessors
         for member in self.dynamic_members:
             member.write_accessors_implementation(file, self.name, generate_qobject)
-            file.write("\n")
         for member in self.static_members:
             member.write_accessors_implementation(file, self.name, generate_qobject)
-            file.write("\n")
 
         # class functions
         if len(self.dynamic_members) > 0:
@@ -1095,27 +1127,7 @@ class FbsFile():
         self.tables = []
         self.table_names = set()
         # type lookup table: fbs type : ( size, C++ type )
-        self.types = { "int" : ( 4, "int32_t" ),
-                       "uint" : ( 4, "uint32_t" ),
-                       "float" : ( 4, "float" ),
-                       "double" : ( 8, "double" ),
-                       "byte" : ( 1, "uint8_t" ),
-                       "short" : ( 2, "int16_t" ),
-                       "ubyte" : ( 1, "uint8_t" ),
-                       "ushort" : ( 2, "uint16_t" ),
-                       "ulong" : ( 8, "uint64_t" ),
-                       "uint8_t" : ( 1, "uint8_t" ),
-                       "uint16_t" : ( 2, "uint16_t" ),
-                       "uint32_t" : ( 4, "uint32_t" ),
-                       "uint64_t" : ( 8, "uint64_t" ),
-                       "uint128_t" : ( 16, "::zerobuf::uint128_t" ),
-                       "int8_t" : ( 1, "int8_t" ),
-                       "int16_t" : ( 2, "int16_t" ),
-                       "int32_t" : ( 4, "int32_t" ),
-                       "int64_t" : ( 8, "int64_t" ),
-                       "bool" : ( 1, "bool" ),
-                       "string" : ( 1, "char*" )
-                      }
+        self.types = DEFAULT_TYPES.copy()
         self.parse(schema)
 
     def parse(self, schema):
@@ -1138,7 +1150,7 @@ class FbsFile():
 
     def add_enum(self, item):
         enum = FbsEnum(item)
-        self.types[ enum.name ] = (4, enum.name)
+        self.types[ enum.name ] = TypeDescription(4, enum.name)
         self.enum_names.add(enum.name)
         self.enums.append(enum)
 
@@ -1147,7 +1159,7 @@ class FbsFile():
         self.tables.append(table)
         self.table_names.add(table.name)
         # record size in type lookup table, 0 if dynamically sized
-        self.types[ table.name ] = ( table.offset if len(table.dynamic_members) == 0 else 0, table.name )
+        self.types[ table.name ] = TypeDescription( table.offset if len(table.dynamic_members) == 0 else 0, table.name )
 
     def set_root_type(self, item):
         # Nothing to do with this statement
@@ -1155,24 +1167,25 @@ class FbsFile():
 
     def write_namespace_opening(self, file):
         for namespace in self.namespace:
-            file.write( "namespace " + namespace + "\n{\n" )
+            file.write("namespace " + namespace + "\n{\n")
 
     def write_namespace_closing(self, file):
         for namespace in self.namespace:
-            file.write( "}\n" )
+            file.write("}\n")
 
     """Write the C++ header file."""
     def write_declaration(self, header):
-        header.write( "// Generated by zerobufCxx.py\n\n" )
-        header.write( "#pragma once\n" )
+        header.write("// Generated by zerobufCxx.py\n\n")
+        header.write("#pragma once\n")
         if self.generate_qobject:
-            header.write( "#include <QObject> // base class\n" )
-        header.write( "#include <zerobuf/Zerobuf.h> // base class\n" )
-        header.write( "#include <zerobuf/Vector.h> // member\n" )
-        header.write( "#include <array> // member\n" )
-        header.write( "\n" )
+            header.write( "#include <QObject> // base class\n")
+        header.write("#include <zerobuf/Zerobuf.h> // base class\n")
+        header.write("#include <zerobuf/Vector.h> // member\n")
+        header.write("#include <array> // member\n")
+        header.write("\n")
 
         self.write_namespace_opening(header)
+        header.write("\n")
 
         for enum in self.enums:
             enum.write_declaration(header)
@@ -1183,19 +1196,20 @@ class FbsFile():
         self.write_namespace_closing(header)
 
     """Write the C++ implementation file."""
-    def write_implementation(self, file):
-        file.write("#include <zerobuf/NonMovingAllocator.h>\n")
-        file.write("#include <zerobuf/NonMovingSubAllocator.h>\n")
-        file.write("#include <zerobuf/StaticSubAllocator.h>\n")
-        file.write("#include <zerobuf/json.h>\n")
-        file.write("\n")
+    def write_implementation(self, impl):
+        impl.write("#include <zerobuf/NonMovingAllocator.h>\n")
+        impl.write("#include <zerobuf/NonMovingSubAllocator.h>\n")
+        impl.write("#include <zerobuf/StaticSubAllocator.h>\n")
+        impl.write("#include <zerobuf/json.h>\n")
+        impl.write("\n")
 
-        self.write_namespace_opening(file)
+        self.write_namespace_opening(impl)
 
         for table in self.tables:
-            table.write_implementation(file, self.generate_qobject)
+            table.write_implementation(impl, self.generate_qobject)
 
-        self.write_namespace_closing(file)
+        impl.write("\n")
+        self.write_namespace_closing(impl)
 
 
 if __name__ == "__main__":
