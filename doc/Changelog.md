@@ -2,6 +2,8 @@
 
 # git master
 
+* [40](https://github.com/HBPVIS/ZeroBuf/pull/40):
+  Add data.Progress event and logic
 * [38](https://github.com/HBPVIS/ZeroBuf/pull/38):
   Add data.Frame event
 * [35](https://github.com/HBPVIS/ZeroBuf/pull/35):

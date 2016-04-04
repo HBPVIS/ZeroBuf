@@ -323,6 +323,12 @@ std::ostream& operator << ( std::ostream& os, const Vector< T >& vector )
     return os << typeid( vector ).name() << " of size " << vector.size();
 }
 
+template<> inline
+std::ostream& operator << ( std::ostream& os, const Vector< char >& string )
+{
+    return os << string.data();
+}
+
 }
 
 #endif

@@ -1,0 +1,12 @@
+// Copyright (c) 2016, Human Brain Project
+//                     Jafet.VillafrancaDiaz@epfl.ch
+//
+namespace zerobuf.data.detail;
+
+table Progress
+{
+  // Name of the ongoing operation
+  operation:string;
+  // Normalized (0..1) progress state of the operation. Done when >= 1.
+  amount:float;
+}
