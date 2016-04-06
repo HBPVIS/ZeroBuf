@@ -34,7 +34,7 @@ function(zerobuf_generate_cxx Name OutputDir)
 
     add_custom_command(
       COMMAND ${PYTHON_EXECUTABLE} ${ZEROBUF_CXX}
-      ARGS -o "${OutputDir}" -e ${ZEROBUF_SOURCE_EXTENSION} ${FILE}
+      ARGS -o "${OutputDir}" -e ${ZEROBUF_SOURCE_EXTENSION} ${ZEROBUF_EXTRA_ARGS} ${FILE}
       COMMENT "Building zerobuf C++ headers for ${FILE} in ${OutputDir}"
       DEPENDS ${FILE} ${ZEROBUF_CXX}
       OUTPUT ${ZEROBUF_HEADER} ${ZEROBUF_SOURCE}
@@ -43,3 +43,8 @@ function(zerobuf_generate_cxx Name OutputDir)
   set(${Name}_HEADERS ${${Name}_HEADERS} PARENT_SCOPE)
   set(${Name}_SOURCES ${${Name}_SOURCES} PARENT_SCOPE)
 endfunction()
+
+macro(zerobuf_generate_qobject Name OutputDir)
+  set(ZEROBUF_EXTRA_ARGS "-q")
+  zerobuf_generate_cxx(${Name} ${OutputDir} ${ARGN})
+endmacro()
