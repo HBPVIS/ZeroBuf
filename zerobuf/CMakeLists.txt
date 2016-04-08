@@ -2,6 +2,11 @@
 
 set(ZEROBUF_PUBLIC_HEADERS
   Allocator.h
+  DynamicSubAllocator.h
+  NonMovingAllocator.h
+  NonMovingBaseAllocator.h
+  NonMovingSubAllocator.h
+  StaticSubAllocator.h
   Vector.h
   Zerobuf.h
   json.h
@@ -10,11 +15,6 @@ set(ZEROBUF_PUBLIC_HEADERS
 
 set(ZEROBUF_HEADERS
   detail/base64.h
-  DynamicSubAllocator.h
-  NonMovingAllocator.h
-  NonMovingBaseAllocator.h
-  NonMovingSubAllocator.h
-  StaticSubAllocator.h
   jsoncpp/json/json.h
   jsoncpp/json/json-forwards.h
   )
