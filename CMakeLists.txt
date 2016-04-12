@@ -1,17 +1,15 @@
 # Copyright (c) HBP 2015 Grigori Chevtchenko <grigori.chevtchenko@epfl.ch>
 
-cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 
-project(ZeroBuf)
+project(ZeroBuf VERSION 0.2.0)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake
   ${PROJECT_SOURCE_DIR}/zerobuf/share/zerobuf/CMake
   ${CMAKE_SOURCE_DIR}/CMake/common)
 include(GitExternal)
 
-set(VERSION_MAJOR "0")
-set(VERSION_MINOR "2")
-set(VERSION_PATCH "0")
-set(VERSION_ABI 1)
+set(ZeroBuf_VERSION_ABI 1)
+set(ZEROBUF_DEB_DEPENDS python-pyparsing)
 
 include(Common)
 
@@ -22,10 +20,10 @@ set(ZEROBUF_MAINTAINER "Human Brain Project <HBPVis@googlegroups.com>")
 set(ZEROBUF_LICENSE LGPL)
 set(ZEROBUF_DEPENDENT_LIBRARIES Servus)
 
-common_package(Boost 1.49 COMPONENTS unit_test_framework)
-common_package(Servus REQUIRED)
-common_package(PythonInterp REQUIRED)
-common_package_post()
+common_find_package(Boost 1.49 COMPONENTS unit_test_framework)
+common_find_package(Servus REQUIRED)
+common_find_package(PythonInterp REQUIRED)
+common_find_package_post()
 
 set(LCOV_EXCLUDE "zerobuf/jsoncpp/*")
 
