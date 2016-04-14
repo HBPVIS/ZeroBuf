@@ -4,7 +4,7 @@ set(ZEROBUFRENDER_INCLUDE_NAME zerobuf/render)
 
 include(zerobufGenerateCxx)
 zerobuf_generate_cxx(ZEROBUFRENDER
-  ${OUTPUT_INCLUDE_DIR}/${ZEROBUFRENDER_INCLUDE_NAME}
+  ${PROJECT_BINARY_DIR}/include/${ZEROBUFRENDER_INCLUDE_NAME}
   camera.fbs frame.fbs lookOut.fbs lookupTable1D.fbs imageJPEG.fbs)
 
 set(ZEROBUFRENDER_PUBLIC_HEADERS ${ZEROBUFRENDER_HEADERS})
