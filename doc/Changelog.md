@@ -2,6 +2,8 @@
 
 # git master
 
+* [49](https://github.com/HBPVIS/ZeroBuf/pull/49):
+  Added the exit event
 * [52](https://github.com/HBPVIS/ZeroBuf/pull/52):
   Emit Qt signals plus their new values for PODs and strings in _fromBinary()
 * [51](https://github.com/HBPVIS/ZeroBuf/pull/51):
