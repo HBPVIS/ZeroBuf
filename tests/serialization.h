@@ -3,7 +3,7 @@
  *                          Daniel Nachbaur <danielnachbaur@epfl.ch>
  */
 
-#include <testSchema.h>
+#include <testschema/testSchema.h>
 
 #define SETVALUES(type, name) \
     const std::vector< type > name##Vector { type(1), type(1), type(2), type(3) }; \

@@ -6,7 +6,7 @@
 #define BOOST_TEST_MODULE nestedDynamicZerobuf
 
 #include <boost/test/unit_test.hpp>
-#include <testSchema.h>
+#include <testschema/testSchema.h>
 
 #include <utility>
 

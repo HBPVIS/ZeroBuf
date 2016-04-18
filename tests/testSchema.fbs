@@ -1,11 +1,6 @@
 
 namespace test;
 
-table Attribute {
-  key: string;
-  value: string;
-}
-
 table TestNested {
   intvalue: int;
   uintvalue: uint;
@@ -97,5 +92,3 @@ table TestSchema {
   nesteddynamic: [TestNested];
   nestedMember: TestDynamic;
 }
-
-root_type TestSchema;

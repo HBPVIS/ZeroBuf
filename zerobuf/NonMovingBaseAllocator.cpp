@@ -74,7 +74,8 @@ uint8_t* NonMovingBaseAllocator::updateAllocation(
     }
 
     // Check for a big enough hole
-    typedef std::map< size_t, size_t > ArrayMap;
+    //-- record allocations
+    typedef std::map< size_t, size_t > ArrayMap; // offset -> size
     ArrayMap arrays; // sort arrays by position
     for( size_t i = 0; i < _numDynamic; ++i )
     {
@@ -83,8 +84,9 @@ uint8_t* NonMovingBaseAllocator::updateAllocation(
             arrays[ offset ] = _getSize( i );
     }
 
+    //-- find hole
     uint64_t start = _staticSize;
-    for( ArrayMap::const_iterator i = arrays.begin(); i != arrays.end(); ++i )
+    for( auto i = arrays.cbegin(); i != arrays.cend(); ++i )
     {
         assert( i->first >= start );
         if( i->first - start >= newSize )
@@ -93,7 +95,17 @@ uint8_t* NonMovingBaseAllocator::updateAllocation(
         start = i->first + i->second;
     }
 
+    //-- check for space after last allocation
+    if( getSize() - start >= newSize )
+        return _moveAllocation( index, copy, start, newSize );
+
     // realloc space at the end
+    if( start + newSize <= getSize( ))
+        throw std::runtime_error(
+            "Internal allocator error: allocation shrinks from " +
+            std::to_string( getSize( )) + " to " + std::to_string( start ) +
+            " + " + std::to_string( newSize ));
+
     _resize( start + newSize );
     return _moveAllocation( index, copy, start, newSize );
 }
