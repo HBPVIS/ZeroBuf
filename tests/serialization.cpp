@@ -195,3 +195,38 @@ BOOST_AUTO_TEST_CASE(compact)
     copy.fromJSON( schema.toJSON( ));
     BOOST_CHECK_EQUAL( schema.toBinary().size, copy.toBinary().size );
 }
+
+/**
+  Helper function to generate random size strings
+  */
+char get_rand_char() {
+  static std::string charset("abcdefghijklmnopqrstuvwxyz");
+  return charset[rand() % charset.size()];
+}
+
+std::string generate_random_string(size_t n)
+{
+  char* rbuf = new char[n];
+  std::generate(rbuf, rbuf+n, &get_rand_char);
+  std::string s = std::string(rbuf, n);
+  delete [] rbuf;
+  return s;
+}
+
+BOOST_AUTO_TEST_CASE(test_attribute)
+{
+    test::Attribute attribute;
+
+    for( size_t i = 0; i<1000; ++i )
+    {
+        const std::string key = generate_random_string(rand()%20);
+        const std::string value = generate_random_string(rand()%20);
+        const std::string json =
+            "{\n   \"key\" : \"" + key +
+            "\",\n   \"value\" : \"" + value + "\"\n}\n";
+        attribute.fromJSON(json);
+        attribute.compact();
+        const std::string result = attribute.toJSON();
+        BOOST_CHECK_EQUAL( result, json );
+    }
+}

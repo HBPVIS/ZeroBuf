@@ -1,6 +1,11 @@
 
 namespace test;
 
+table Attribute {
+  key: string;
+  value: string;
+}
+
 table TestNested {
   intvalue: int;
   uintvalue: uint;
