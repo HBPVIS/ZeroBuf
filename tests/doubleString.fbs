@@ -1,0 +1,7 @@
+
+namespace test;
+
+table DoubleString {
+  key: string;
+  value: string;
+}

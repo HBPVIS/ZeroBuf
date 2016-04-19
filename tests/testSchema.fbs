@@ -92,5 +92,3 @@ table TestSchema {
   nesteddynamic: [TestNested];
   nestedMember: TestDynamic;
 }
-
-root_type TestSchema;

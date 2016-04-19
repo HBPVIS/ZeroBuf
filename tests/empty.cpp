@@ -6,7 +6,7 @@
 #define BOOST_TEST_MODULE empty
 
 #include <boost/test/unit_test.hpp>
-#include <testSchema.h>
+#include <testschema/testSchema.h>
 #include <iostream>
 
 BOOST_AUTO_TEST_CASE(empty)
