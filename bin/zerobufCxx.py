@@ -92,8 +92,9 @@ def create_FBS_parser():
     return fbsObject
 
 
-"""The value type of a C++ member"""
 class ValueType():
+    """The value type of a C++ member"""
+
     def __init__(self, type, size, is_zerobuf_type=False, is_enum_type=False, is_byte_type=False):
         self.type = type
         self.size = size
@@ -109,8 +110,9 @@ class ValueType():
         return "uint32_t" if self.is_zerobuf_type or self.is_enum_type else self.type
 
 
-"""A C++ Function"""
 class Function():
+    """A C++ Function"""
+
     def __init__(self, ret_val, function, body, static=False, explicit=False, virtual=False, split=True):
         self.ret_val = ret_val
         self.function = function
@@ -158,14 +160,16 @@ class Function():
                        NEXTLINE + self.body + "\n")
 
 
-"""A member of a C++ class"""
 class ClassMember(object):
+    """A member of a C++ class"""
+
     def __init__(self, name, value_type):
         assert(isinstance(value_type, ValueType))
         self.cxxname = name
         self.cxxName = name[0].upper() + str(name[1:])
         self.value_type = value_type
         self.allocator_offset = 0
+        self.qsignal_declaration = self.cxxname + "Changed();"
         self.qsignal = self.cxxname + "Changed();"
 
     def write_typedefs(self, file):
@@ -187,7 +191,7 @@ class ClassMember(object):
             function.write_declaration(file)
 
     def write_qt_signals(self, file):
-        file.write(NEXTLINE + "void " + self.qsignal)
+        file.write(NEXTLINE + "void " + self.qsignal_declaration)
 
     def write_accessors_implementation(self, file, classname, generate_qobject):
         if generate_qobject:
@@ -238,10 +242,13 @@ class ClassMember(object):
                         self.emit_value_changed(qproperty))
 
 
-"""A member of a class which has a fixed size (such as a POD type)"""
 class FixedSizeMember(ClassMember):
+    """A member of a class which has a fixed size (such as a POD type)"""
+
     def __init__(self, name, type):
         super(FixedSizeMember, self).__init__(name, type)
+        self.qsignal_declaration = self.cxxname + "Changed( {0} );".format(self.get_cxxtype())
+        self.qsignal = self.cxxname + "Changed( get{0}( ));".format(self.cxxName)
 
     def value_getter(self):
         return Function(self.get_cxxtype(),
@@ -303,8 +310,9 @@ class FixedSizeMember(ClassMember):
                 format(self.value_type.get_data_type(), self.cxxName, self.cxxname)
 
 
-"""A member of a class which is a fixed size array"""
 class FixedSizeArray(ClassMember):
+    """A member of a class which is a fixed size array"""
+
     def __init__(self, name, type, elem_count, classname):
         super(FixedSizeArray, self).__init__(name, type)
         self.nElems = elem_count
@@ -497,8 +505,9 @@ class FixedSizeArray(ClassMember):
         return toJSON
 
 
-"""A member of a class which has a dynamic size and is a ZeroBuf type"""
 class DynamicZeroBufMember(ClassMember):
+    """A member of a class which has a dynamic size and is a ZeroBuf type"""
+
     def __init__(self, name, type, dynamic_type_index):
         super(DynamicZeroBufMember,self).__init__(name, type)
         self.dynamic_type_index = dynamic_type_index
@@ -535,8 +544,9 @@ class DynamicZeroBufMember(ClassMember):
             format(self.cxxname)
 
 
-"""A member of a class which has a dynamic size (vector or string type)"""
 class DynamicMember(ClassMember):
+    """A member of a class which has a dynamic size (vector or string type)"""
+
     def __init__(self, name, type, dynamic_type_index, classname):
         super(DynamicMember, self).__init__(name, type)
         self.dynamic_type_index = dynamic_type_index
@@ -545,6 +555,10 @@ class DynamicMember(ClassMember):
         if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
             if self.value_type.size == 0:
                 sys.exit("Dynamic arrays of empty ZeroBuf (field {0}) not supported".format(self.cxxname))
+
+        if self.value_type.is_string:
+            self.qsignal_declaration = self.cxxname + "Changed( QString );"
+            self.qsignal = self.cxxname + "Changed( QString::fromLatin1( get{0}().data( )));".format(self.cxxName)
 
     def vector_dynamic_getter(self):
         return Function(self.vector_type(),
@@ -704,8 +718,9 @@ class DynamicMember(ClassMember):
             return "_{0}.toJSON( ::zerobuf::getJSONField( json, \"{0}\" ));".format(self.cxxname)
 
 
-"""An fbs enum which can be written as a C++ enum."""
 class FbsEnum():
+    """An fbs enum which can be written as a C++ enum."""
+
     def __init__(self, item):
         self.name = item[1]
         self.type = item[2]
@@ -718,8 +733,9 @@ class FbsEnum():
         header.write("\n};\n\n")
 
 
-"""An fbs Table (class) which can be written to a C++ implementation."""
 class FbsTable():
+    """An fbs Table (class) which can be written to a C++ implementation."""
+
     def __init__(self, item, namespace, fbsFile):
         self.name = item[1]
         self.attributes = item[2:]
@@ -737,24 +753,24 @@ class FbsTable():
         self.compute_md5()
         self.fill_initializer_list()
 
-    def is_dynamic(self, attirb, fbsFile):
+    def is_dynamic(self, attrib, fbsFile):
         #  field is a sub-struct and field size is dynamic (==0)
-        if attirb[1] in fbsFile.table_names and fbsFile.types[attirb[1]].size == 0:
+        if attrib[1] in fbsFile.table_names and fbsFile.types[attrib[1]].size == 0:
             return True
 
-        if attirb[1] == "string": # strings are dynamic
+        if attrib[1] == "string": # strings are dynamic
             return True
 
-        if len(attirb) == 4: # name : [type] dynamic array
+        if len(attrib) == 4: # name : [type] dynamic array
             return True
 
         return False
 
     def parse_members(self, fbsFile):
         dynamic_type_index = 0
-        for attirb in self.attributes:
-            name = attirb[0]
-            fbs_type = attirb[1] if len(attirb) < 4 else attirb[2]
+        for attrib in self.attributes:
+            name = attrib[0]
+            fbs_type = attrib[1] if len(attrib) < 4 else attrib[2]
             cxxtype = fbsFile.types[fbs_type].cxxtype
             cxxtype_size = fbsFile.types[fbs_type].size
             is_zerobuf_type = cxxtype in fbsFile.table_names
@@ -762,22 +778,22 @@ class FbsTable():
             is_byte_type = fbs_type == "byte" or fbs_type == "ubyte"
             value_type = ValueType(cxxtype, cxxtype_size, is_zerobuf_type, is_enum_type, is_byte_type)
 
-            if self.is_dynamic(attirb, fbsFile):
-                if len(attirb) == 2 and is_zerobuf_type:
+            if self.is_dynamic(attrib, fbsFile):
+                if len(attrib) == 2 and is_zerobuf_type:
                     member = DynamicZeroBufMember(name, value_type, dynamic_type_index)
                 else:
                     member = DynamicMember(name, value_type, dynamic_type_index, self.name)
                 dynamic_type_index += 1
                 self.dynamic_members.append(member)
             else:
-                if len(attirb) == 2 or len(attirb) == 3:
+                if len(attrib) == 2 or len(attrib) == 3:
                     member = FixedSizeMember(name, value_type)
-                    if len(attirb) == 3:
-                        default_values = attirb[2]
+                    if len(attrib) == 3:
+                        default_values = attrib[2]
                         setter = "set{0}({1}( {2} ));".format(member.cxxName, cxxtype, default_values)
                         self.default_value_setters.append(setter)
                 else:
-                    elem_count = int(attirb[4])
+                    elem_count = int(attrib[4])
                     member = FixedSizeArray(name, value_type, elem_count, self.name)
                 self.static_members.append(member)
 
@@ -920,6 +936,20 @@ class FbsTable():
         return [Function("void", "_parseJSON( const Json::Value& json ) final", NEXTLINE.join(from_json)),
                 Function("void", "_createJSON( Json::Value& json ) const final", NEXTLINE.join(to_json))]
 
+    def from_binary_function(self):
+        member_emits = []
+        for member in self.dynamic_members:
+            member_emits.append(member.emit_value_changed(True))
+        for member in self.static_members:
+            member_emits.append(member.emit_value_changed(True))
+        body = []
+        body.append("const bool ret = ::zerobuf::Zerobuf::_fromBinary( data, size );")
+        body.append(NEXTLINE.join(member_emits))
+        body.append("return ret;")
+        function = Function("bool", "_fromBinary( const void* data, const size_t size ) final",
+            "{0}".format(NEXTLINE.join(body)))
+        return function
+
     def write_declarations(self, functions, file):
         for function in functions:
             function.write_declaration(file)
@@ -950,7 +980,7 @@ class FbsTable():
         file.write(NEXTLINE + "// Introspection")
         self.write_declarations(self.introspection_functions(), file)
         self.write_json_declarations(file)
-        self.write_class_end(file)
+        self.write_class_end(file, generate_qobject)
 
     def write_class_begin(self, file, generate_qobject):
         parent_classes = ["public ::zerobuf::Zerobuf"]
@@ -996,7 +1026,7 @@ class FbsTable():
             member.write_accessors_declaration(file)
             file.write("\n")
 
-    def write_class_end(self, file):
+    def write_class_end(self, file, generate_qobject):
         member_declarations = []
 
         for member in self.dynamic_members:
@@ -1005,10 +1035,15 @@ class FbsTable():
             if member.value_type.is_zerobuf_type:
                 member_declarations.append(member.get_declaration())
 
-        if(len(member_declarations) > 0):
+        if len(member_declarations) > 0:
             file.write("\n\n")
             file.write("private:" + NEXTLINE)
             file.write(NEXTLINE.join(member_declarations))
+
+        if generate_qobject:
+            fun = self.from_binary_function()
+            file.write("\n\nprivate:" + NEXTLINE)
+            fun.write_declaration(file)
         file.write("\n};\n\n")
 
     def write_implementations(self, functions, file):
@@ -1033,6 +1068,9 @@ class FbsTable():
 
         self.write_implementations(self.introspection_functions(), file)
         self.write_implementations(self.json_functions(), file)
+        if generate_qobject:
+            fun = self.from_binary_function()
+            fun.write_implementation(file, self.name)
 
     def compact_function(self):
         # Recursive compaction
@@ -1117,8 +1155,9 @@ class FbsTable():
         return initializers
 
 
-"""An fbs file which can be written to C++ header and implementation files."""
 class FbsFile():
+    """An fbs file which can be written to C++ header and implementation files."""
+
     def __init__(self, schema):
         self.generate_qobject = False
         self.namespace = []
@@ -1173,8 +1212,9 @@ class FbsFile():
         for namespace in self.namespace:
             file.write("}\n")
 
-    """Write the C++ header file."""
     def write_declaration(self, header):
+        """Write the C++ header file."""
+
         header.write("// Generated by zerobufCxx.py\n\n")
         header.write("#pragma once\n")
         if self.generate_qobject:
@@ -1195,8 +1235,9 @@ class FbsFile():
 
         self.write_namespace_closing(header)
 
-    """Write the C++ implementation file."""
     def write_implementation(self, impl):
+        """Write the C++ implementation file."""
+
         impl.write("#include <zerobuf/NonMovingAllocator.h>\n")
         impl.write("#include <zerobuf/NonMovingSubAllocator.h>\n")
         impl.write("#include <zerobuf/StaticSubAllocator.h>\n")

@@ -85,13 +85,14 @@ protected:
     ZEROBUF_API friend void fromJSON( const Json::Value&,Zerobuf& );
     ZEROBUF_API friend void toJSON( const Zerobuf&, Json::Value& );
 
+    ZEROBUF_API bool _fromBinary( const void* data, const size_t size ) override;
+
 private:
     AllocatorPtr _allocator;
 
     Zerobuf() = delete;
     Zerobuf( const Zerobuf& zerobuf ) = delete;
 
-    ZEROBUF_API bool _fromBinary( const void* data, const size_t size ) final;
     ZEROBUF_API Data _toBinary() const final;
     ZEROBUF_API bool _fromJSON( const std::string& json ) final;
     ZEROBUF_API std::string _toJSON() const final;
