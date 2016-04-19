@@ -383,18 +383,6 @@ class FixedSizeArray(ClassMember):
                         format(self.data_ptr(), src_ptr, self.nElems, self.value_type.type) +
                         self.emit_value_changed(qproperty))
 
-    def data_string_setter(self, qproperty=False):
-        src_ptr = "value.data()"
-        return Function("void",
-                        "set{0}( const std::string& value )".format(self.cxxName),
-                        "if( {0} < value.length( ))".format(self.get_byte_size()) + NEXTLINE +
-                        "    return;" + NEXTLINE +
-                        (self.check_array_changed(src_ptr) if qproperty else "") +
-                        "notifyChanging();" + NEXTLINE +
-                        "::memcpy( {0}, {1}, value.length( ));".\
-                        format(self.data_ptr(), src_ptr) +
-                        self.emit_value_changed(qproperty))
-
     def getters(self):
         if self.value_type.is_zerobuf_type:
             return [self.const_ref_getter(self.classname),
@@ -417,8 +405,7 @@ class FixedSizeArray(ClassMember):
         if self.value_type.is_zerobuf_type:
             return [self.ref_setter(qproperty)]
         return [self.c_array_setter(qproperty),
-                self.vector_setter(qproperty),
-                self.data_string_setter(qproperty)]
+                self.vector_setter(qproperty)]
 
     def accessor_functions(self):
         """Override ClassMember.accessor_functions for legacy ordering of functions"""
@@ -433,7 +420,6 @@ class FixedSizeArray(ClassMember):
                 self.vector_getter(),
                 self.c_array_setter(),
                 self.vector_setter(),
-                self.data_string_setter(),
                 self.size_getter()]
 
     def get_byte_size(self):
@@ -637,11 +623,17 @@ class DynamicMember(ClassMember):
             return [self.ref_getter(self.classname),
                     self.const_ref_getter(self.classname),
                     self.vector_dynamic_getter()]
+
+        if self.value_type.is_string:
+            return [self.ref_getter(self.classname),
+                    self.const_ref_getter(self.classname),
+                    self.vector_pod_getter(),
+                    self.string_getter()]
+
         # Dynamic array of PODs
         return [self.ref_getter(self.classname),
                 self.const_ref_getter(self.classname),
-                self.vector_pod_getter(),
-                self.string_getter()]
+                self.vector_pod_getter()]
 
     def const_getters(self):
         if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
@@ -655,10 +647,15 @@ class DynamicMember(ClassMember):
     def setters(self, qproperty=False):
         if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
             return [self.vector_dynamic_setter(qproperty)]
+
+        if self.value_type.is_string:
+            return [self.c_pointer_setter(qproperty),
+                    self.vector_pod_setter(qproperty),
+                    self.string_setter(qproperty)]
+
         # Dynamic array of PODs
         return [self.c_pointer_setter(qproperty),
-                self.vector_pod_setter(qproperty),
-                self.string_setter(qproperty)]
+                self.vector_pod_setter(qproperty)]
 
     def accessor_functions(self):
         """Override ClassMember.accessor_functions for legacy ordering of functions"""
