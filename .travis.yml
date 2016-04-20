@@ -1,0 +1,33 @@
+notifications:
+  email:
+    on_success: never
+language: cpp
+sudo: false
+cache:
+  ccache: true
+  pip: true
+  directories:
+  - /usr/local
+before_cache:
+  - brew cleanup
+os:
+  - osx
+env:
+  global:
+    - NINJA_STATUS="[%p %u/%t@%o %r]"
+    - PROJECT_NAME=${PWD##*/}
+  matrix:
+  - BUILD_TYPE=Debug
+  - BUILD_TYPE=Release
+before_install:
+  - brew update
+  - brew outdated cmake || brew upgrade cmake
+  - brew install cppcheck doxygen ninja
+  - brew install python
+  - pip install pyparsing
+script:
+  - mkdir $BUILD_TYPE
+  - cd $BUILD_TYPE
+  - cmake -GNinja -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+  - ninja all && ninja $PROJECT_NAME-tests && ninja install
+
