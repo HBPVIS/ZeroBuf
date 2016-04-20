@@ -627,7 +627,6 @@ class DynamicMember(ClassMember):
         if self.value_type.is_string:
             return [self.ref_getter(self.classname),
                     self.const_ref_getter(self.classname),
-                    self.vector_pod_getter(),
                     self.string_getter()]
 
         # Dynamic array of PODs
@@ -641,8 +640,7 @@ class DynamicMember(ClassMember):
                     self.vector_dynamic_getter()]
         # Dynamic array of PODs
         return [self.const_ref_getter(self.classname),
-                self.vector_pod_getter(),
-                self.string_getter()]
+                self.vector_pod_getter()]
 
     def setters(self, qproperty=False):
         if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
@@ -650,7 +648,6 @@ class DynamicMember(ClassMember):
 
         if self.value_type.is_string:
             return [self.c_pointer_setter(qproperty),
-                    self.vector_pod_setter(qproperty),
                     self.string_setter(qproperty)]
 
         # Dynamic array of PODs
@@ -661,14 +658,20 @@ class DynamicMember(ClassMember):
         """Override ClassMember.accessor_functions for legacy ordering of functions"""
         if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
             return self.getters() + self.setters()
+
+        if self.value_type.is_string:
+            return [self.ref_getter(self.classname),
+                    self.const_ref_getter(self.classname),
+                    self.c_pointer_setter(),
+                    self.string_getter(),
+                    self.string_setter()]
+
         # Dynamic array of PODs
         return [self.ref_getter(self.classname),
                 self.const_ref_getter(self.classname),
                 self.c_pointer_setter(),
                 self.vector_pod_getter(),
-                self.vector_pod_setter(),
-                self.string_getter(),
-                self.string_setter()]
+                self.vector_pod_setter()]
 
     def get_byte_size(self):
         return 16 # 8b offset, 8b size
