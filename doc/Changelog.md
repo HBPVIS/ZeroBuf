@@ -2,6 +2,8 @@
 
 # git master
 
+* [48](https://github.com/HBPVIS/ZeroBuf/pull/48):
+  Fix notifyUpdated usage. Generate doxygen documentation
 * [49](https://github.com/HBPVIS/ZeroBuf/pull/49):
   Added the exit event
 * [52](https://github.com/HBPVIS/ZeroBuf/pull/52):

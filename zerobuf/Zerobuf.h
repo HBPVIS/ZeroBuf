@@ -34,9 +34,6 @@ public:
     /** @return the number of dynamics fields of this object. */
     virtual size_t getZerobufNumDynamics() const = 0;
 
-    /** Called if any data in this object is about to change. */
-    virtual void notifyChanging() {}
-
     /**
      * Remove unused holes from the zerobuf.
      *
@@ -72,6 +69,9 @@ public:
 protected:
     ZEROBUF_API explicit Zerobuf( AllocatorPtr alloc ); // takes ownership of alloc
     ZEROBUF_API virtual ~Zerobuf();
+
+    /** Called if any data in this object has changed. */
+    ZEROBUF_API virtual void notifyChanged() {}
 
     // used by generated ZeroBuf objects
     ZEROBUF_API const Allocator& getAllocator() const;

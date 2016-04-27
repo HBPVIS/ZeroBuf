@@ -110,13 +110,34 @@ class ValueType():
         return "uint32_t" if self.is_zerobuf_type or self.is_enum_type else self.type
 
 
+class DoxygenDoc():
+    """Doxygen documentation for C++ functions"""
+    def __init__(self, brief="", params=[], ret=""):
+        self.brief = brief
+        self.params = params
+        self.ret = ret
+
+    def to_string(self):
+        dox = "/**" + NEXTLINE
+        for i in range(len(self.brief)):
+            dox += " * " + self.brief[i] + NEXTLINE
+        dox += " * " + NEXTLINE
+        for i in range(len(self.params)):
+            dox += " * @param " + self.params[i] + NEXTLINE
+
+        if self.ret:
+            dox += " * @return " + self.ret + NEXTLINE
+        return dox + " **/"
+
+
 class Function():
     """A C++ Function"""
-
-    def __init__(self, ret_val, function, body, static=False, explicit=False, virtual=False, split=True):
+    def __init__(self, ret_val, function, body, doxygen=None, static=False,
+                 explicit=False, virtual=False, split=True):
         self.ret_val = ret_val
         self.function = function
         self.body = body
+        self.doxygen = doxygen
         self.static = "static " if static else ""
         self.explicit = "explicit " if explicit else ""
         self.virtual = "virtual " if virtual else ""
@@ -124,17 +145,22 @@ class Function():
 
     def declaration(self):
         if self.ret_val:
-            return "{0}{1} {2} {{ {3} }}".format( self.static, self.ret_val, self.function, self.body )
+            return "{0}{1} {2} {{ {3} }}".format( self.static, self.ret_val,
+                                                  self.function, self.body )
         # ctor '[initializer list]{ body }'
-        return "{0}{1}{2} {3}".format( self.virtual, self.explicit, self.function, self.body )
+        return "{0}{1}{2} {3}".format( self.virtual, self.explicit,
+                                       self.function, self.body )
 
     def definition(self):
         if self.ret_val:
-            return "{0}{1} {2};".format( self.static, self.ret_val, self.function, self.body )
+            return "{0}{1} {2};".format( self.static, self.ret_val,
+                                         self.function, self.body )
         # ctor '[initializer list]{ body }'
         return "{0}{1}{2};".format( self.virtual, self.explicit, self.function )
 
     def write_declaration(self, file):
+        if self.doxygen:
+            file.write(NEXTLINE + self.doxygen.to_string())
         if self.split_implementation:
             file.write(NEXTLINE + self.definition())
         else:
@@ -229,17 +255,22 @@ class ClassMember(object):
         val_type = self.qualified_type(classname) if classname else self.get_cxxtype()
         return Function("{0}&".format(val_type),
                         "get" + self.cxxName + "()",
-                        "notifyChanging();" + NEXTLINE +
-                        "return _{0};".format(self.cxxname))
+                        "return _{0};".format(self.cxxname),
+                        DoxygenDoc(["Get a reference to the {0} dynamic member.".format(self.value_type.type),
+                                    "WARNING: If the reference is used to modify the object, " +
+                                    "notifyChanged() needs to be explicitly called afterwards."],
+                                   [], "a reference to the {0} dynamic member.".format(self.value_type.type)))
 
     def ref_setter(self, qproperty=False):
         current_value = "_{0}".format(self.cxxname)
         return Function("void",
                         "set{0}( const {1}& value )".format(self.cxxName, self.get_cxxtype()),
                         (self.check_value_changed(current_value) if qproperty else "") +
-                        "notifyChanging();" + NEXTLINE +
-                        "{0} = value;".format(current_value) +
-                        self.emit_value_changed(qproperty))
+                        "{0} = value;".format(current_value) + NEXTLINE +
+                        "notifyChanged();" + self.emit_value_changed(qproperty),
+                        DoxygenDoc(["Set the value of the {0} member.".format(self.value_type.type),
+                                    "notifyChanged() is internally called after the change has been done."],
+                                   ["value the {0} value to be set in the current object".format(self.value_type.type)]))
 
 
 class FixedSizeMember(ClassMember):
@@ -262,9 +293,11 @@ class FixedSizeMember(ClassMember):
         return Function("void",
                         "set{0}( {1} value )".format(self.cxxName, self.get_cxxtype()),
                         (self.check_value_changed(current_value) if qproperty else "") +
-                        "notifyChanging();" + NEXTLINE +
-                        "{0} = value;".format(current_value) +
-                        self.emit_value_changed(qproperty))
+                        "{0} = value;".format(current_value) + NEXTLINE +
+                        "notifyChanged();" + self.emit_value_changed(qproperty),
+                        DoxygenDoc(["Set the value of the {0} fixed size member.".format(self.value_type.type),
+                                    "notifyChanged() is internally called after the change has been done."],
+                                   ["value the {0} value to be set in the current object".format(self.value_type.type)]))
 
     def getters(self):
         if self.value_type.is_zerobuf_type:
@@ -344,9 +377,12 @@ class FixedSizeArray(ClassMember):
     def ptr_getter(self):
         return Function(self.value_type.type + "*",
                         "get" + self.cxxName + "()",
-                        "notifyChanging();" + NEXTLINE +
                         "return getAllocator().template getItemPtr< {0} >( {1} );".\
-                        format(self.value_type.type, self.allocator_offset))
+                        format(self.value_type.type, self.allocator_offset),
+                        DoxygenDoc(["Get a pointer to the {0} fixed size array object.".format(self.value_type.type),
+                                    "WARNING: If the pointer is used to modify the object, " +
+                                   "notifyChanged() needs to be explicitly called afterwards."],
+                                   [], "a pointer to the {0} fixed size array object({0}*).".format(self.value_type.type)))
 
     def const_ptr_getter(self):
         return Function("const {0}*".format(self.value_type.type),
@@ -366,10 +402,12 @@ class FixedSizeArray(ClassMember):
         return Function("void",
                         "set{0}( {1} value[ {2} ] )".format(self.cxxName, self.value_type.type, self.nElems),
                         (self.check_array_changed(src_ptr) if qproperty else "") +
-                        "notifyChanging();" + NEXTLINE +
                         "::memcpy( {0}, {1}, {2} * sizeof( {3} ));".\
-                        format(self.data_ptr(), src_ptr, self.nElems, self.value_type.type) +
-                        self.emit_value_changed(qproperty))
+                        format(self.data_ptr(), src_ptr, self.nElems, self.value_type.type) + NEXTLINE +
+                        "notifyChanged();" + self.emit_value_changed(qproperty),
+                        DoxygenDoc(["Set the value of the {0} fixed size array object from a {0}*.".format(self.value_type.type),
+                                    "notifyChanged() is internally called after the change has been done."],
+                                   ["value a {0}-length {1} array with the data to be set in the current object".format(self.nElems, self.value_type.type)]))
 
     def vector_setter(self, qproperty=False):
         src_ptr = "value.data()"
@@ -378,10 +416,12 @@ class FixedSizeArray(ClassMember):
                         "if( {0} < value.size( ))".format(self.nElems) + NEXTLINE +
                         "    return;" + NEXTLINE +
                         (self.check_array_changed(src_ptr) if qproperty else "") +
-                        "notifyChanging();" + NEXTLINE +
                         "::memcpy( {0}, {1}, value.size() * sizeof( {3} ));".\
-                        format(self.data_ptr(), src_ptr, self.nElems, self.value_type.type) +
-                        self.emit_value_changed(qproperty))
+                        format(self.data_ptr(), src_ptr, self.nElems, self.value_type.type) + NEXTLINE +
+                        "notifyChanged();" + self.emit_value_changed(qproperty),
+                        DoxygenDoc(["Set the value of the {0} fixed size array object from a {0} std::vector.".format(self.value_type.type),
+                                    "notifyChanged() is internally called after the change has been done."],
+                                   ["value a std::vector< {0} > with the data to be set in the current object".format(self.value_type.type)]))
 
     def getters(self):
         if self.value_type.is_zerobuf_type:
@@ -561,13 +601,15 @@ class DynamicMember(ClassMember):
         return Function("void",
                         "set{0}( const {1}& value )".format(self.cxxName, self.vector_type()),
                         (self.check_value_changed(current_value) if qproperty else "") +
-                        "notifyChanging();" + NEXTLINE +
                         "::zerobuf::Vector< {0} > dynamic( getAllocator(), {1} );".\
                         format(self.value_type.type, self.dynamic_type_index) + NEXTLINE +
                         "dynamic.clear();" + NEXTLINE +
                         "for( const " + self.value_type.type + "& data : value )" + NEXTLINE +
-                        "    dynamic.push_back( data );" +
-                        self.emit_value_changed(qproperty))
+                        "    dynamic.push_back( data );" + NEXTLINE +
+                        "notifyChanged();" + self.emit_value_changed(qproperty),
+                        DoxygenDoc(["Set the value of the {0} dynamic object from a {0} std::vector.".format(self.value_type.type),
+                                    "notifyChanged() is internally called after the change has been done."],
+                                   ["value a std::vector< {0} > object with the data to be set in the current object".format(self.value_type.type)]))
 
     def check_c_array_changed(self):
         return "if( ::memcmp( _{0}.data(), value, size * sizeof( {1} )) == 0 )".\
@@ -579,10 +621,13 @@ class DynamicMember(ClassMember):
                         "set{0}( {1} const * value, size_t size )".\
                         format(self.cxxName, self.value_type.type),
                         (self.check_c_array_changed() if qproperty else "") +
-                        "notifyChanging();" + NEXTLINE +
                         "_copyZerobufArray( value, size * sizeof( {0} ), {1} );".\
-                        format(self.value_type.type, self.dynamic_type_index) +
-                        self.emit_value_changed(qproperty))
+                        format(self.value_type.type, self.dynamic_type_index) + NEXTLINE +
+                        "notifyChanged();" + self.emit_value_changed(qproperty),
+                        DoxygenDoc(["Set the value of the {0} dynamic object from a {0}* and size.".format(self.value_type.type),
+                                    "notifyChanged() is internally called after the change has been done."],
+                                   ["value a pointer to the data to be set in the current object".format(self.value_type.type),
+                                    "size the size of the data to be set"]))
 
     def vector_pod_getter(self):
         return Function(self.vector_type(),
@@ -595,10 +640,12 @@ class DynamicMember(ClassMember):
         return Function("void",
                         "set{0}( const {1}& value )".format(self.cxxName, self.vector_type()),
                         (self.check_value_changed(current_value) if qproperty else "") +
-                        "notifyChanging();" + NEXTLINE +
                         "_copyZerobufArray( value.data(), value.size() * sizeof( {0} ), {1} );".\
-                        format(self.value_type.type, self.dynamic_type_index) +
-                        self.emit_value_changed(qproperty))
+                        format(self.value_type.type, self.dynamic_type_index) + NEXTLINE +
+                        "notifyChanged();" + self.emit_value_changed(qproperty),
+                        DoxygenDoc(["Set the value of the {0} dynamic object from a {0} std::vector.".format(self.value_type.type),
+                                    "notifyChanged() is internally called after the change has been done."],
+                                    ["value a std::vector< {0} > object with the data to be set in the current object".format(self.value_type.type)]))
 
     def string_getter(self):
         return Function("std::string",
@@ -613,10 +660,12 @@ class DynamicMember(ClassMember):
         return Function("void",
                         "set{0}( const std::string& value )".format(self.cxxName),
                         (self.check_value_changed(current_value) if qproperty else "") +
-                        "notifyChanging();" + NEXTLINE +
                         "_copyZerobufArray( value.c_str(), value.length(), {0} );".\
-                        format(self.dynamic_type_index) +
-                        self.emit_value_changed(qproperty))
+                        format(self.dynamic_type_index) + NEXTLINE +
+                        "notifyChanged();" + self.emit_value_changed(qproperty),
+                        DoxygenDoc(["Set the value of the {0} dynamic object from a std::string.".format(self.value_type.type),
+                                    "notifyChanged() is internally called after the change has been done."],
+                                   ["value a std::string with the data to be set in the current object"]))
 
     def getters(self):
         if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs

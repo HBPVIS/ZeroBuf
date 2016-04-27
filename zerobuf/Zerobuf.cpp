@@ -30,7 +30,6 @@ Zerobuf::Zerobuf( AllocatorPtr alloc )
 
 Zerobuf::Zerobuf( Zerobuf&& rhs )
 {
-    rhs.notifyChanging();
     _allocator = std::move( rhs._allocator );
     rhs._allocator.reset( new NonMovingAllocator( rhs.getZerobufStaticSize(),
                                                  rhs.getZerobufNumDynamics( )));
@@ -49,9 +48,9 @@ Zerobuf& Zerobuf::operator = ( const Zerobuf& rhs )
     if( getTypeIdentifier() != rhs.getTypeIdentifier( ))
         throw std::runtime_error( "Can't assign Zerobuf of a different type" );
 
-    notifyChanging();
     _allocator->copyBuffer( rhs._allocator->getData(),
                             rhs._allocator->getSize( ));
+    notifyChanged();
     return *this;
 }
 
@@ -63,9 +62,6 @@ Zerobuf& Zerobuf::operator = ( Zerobuf&& rhs )
     if( getTypeIdentifier() != rhs.getTypeIdentifier( ))
         throw std::runtime_error( "Can't assign Zerobuf of a different type" );
 
-    notifyChanging();
-    rhs.notifyChanging();
-
     if( _allocator->isMovable() && rhs._allocator->isMovable( ))
         _allocator = std::move( rhs._allocator );
     else // Sub allocator data can't be moved - need to copy
@@ -73,7 +69,8 @@ Zerobuf& Zerobuf::operator = ( Zerobuf&& rhs )
                                 rhs._allocator->getSize( ));
 
     rhs._allocator.reset( new NonMovingAllocator( rhs.getZerobufStaticSize(),
-                                                 rhs.getZerobufNumDynamics( )));
+                                                  rhs.getZerobufNumDynamics()));
+    notifyChanged();
     return *this;
 }
 
@@ -103,8 +100,8 @@ bool Zerobuf::_fromBinary( const void* data, const size_t size )
         return false;
     }
 
-    notifyChanging();
     _allocator->copyBuffer( data, size );
+    notifyChanged();
     return true;
 }
 
@@ -135,7 +132,6 @@ bool Zerobuf::_fromJSON( const std::string& string )
         return false;
     }
 
-    notifyChanging();
     _parseJSON( json );
     compact();
     return true;
@@ -189,7 +185,6 @@ Allocator& Zerobuf::getAllocator()
     if( !_allocator )
         throw std::runtime_error( "Empty Zerobuf has no allocator" );
 
-    notifyChanging();
     return *_allocator;
 }
 
@@ -208,7 +203,6 @@ void Zerobuf::_copyZerobufArray( const void* data, const size_t size,
         throw std::runtime_error(
             "Can't copy data into empty Zerobuf object" );
 
-    notifyChanging();
     void* array = _allocator->updateAllocation( arrayNum, false /*no copy*/,
                                                 size );
     ::memcpy( array, data, size );

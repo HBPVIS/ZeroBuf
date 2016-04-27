@@ -47,7 +47,7 @@ public:
     /** @return The pointer to the current allocation of the vector */
     const T* data() const { return _alloc->template getDynamic< T >( _index ); }
 
-    /** @return true if the two vectors of buitins are identical. */
+    /** @return true if the two vectors of builtins are identical. */
     bool operator == ( const Vector& rhs ) const;
     /** @return false if the two vectors are identical. */
     bool operator != ( const Vector& rhs ) const;
