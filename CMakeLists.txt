@@ -1,14 +1,14 @@
 # Copyright (c) HBP 2015 Grigori Chevtchenko <grigori.chevtchenko@epfl.ch>
 
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+project(ZeroBuf VERSION 0.3.0)
+set(ZeroBuf_VERSION_ABI 1)
 
-project(ZeroBuf VERSION 0.2.0)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake
   ${PROJECT_SOURCE_DIR}/zerobuf/share/zerobuf/CMake
   ${CMAKE_SOURCE_DIR}/CMake/common)
 include(GitExternal)
 
-set(ZeroBuf_VERSION_ABI 1)
 set(ZEROBUF_DEB_DEPENDS python-pyparsing)
 
 include(Common)
