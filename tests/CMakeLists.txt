@@ -17,6 +17,5 @@ set(TESTSCHEMA_OMIT_EXPORT ON)
 set(TESTSCHEMA_OMIT_INSTALL ON)
 common_library(testschema)
 
-set(TEST_LIBRARIES ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
-  ZeroBuf testschema ZeroBufRender ZeroBufData)
+set(TEST_LIBRARIES ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY} ZeroBuf testschema)
 include(CommonCTest)

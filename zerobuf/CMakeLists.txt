@@ -49,6 +49,3 @@ set(ZEROBUF_INCLUDE_NAME zerobuf)
 set(ZEROBUF_OMIT_LIBRARY_HEADER ON)
 common_library(ZeroBuf)
 target_compile_definitions(ZeroBuf PRIVATE ZEROBUF_SHARED_INL)
-
-add_subdirectory(data)
-add_subdirectory(render)

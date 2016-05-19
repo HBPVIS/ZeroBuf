@@ -2,14 +2,20 @@
 
 # git master
 
-* [48](https://github.com/HBPVIS/ZeroBuf/pull/48):
-  Fix notifyUpdated usage. Generate doxygen documentation
-* [49](https://github.com/HBPVIS/ZeroBuf/pull/49):
-  Added the exit event
+* [58](https://github.com/HBPVIS/ZeroBuf/pull/58):
+  Move vocabulary to new project Lexis  
+* [54](https://github.com/HBPVIS/ZeroBuf/pull/54):
+  Remove more string-related set/get from array/vector types
+* [53](https://github.com/HBPVIS/ZeroBuf/pull/53):
+  Remove set/getString method for non-string dynamic members
 * [52](https://github.com/HBPVIS/ZeroBuf/pull/52):
   Emit Qt signals plus their new values for PODs and strings in _fromBinary()
 * [51](https://github.com/HBPVIS/ZeroBuf/pull/51):
   Fix a bug in the Allocator with multiple reallocs
+* [49](https://github.com/HBPVIS/ZeroBuf/pull/49):
+  Added the exit event
+* [48](https://github.com/HBPVIS/ZeroBuf/pull/48):
+  Fix notifyUpdated usage. Generate doxygen documentation
 * [42](https://github.com/HBPVIS/ZeroBuf/pull/42):
   zerobufCxx.py can generate QObjects
 * [40](https://github.com/HBPVIS/ZeroBuf/pull/40):
