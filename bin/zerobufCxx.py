@@ -796,6 +796,7 @@ class FbsTable():
         self.initializers = []
         self.default_value_setters = []
         self.md5 = hashlib.md5()
+        self.generate_qobject = fbsFile.generate_qobject
 
         self.parse_members(fbsFile)
         self.compute_offsets()
@@ -869,14 +870,15 @@ class FbsTable():
             self.md5.update(member.get_unique_identifier())
 
     def get_virtual_destructor(self):
-        return Function(None, "~" + self.name + "()", "{}", virtual=True, split=False)
+        return Function(None, "~" + self.name + "()", "{}", virtual=True)
 
     def empty_constructors(self):
         functions = []
-        functions.append(Function(None, "{0}()".format(self.name),
-                                  ": ::zerobuf::Zerobuf( ::zerobuf::AllocatorPtr( )){}"))
-        functions.append(Function(None, "{0}( const {0}& )".format(self.name),
-                                  ": ::zerobuf::Zerobuf( ::zerobuf::AllocatorPtr( )){}"))
+        initList = ": ::zerobuf::Zerobuf( ::zerobuf::AllocatorPtr( ))"
+        if self.generate_qobject:
+            initList = ": QObject()\n    , ::zerobuf::Zerobuf( ::zerobuf::AllocatorPtr( ))"
+        functions.append(Function(None, "{0}()".format(self.name), "{0}{{}}".format(initList)))
+        functions.append(Function(None, "{0}( const {0}& )".format(self.name), "{0}{{}}".format(initList)))
         functions.append(self.get_virtual_destructor())
         functions.append(Function(self.name+"&", "operator = ( const " + self.name + "& )",
                                   "return *this;", split=False))
@@ -911,7 +913,7 @@ class FbsTable():
                                   "}"))
         # move ctor
         functions.append(Function(None,
-                                  "{0}( {0}&& rhs ) throw()".format(self.name),
+                                  "{0}( {0}&& rhs ) noexcept".format(self.name),
                                   ": ::zerobuf::Zerobuf( std::move( rhs ))\n" +
                                   self.get_move_initializer()))
         # copy-from-baseclass ctor
@@ -1009,10 +1011,10 @@ class FbsTable():
             file.write("\n")
             self.write_declarations(functions, file)
 
-    def write_declaration(self, file, generate_qobject):
-        self.write_class_begin(file, generate_qobject)
+    def write_declaration(self, file):
+        self.write_class_begin(file)
 
-        if(generate_qobject):
+        if self.generate_qobject:
             self.write_qobject_members_declarations(file)
         else:
             self.write_members(file)
@@ -1029,16 +1031,16 @@ class FbsTable():
         file.write(NEXTLINE + "// Introspection")
         self.write_declarations(self.introspection_functions(), file)
         self.write_json_declarations(file)
-        self.write_class_end(file, generate_qobject)
+        self.write_class_end(file)
 
-    def write_class_begin(self, file, generate_qobject):
+    def write_class_begin(self, file):
         parent_classes = ["public ::zerobuf::Zerobuf"]
-        if generate_qobject:
+        if self.generate_qobject:
             parent_classes.insert(0, "public QObject")
         parents = ", ".join(parent_classes)
         file.write("class {0} : {1}\n".format(self.name, parents))
         file.write("{\n")
-        if generate_qobject:
+        if self.generate_qobject:
             file.write("    Q_OBJECT\n\n")
         file.write("public:")
 
@@ -1075,7 +1077,7 @@ class FbsTable():
             member.write_accessors_declaration(file)
             file.write("\n")
 
-    def write_class_end(self, file, generate_qobject):
+    def write_class_end(self, file):
         member_declarations = []
 
         for member in self.dynamic_members:
@@ -1089,7 +1091,7 @@ class FbsTable():
             file.write("private:" + NEXTLINE)
             file.write(NEXTLINE.join(member_declarations))
 
-        if generate_qobject:
+        if self.generate_qobject:
             fun = self.from_binary_function()
             file.write("\n\nprivate:" + NEXTLINE)
             fun.write_declaration(file)
@@ -1099,12 +1101,12 @@ class FbsTable():
         for function in functions:
             function.write_implementation(file, self.name)
 
-    def write_implementation(self, file, generate_qobject):
+    def write_implementation(self, file):
         # members accessors
         for member in self.dynamic_members:
-            member.write_accessors_implementation(file, self.name, generate_qobject)
+            member.write_accessors_implementation(file, self.name, self.generate_qobject)
         for member in self.static_members:
-            member.write_accessors_implementation(file, self.name, generate_qobject)
+            member.write_accessors_implementation(file, self.name, self.generate_qobject)
 
         # class functions
         if len(self.dynamic_members) > 0:
@@ -1117,7 +1119,7 @@ class FbsTable():
 
         self.write_implementations(self.introspection_functions(), file)
         self.write_implementations(self.json_functions(), file)
-        if generate_qobject:
+        if self.generate_qobject:
             fun = self.from_binary_function()
             fun.write_implementation(file, self.name)
 
@@ -1207,8 +1209,8 @@ class FbsTable():
 class FbsFile():
     """An fbs file which can be written to C++ header and implementation files."""
 
-    def __init__(self, schema):
-        self.generate_qobject = False
+    def __init__(self, schema, generate_qobject):
+        self.generate_qobject = generate_qobject
         self.namespace = []
         self.enums = []
         self.enum_names = set()
@@ -1280,7 +1282,7 @@ class FbsFile():
             enum.write_declaration(header)
 
         for table in self.tables:
-            table.write_declaration(header, self.generate_qobject)
+            table.write_declaration(header)
 
         self.write_namespace_closing(header)
 
@@ -1296,7 +1298,7 @@ class FbsFile():
         self.write_namespace_opening(impl)
 
         for table in self.tables:
-            table.write_implementation(impl, self.generate_qobject)
+            table.write_implementation(impl)
 
         impl.write("\n")
         self.write_namespace_closing(impl)
@@ -1343,8 +1345,7 @@ if __name__ == "__main__":
         schema = fbsObject.parseFile(_file)
         # import pprint
         # pprint.pprint( schema.asList( ))
-        fbsFile = FbsFile(schema)
-        fbsFile.generate_qobject = args.qobject
+        fbsFile = FbsFile(schema, args.qobject)
         fbsFile.write_declaration(header)
         fbsFile.write_implementation(impl)
 
