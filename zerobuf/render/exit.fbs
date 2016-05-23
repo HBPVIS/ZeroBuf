@@ -1,8 +1,0 @@
-// Copyright (c) 2015, Human Brain Project
-//                     Grigori.Chevtchenko@epfl.ch
-//
-namespace zerobuf.render;
-
-//This event is used to gracefully close applications.
-table Exit
-{}
