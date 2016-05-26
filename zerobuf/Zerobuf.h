@@ -28,6 +28,8 @@ namespace zerobuf
 class Zerobuf : public servus::Serializable
 {
 public:
+    ZEROBUF_API virtual ~Zerobuf();
+
     /** @return the static size of this object in bytes. */
     virtual size_t getZerobufStaticSize() const = 0;
 
@@ -68,7 +70,6 @@ public:
 
 protected:
     ZEROBUF_API explicit Zerobuf( AllocatorPtr alloc ); // takes ownership of alloc
-    ZEROBUF_API virtual ~Zerobuf();
 
     /** Called if any data in this object has changed. */
     ZEROBUF_API virtual void notifyChanged() {}

@@ -30,6 +30,7 @@ public:
     virtual void compact( float /*threshold*/ )
         { throw std::runtime_error( "Compaction not implemented" ); }
     virtual bool isMovable() const { return false; } // allocation is moveable
+    virtual bool isMutable() const { return true; } // data is mutable
 
     /**
      * Update allocation of the dynamic elem at index to have newSize bytes.

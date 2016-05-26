@@ -1,5 +1,5 @@
 # Copyright (c) HBP 2015-2016 Daniel.Nachbaur@epfl.ch
-# Change this number when adding tests to force a CMake run: 1
+# Change this number when adding tests to force a CMake run: 2
 
 if(NOT BOOST_FOUND)
   return()

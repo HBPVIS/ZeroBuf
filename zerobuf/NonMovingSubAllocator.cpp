@@ -52,7 +52,7 @@ template<> uint8_t* NonMovingSubAllocatorBase< const Allocator >::getData()
 template< class A >
 const uint8_t* NonMovingSubAllocatorBase< A >::getData() const
 {
-    return _parent.getData() + _parent.getDynamicOffset( _index );
+    return const_cast< const A& >( _parent ).getData() + _parent.getDynamicOffset( _index );
 }
 
 template< class A > size_t NonMovingSubAllocatorBase< A >::getSize() const
