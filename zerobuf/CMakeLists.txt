@@ -2,6 +2,7 @@
 
 set(ZEROBUF_PUBLIC_HEADERS
   Allocator.h
+  ConstAllocator.h
   DynamicSubAllocator.h
   NonMovingAllocator.h
   NonMovingBaseAllocator.h
@@ -21,6 +22,7 @@ set(ZEROBUF_HEADERS
 
 set(ZEROBUF_SOURCES
   detail/base64.cpp
+  ConstAllocator.cpp
   DynamicSubAllocator.cpp
   NonMovingAllocator.cpp
   NonMovingBaseAllocator.cpp

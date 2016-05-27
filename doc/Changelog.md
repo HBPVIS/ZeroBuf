@@ -2,6 +2,9 @@
 
 # git master
 
+* [59](https://github.com/HBPVIS/ZeroBuf/pull/59):
+  Add ConstAllocator and static functions create(), ZEROBUF_TYPE_NAME(),
+  ZEROBUF_TYPE_IDENTIFIER()
 * [58](https://github.com/HBPVIS/ZeroBuf/pull/58):
   Move vocabulary to new project Lexis  
 * [54](https://github.com/HBPVIS/ZeroBuf/pull/54):

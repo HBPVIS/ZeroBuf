@@ -26,6 +26,7 @@ public:
     ZEROBUF_API const uint8_t* getData() const final;
     size_t getSize() const  final { return _size; }
     ZEROBUF_API void copyBuffer( const void* data, size_t size ) final;
+    bool isMutable() const final { return _parent.isMutable(); }
 
 private:
     A& _parent;

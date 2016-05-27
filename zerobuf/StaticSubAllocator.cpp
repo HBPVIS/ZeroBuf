@@ -36,7 +36,7 @@ template<> uint8_t* StaticSubAllocatorBase< const Allocator >::getData()
 
 template< class A > const uint8_t* StaticSubAllocatorBase< A >::getData() const
 {
-    return _parent.getData() + _offset;
+    return const_cast< const A& >( _parent ).getData() + _offset;
 }
 
 template< class A >
