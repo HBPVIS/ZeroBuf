@@ -22,7 +22,7 @@ BOOST_AUTO_TEST_CASE(construction)
                 new zerobuf::ConstAllocator( data.data(), data.size( )));
     BOOST_CHECK_THROW( mutableBaseAlloc->getData(), std::runtime_error );
     BOOST_CHECK_THROW( mutableBaseAlloc->copyBuffer( nullptr, 0 ), std::runtime_error );
-    BOOST_CHECK_THROW( mutableBaseAlloc->updateAllocation( 1, 2, 3 ), std::runtime_error );
+    BOOST_CHECK_THROW( mutableBaseAlloc->updateAllocation( 0, false, 0 ), std::runtime_error );
     BOOST_CHECK_THROW( mutableBaseAlloc->compact( 42 ), std::runtime_error );
 }
 

@@ -917,7 +917,8 @@ class FbsTable():
                                   "}"))
         # move ctor
         functions.append(Function(None,
-                                  "{0}( {0}&& rhs ) noexcept".format(self.name),
+                                  "{0}( {0}&& rhs ){1}".format(self.name,\
+                                  " throw()" if os.name == "nt" else " noexcept"),
                                   ": ::zerobuf::Zerobuf( std::move( rhs ))\n" +
                                   self.get_move_initializer()))
         # copy-from-baseclass ctor

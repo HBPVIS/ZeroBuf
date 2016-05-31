@@ -26,10 +26,10 @@ BOOST_AUTO_TEST_CASE(reallocation)
     for( size_t i = 0; i < 1000; ++i )
     {
         size_t len = ::rand() % 20;
-        doubleString.setKey( std::string( len, len ));
+        doubleString.setKey( std::string( len, 'a' ));
 
         len = ::rand() % 20;
-        doubleString.setValue( std::string( len, len ));
+        doubleString.setValue( std::string( len, 'a' ));
         BOOST_CHECK_LE( doubleString.toBinary().size,
                         36/*header*/ + 19/*biggest hole*/ + 40/*20b strings*/ );
     }
