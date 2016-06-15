@@ -128,7 +128,8 @@ bool Zerobuf::_fromJSON( const std::string& string )
     if( !reader.parse( string, json ))
     {
         std::cerr << "Error parsing JSON: "
-                  << reader.getFormattedErrorMessages() << std::endl;
+                  << reader.getFormattedErrorMessages() << std::endl
+                  << "  while parsing: " << string << std::endl;
         return false;
     }
 
