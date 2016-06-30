@@ -2,7 +2,7 @@
 
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 project(ZeroBuf VERSION 0.3.0)
-set(ZeroBuf_VERSION_ABI 1)
+set(ZeroBuf_VERSION_ABI 2)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake
   ${PROJECT_SOURCE_DIR}/zerobuf/share/zerobuf/CMake

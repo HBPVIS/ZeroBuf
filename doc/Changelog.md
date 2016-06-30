@@ -1,12 +1,12 @@
 # Changelog {#Changelog}
 
-# git master
+# Release 0.3 (30-06-2016)
 
 * [59](https://github.com/HBPVIS/ZeroBuf/pull/59):
   Add ConstAllocator and static functions create(), ZEROBUF_TYPE_NAME(),
   ZEROBUF_TYPE_IDENTIFIER()
 * [58](https://github.com/HBPVIS/ZeroBuf/pull/58):
-  Move vocabulary to new project Lexis  
+  Move vocabulary to new project Lexis
 * [54](https://github.com/HBPVIS/ZeroBuf/pull/54):
   Remove more string-related set/get from array/vector types
 * [53](https://github.com/HBPVIS/ZeroBuf/pull/53):
