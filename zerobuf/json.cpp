@@ -61,6 +61,11 @@ template<> ZEROBUF_INL void toJSON( const uint128_t& value, Json::Value& json )
     json[ "low" ] = Json::UInt64( value.low( ));
 }
 
+void emptyJSONArray( Json::Value& value )
+{
+    value = Json::Value( Json::arrayValue );
+}
+
 void fromJSON( const Json::Value& json, Zerobuf& zerobuf )
 {
     zerobuf._parseJSON( json );

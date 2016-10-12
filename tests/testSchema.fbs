@@ -26,6 +26,10 @@ enum TestEnum : uint {
   THIRD_UNDERSCORE
 }
 
+table TestEnumTable {
+  value: TestEnum;
+}
+
 table TestSchema {
   intvalue: int;
   uintvalue: uint = 42;

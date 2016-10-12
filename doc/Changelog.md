@@ -1,5 +1,12 @@
 # Changelog {#Changelog}
 
+# git master
+
+* [65](https://github.com/HBPVIS/ZeroBuf/pull/65):
+  * JSON schema generated from FBS, available in ZeroBuf::getSchema() and ZeroBuf::ZEROBUF_SCHEMA
+  * enum class for enums instead of 'old' enums; breaks existing enum names
+  * fix wrong JSON value for empty arrays (was 'null', is '[]' now)
+
 # Release 0.3 (30-06-2016)
 
 * [59](https://github.com/HBPVIS/ZeroBuf/pull/59):

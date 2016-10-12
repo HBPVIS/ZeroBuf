@@ -23,7 +23,6 @@ before_install:
   - brew update
   - brew outdated cmake || brew upgrade cmake
   - brew install cppcheck doxygen ninja
-  - brew install python
   - pip install pyparsing
 script:
   - mkdir $BUILD_TYPE

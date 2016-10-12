@@ -63,9 +63,9 @@ test::TestSchema getTestObject()
     object.setBoolvalue( true );
     object.setStringvalue( "testmessage" );
 
-    object.setEnumeration( test::TestEnum_SECOND );
-    const std::vector<test::TestEnum> testEnums = { test::TestEnum_FIRST,
-                                                    test::TestEnum_SECOND };
+    object.setEnumeration( test::TestEnum::SECOND );
+    const std::vector<test::TestEnum> testEnums = { test::TestEnum::FIRST,
+                                                    test::TestEnum::SECOND };
     object.setEnumerations( testEnums );
 
     int32_t intMagic = 42;
@@ -136,10 +136,10 @@ void checkTestObject( const test::TestSchema& object )
     TESTVALUES(int64_t, Int64_t);
     BOOST_CHECK( object.getBoolvalue( ));
     BOOST_CHECK_EQUAL( object.getStringvalueString(), "testmessage" );
-    BOOST_CHECK_EQUAL( object.getEnumeration(), test::TestEnum_SECOND );
+    BOOST_CHECK_EQUAL( object.getEnumeration(), test::TestEnum::SECOND );
 
-    const std::vector<test::TestEnum> testEnums = { test::TestEnum_FIRST,
-                                                    test::TestEnum_SECOND };
+    const std::vector<test::TestEnum> testEnums = { test::TestEnum::FIRST,
+                                                    test::TestEnum::SECOND };
     const std::vector<test::TestEnum>& result = object.getEnumerationsVector();
     BOOST_CHECK_EQUAL_COLLECTIONS( testEnums.begin(), testEnums.end(),
                                    result.begin(), result.end( ));
