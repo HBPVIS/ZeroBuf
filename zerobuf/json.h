@@ -29,6 +29,7 @@ ZEROBUF_API void toJSON( const Zerobuf& zerobuf, Json::Value& json );
 ZEROBUF_API std::string fromJSONBinary( const Json::Value& json );
 ZEROBUF_API void toJSONBinary( const uint8_t* data, const size_t size,
                                Json::Value& json );
+ZEROBUF_API void emptyJSONArray( Json::Value& value );
 /** @endcond */
 }
 

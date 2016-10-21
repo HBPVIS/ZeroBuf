@@ -282,6 +282,7 @@ Vector< T >::toJSON( Json::Value& json, const typename std::enable_if<
                         std::is_base_of< Zerobuf, Q >::value, Q >::type* ) const
 {
     const size_t size_ = size();
+    zerobuf::emptyJSONArray( json ); // return [] instead of null if array is empty
     for( size_t i = 0; i < size_; ++i )
         zerobuf::toJSON( static_cast< const Zerobuf& >(( *this )[ i ]),
                          getJSONField( json, i ));
@@ -292,6 +293,7 @@ Vector< T >::toJSON( Json::Value& json, const typename std::enable_if<
                        !std::is_base_of< Zerobuf, Q >::value, Q >::type* ) const
 {
     const size_t size_ = size();
+    zerobuf::emptyJSONArray( json ); // return [] instead of null if array is empty
     for( size_t i = 0; i < size_; ++i )
         zerobuf::toJSON( (*this)[i], getJSONField( json, i ));
 }

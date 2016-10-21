@@ -9,6 +9,7 @@
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import sys
@@ -37,7 +38,30 @@ DEFAULT_TYPES = {"int" : TypeDescription(4, "int32_t"),
                  "string" : TypeDescription(1, "char*"),
                  }
 
-NEXTLINE = "\n    "
+def fbs_to_json_type(fbs):
+    """
+    Convert known fbs types to JSON types.
+
+    Note that 'enum' and 'table' need to be handled separately.
+    """
+
+    if fbs == 'bool':
+        return 'boolean'
+
+    if fbs == 'string':
+        return 'string'
+
+    if fbs in ['float', 'double']:
+        return 'number'
+    return 'integer'
+
+def next_line(file):
+    file.write('\n')
+
+def next_line_indent(file, indent=4):
+    file.write('\n' + ' ' * indent)
+
+NEXTLINE = '\n    '
 
 def create_FBS_parser():
     from pyparsing import (oneOf, Group, ZeroOrMore, Word, alphanums, Keyword,
@@ -160,30 +184,39 @@ class Function():
 
     def write_declaration(self, file):
         if self.doxygen:
-            file.write(NEXTLINE + self.doxygen.to_string())
+            next_line_indent(file)
+            file.write(self.doxygen.to_string())
         if self.split_implementation:
-            file.write(NEXTLINE + self.definition())
+            next_line_indent(file)
+            file.write(self.definition())
         else:
-            file.write(NEXTLINE + self.declaration())
+            next_line_indent(file)
+            file.write(self.declaration())
 
-    def write_implementation(self, file, classname, extra_op = ""):
+    def write_implementation(self, file, classname=None, extra_op = ""):
         if not self.split_implementation:
             return
 
         impl_function = re.sub(r" final$", "", self.function) # remove ' final' keyword
         impl_function = re.sub(r" = [0-9\.f]+ ", " ", impl_function) # remove default params
 
+        next_line(file)
         if self.ret_val: # '{}'-less body
-            file.write("\n" + self.ret_val + " " + classname +
-                       "::" + impl_function +
-                       "\n{" +
-                       NEXTLINE + self.body)
+            file.write('{0} {1}{2}\n{{'.format(self.ret_val,
+                (classname + '::') if classname else '', impl_function))
+            next_line_indent(file)
+            file.write(self.body)
             if extra_op:
-                file.write(NEXTLINE + extra_op)
-            file.write("\n}\n")
+                next_line_indent(file)
+                file.write(extra_op)
+            next_line(file)
+            file.write('}')
         else:      # ctor '[initializer list]{ body }'
-            file.write("\n" + classname + "::" + impl_function +
-                       NEXTLINE + self.body + "\n")
+            file.write('{0}{1}'.format((classname + '::') if classname else '',
+                                        impl_function))
+            next_line_indent(file)
+            file.write(self.body)
+        next_line(file)
 
 
 class ClassMember(object):
@@ -217,7 +250,8 @@ class ClassMember(object):
             function.write_declaration(file)
 
     def write_qt_signals(self, file):
-        file.write(NEXTLINE + "void " + self.qsignal_declaration)
+        next_line_indent(file)
+        file.write("void " + self.qsignal_declaration)
 
     def write_accessors_implementation(self, file, classname, generate_qobject):
         if generate_qobject:
@@ -330,16 +364,22 @@ class FixedSizeMember(ClassMember):
         if self.value_type.is_zerobuf_type:
             return '::zerobuf::fromJSON( ::zerobuf::getJSONField( json, "{0}" ), _{0} );'.\
                 format(self.cxxname)
-        else:
-            return 'set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, "{3}" ))));'.\
+        # convert enums to their name as a string
+        if self.value_type.is_enum_type:
+            return 'set{0}( {1}( from_string( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, "{2}" )))));'.\
+                format(self.cxxName, self.value_type.type, self.cxxname)
+        return 'set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, "{3}" ))));'.\
                 format(self.cxxName, self.value_type.type, self.value_type.get_data_type(), self.cxxname)
 
     def to_json(self):
         if self.value_type.is_zerobuf_type:
             return '::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, "{0}" ));'.\
                 format(self.cxxname)
-        else:
-            return '::zerobuf::toJSON( {0}( get{1}( )), ::zerobuf::getJSONField( json, "{2}" ));'.\
+        # convert enums back from their name
+        if self.value_type.is_enum_type:
+            return '::zerobuf::toJSON( std::string( to_string( get{0}( ))), ::zerobuf::getJSONField( json, "{1}" ));'.\
+                format(self.cxxName, self.cxxname)
+        return '::zerobuf::toJSON( {0}( get{1}( )), ::zerobuf::getJSONField( json, "{2}" ));'.\
                 format(self.value_type.get_data_type(), self.cxxName, self.cxxname)
 
 
@@ -477,7 +517,8 @@ class FixedSizeArray(ClassMember):
 
     def write_typedefs(self, file):
         if self.value_type.is_zerobuf_type:
-            file.write(NEXTLINE + "typedef std::array< {0}, {1} > {2};".
+            next_line_indent(file)
+            file.write("typedef std::array< {0}, {1} > {2};".
                        format(self.value_type.type, self.nElems, self.cxxName))
 
     def get_initializer(self):
@@ -747,47 +788,168 @@ class DynamicMember(ClassMember):
         return "{0} _{1};".format(self.cxxName, self.cxxname)
 
     def write_typedefs(self, file):
-        file.write(NEXTLINE + "typedef ::zerobuf::Vector< {0} > {1};".
+        next_line_indent(file)
+        file.write("typedef ::zerobuf::Vector< {0} > {1};".
                    format(self.value_type.type, self.cxxName))
 
     def from_json(self):
         if self.value_type.is_string:
             return 'set{0}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, "{1}" )));'.format(self.cxxName, self.cxxname)
-        elif self.value_type.is_byte_type:
+        if self.value_type.is_byte_type:
             return '_{0}.fromJSONBinary( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.cxxname)
-        else:
-            return '_{0}.fromJSON( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.cxxname)
+        return '_{0}.fromJSON( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.cxxname)
 
     def to_json(self):
         if self.value_type.is_string:
             return '::zerobuf::toJSON( get{0}String(), ::zerobuf::getJSONField( json, "{1}" ));'.format(self.cxxName, self.cxxname)
-        elif self.value_type.is_byte_type:
+        if self.value_type.is_byte_type:
             return '_{0}.toJSONBinary( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.cxxname)
-        else:
-            return '_{0}.toJSON( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.cxxname)
+        return '_{0}.toJSON( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.cxxname)
 
 
 class FbsEnum():
     """An fbs enum which can be written as a C++ enum."""
 
-    def __init__(self, item):
-        self.name = item[1]
-        self.type = item[2]
-        self.values = item[3:]
+    def __init__(self, name, type, values):
+        self.name = name
+        self.type = type
+        self.values = values
+
+        # json schema uses string representation of enum values
+        # to be more user-friendly
+        self.to_string = self.to_string()
+        self.from_string = self.from_string()
+        self.ostream = self.ostream()
+
+        self.json_schema = {}
+        self.json_schema['$schema'] = 'http://json-schema.org/schema#'
+        self.json_schema['title'] = self.name
+        self.json_schema['description'] = 'Enum {0} of type {1}'\
+                                          .format(self.name, self.type)
+        self.json_schema['type'] = 'string'
+        self.json_schema['enum'] = self.values
+        self.json_schema['additionalProperties'] = False
+
+    def to_string(self):
+        strs = []
+        for enumValue in self.values:
+            strs.append('case {0}::{1}: return std::string( "{1}" );'.format(self.name, enumValue))
+        return Function('std::string',
+                        'to_string( const {0}& val )'.format(self.name),
+                        'switch( val ){0}{{'
+                        '{0}{1}'
+                        '{0}default: throw std::runtime_error( "{2}" );{0}}}'
+                        .format(NEXTLINE, NEXTLINE.join(strs), 'Unknown value for enum {0}'.format(self.name)), split=True)
+
+    def from_string(self):
+        strs = []
+        for enumValue in self.values:
+            strs.append('if( val == "{1}" ) return {0}::{1};'.format(self.name, enumValue))
+        return Function(self.name, 'from_string( const std::string& val )',
+                        '{0}{1}throw std::runtime_error( "{2}" );'
+                        .format(NEXTLINE.join(strs), NEXTLINE, 'Cannot convert string to enum {0}'.format(self.name)), split=True)
+
+    def ostream(self):
+        return Function('std::ostream&',
+                        'operator << ( std::ostream& os, const {0}& val )'.format(self.name),
+                        'return os << to_string( val );', split=True)
+
 
     def write_declaration(self, file):
-        file.write("enum " + self.name + "\n{")
+        file.write("enum class " + self.name + "\n{")
         for enumValue in self.values:
-            file.write(NEXTLINE + self.name + "_" + enumValue + ",")
-        header.write("\n};\n\n")
+            next_line_indent(file)
+            file.write(enumValue + ",")
+        header.write("\n};\n")
+
+        self.to_string.write_declaration(file)
+        self.from_string.write_declaration(file)
+        self.ostream.write_declaration(file)
+        header.write('\n\n')
+
+    def write_implementation(self, file):
+        self.to_string.write_implementation(file)
+        self.from_string.write_implementation(file)
+        self.ostream.write_implementation(file)
+
+
+def _add_base64_string(property):
+    property['type'] = 'string'
+    property['media'] = {}
+    property['media']['binaryEncoding'] = 'base64'
+
+class JsonSchemaProperties():
+    """
+    Convert FBS table properties and enums to JSON schema properties
+    """
+
+    def __init__(self, fbsFile):
+        self.fbsFile = fbsFile
+        self.properties = {}
+
+    def _table_schema(self, cxxtype):
+        return next(x for x in self.fbsFile.tables if x.name == cxxtype).json_schema
+
+    def _enum_schema(self, cxxtype):
+        return next(x for x in self.fbsFile.enums if x.name == cxxtype).json_schema
+
+    def dynamic_zerobuf(self, name, cxxtype):
+        self.properties[name] = self._table_schema(cxxtype)
+
+    def dynamic_member(self, name, cxxtype, fbs_type):
+        property = {}
+        self.properties[name] = property
+
+        is_byte_type = fbs_type == "byte" or fbs_type == "ubyte"
+        if is_byte_type: # byte arrays are base64 strings
+            _add_base64_string(property)
+        elif fbs_type == 'string':
+            property['type'] = 'string'
+        else:
+            property['type'] = 'array'
+            is_zerobuf_type = cxxtype in self.fbsFile.table_names
+            if is_zerobuf_type:
+                # array of ZeroBuf objects
+                property['items'] = self._table_schema(cxxtype)
+            else:
+                # POD array
+                property['items'] = {}
+                property['items']['type'] = fbs_to_json_type(fbs_type)
+
+    def fixed_size_member(self, name, cxxtype, fbs_type):
+        is_zerobuf_type = cxxtype in self.fbsFile.table_names
+        is_enum_type = cxxtype in self.fbsFile.enum_names
+
+        if is_zerobuf_type:
+            self.properties[name] = self._table_schema(cxxtype)
+        elif is_enum_type:
+            self.properties[name] = self._enum_schema(cxxtype)
+        else:
+            property = {}
+            property['type'] = fbs_to_json_type(fbs_type)
+            self.properties[name] = property
+
+    def fixed_size_array(self, name, fbs_type, elem_count):
+        property = {}
+        self.properties[name] = property
+
+        is_byte_type = fbs_type == "byte" or fbs_type == "ubyte"
+        if is_byte_type: # byte arrays are base64 strings
+            _add_base64_string(property)
+        else:
+            property['type'] = 'array'
+            property['items'] = {}
+            property['items']['type'] = fbs_to_json_type(fbs_type)
+            property['minItems'] = elem_count
+            property['maxItems'] = elem_count
 
 
 class FbsTable():
     """An fbs Table (class) which can be written to a C++ implementation."""
 
-    def __init__(self, item, namespace, fbsFile):
-        self.name = item[1]
-        self.attributes = item[2:]
+    def __init__(self, name, attributes, namespace, fbsFile):
+        self.name = name
+        self.attributes = attributes
         self.namespace = namespace
         self.offset = 0
         self.dynamic_members = []
@@ -797,6 +959,14 @@ class FbsTable():
         self.default_value_setters = []
         self.md5 = hashlib.md5()
         self.generate_qobject = fbsFile.generate_qobject
+
+        self.json_schema = {}
+        self.json_schema['$schema'] = 'http://json-schema.org/schema#'
+        self.json_schema['title'] = self.name
+        self.json_schema['description'] = 'Class {0} of namespace {1}'\
+                                          .format(self.name, self.namespace)
+        self.json_schema['type'] = 'object'
+        self.json_schema['additionalProperties'] = False
 
         self.parse_members(fbsFile)
         self.compute_offsets()
@@ -821,6 +991,7 @@ class FbsTable():
         return False
 
     def parse_members(self, fbsFile):
+        json_schema = JsonSchemaProperties(fbsFile)
         dynamic_type_index = 0
         for attrib in self.attributes:
             name = attrib[0]
@@ -835,13 +1006,16 @@ class FbsTable():
             if self.is_dynamic(attrib, fbsFile):
                 if len(attrib) == 2 and is_zerobuf_type:
                     member = DynamicZeroBufMember(name, value_type, dynamic_type_index)
+                    json_schema.dynamic_zerobuf(name, cxxtype)
                 else:
                     member = DynamicMember(name, value_type, dynamic_type_index, self.name)
+                    json_schema.dynamic_member(name, cxxtype, fbs_type)
                 dynamic_type_index += 1
                 self.dynamic_members.append(member)
             else:
                 if len(attrib) == 2 or len(attrib) == 3:
                     member = FixedSizeMember(name, value_type)
+                    json_schema.fixed_size_member(name, cxxtype, fbs_type)
                     if len(attrib) == 3:
                         default_values = attrib[2]
                         setter = "set{0}({1}( {2} ));".format(member.cxxName, cxxtype, default_values)
@@ -849,9 +1023,11 @@ class FbsTable():
                 else:
                     elem_count = int(attrib[4])
                     member = FixedSizeArray(name, value_type, elem_count, self.name)
+                    json_schema.fixed_size_array(name, fbs_type, elem_count)
                 self.static_members.append(member)
 
             self.all_members.append(member)
+            self.json_schema['properties'] = json_schema.properties
 
     def compute_offsets(self):
         self.offset = 4 # 4b version header in host endianness
@@ -962,27 +1138,32 @@ class FbsTable():
                                          "::" if self.namespace else "",
                                          self.name)
         functions = []
-        functions.append(Function("std::string", "getTypeName() const final",
+        functions.append(Function('std::string', 'getSchema() const final',
+                                  'return ZEROBUF_SCHEMA();', split=True))
+        functions.append(Function('std::string', 'ZEROBUF_SCHEMA()',
+                                  'return "{0}";'.format(json.dumps(self.json_schema, sort_keys=True).replace('"', '\\"')),
+                                  static=True, split=True))
+        functions.append(Function('std::string', 'getTypeName() const final',
                                   'return "{0}";'.format(zerobufName), split=False))
-        functions.append(Function("std::string", "ZEROBUF_TYPE_NAME()",
+        functions.append(Function('std::string', 'ZEROBUF_TYPE_NAME()',
                                   'return "{0}";'.format(zerobufName), static=True, split=False))
-        functions.append(Function("::zerobuf::uint128_t", "getTypeIdentifier() const final",
-                                  "return {0};".format(zerobufType), split=False))
-        functions.append(Function("::zerobuf::uint128_t", "ZEROBUF_TYPE_IDENTIFIER()",
-                                  "return {0};".format(zerobufType), static=True, split=False))
-        functions.append(Function("size_t", "getZerobufStaticSize() const final",
-                                  "return {0};".format(self.offset), split=False))
-        functions.append(Function("size_t", "ZEROBUF_STATIC_SIZE()",
-                                  "return {0};".format(self.offset), static=True, split=False))
-        functions.append(Function("size_t", "getZerobufNumDynamics() const final",
-                                  "return {0};".format(len(self.dynamic_members)), split=False))
-        functions.append(Function("size_t", "ZEROBUF_NUM_DYNAMICS()",
-                                  "return {0};".format(len(self.dynamic_members)), static=True, split=False))
+        functions.append(Function('::zerobuf::uint128_t', 'getTypeIdentifier() const final',
+                                  'return {0};'.format(zerobufType), split=False))
+        functions.append(Function('::zerobuf::uint128_t', 'ZEROBUF_TYPE_IDENTIFIER()',
+                                  'return {0};'.format(zerobufType), static=True, split=False))
+        functions.append(Function('size_t', 'getZerobufStaticSize() const final',
+                                  'return {0};'.format(self.offset), split=False))
+        functions.append(Function('size_t', 'ZEROBUF_STATIC_SIZE()',
+                                  'return {0};'.format(self.offset), static=True, split=False))
+        functions.append(Function('size_t', 'getZerobufNumDynamics() const final',
+                                  'return {0};'.format(len(self.dynamic_members)), split=False))
+        functions.append(Function('size_t', 'ZEROBUF_NUM_DYNAMICS()',
+                                  'return {0};'.format(len(self.dynamic_members)), static=True, split=False))
         if self.has_data():
-            functions.append(Function("Const{0}Ptr".format(self.name),
-                                      "create( const void* data, const size_t size )",
-                                      "return Const{0}Ptr( new {0}( ::zerobuf::AllocatorPtr( " \
-                                      "new ::zerobuf::ConstAllocator( reinterpret_cast< const uint8_t* >( data ), size ))));"
+            functions.append(Function('Const{0}Ptr'.format(self.name),
+                                      'create( const void* data, const size_t size )',
+                                      'return Const{0}Ptr( new {0}( ::zerobuf::AllocatorPtr( ' \
+                                      'new ::zerobuf::ConstAllocator( reinterpret_cast< const uint8_t* >( data ), size ))));'
                                       .format(self.name), static=True, split=False))
         return functions
 
@@ -1048,8 +1229,9 @@ class FbsTable():
         else:
             self.write_declarations(self.empty_constructors(), file)
 
-        file.write("\n")
-        file.write(NEXTLINE + "// Introspection")
+        next_line(file)
+        next_line_indent(file)
+        file.write("// Introspection")
         self.write_declarations(self.introspection_functions(), file)
         self.write_json_declarations(file)
         self.write_class_end(file)
@@ -1108,15 +1290,23 @@ class FbsTable():
                 member_declarations.append(member.get_declaration())
 
         if len(member_declarations) > 0:
-            file.write("\n\n")
-            file.write("private:" + NEXTLINE)
+            next_line(file)
+            next_line(file)
+            file.write("private:")
+            next_line_indent(file)
             file.write(NEXTLINE.join(member_declarations))
 
         if self.generate_qobject:
             fun = self.from_binary_function()
-            file.write("\n\nprivate:" + NEXTLINE)
+            next_line(file)
+            next_line(file)
+            file.write("private:")
+            next_line_indent(file)
             fun.write_declaration(file)
-        file.write("\n};\n\n")
+        next_line(file)
+        file.write("};")
+        next_line(file)
+        next_line(file)
 
     def write_implementations(self, functions, file):
         for function in functions:
@@ -1260,13 +1450,13 @@ class FbsFile():
         self.namespace = item[1]
 
     def add_enum(self, item):
-        enum = FbsEnum(item)
+        enum = FbsEnum(item[1], item[2], item[3:])
         self.types[ enum.name ] = TypeDescription(4, enum.name)
         self.enum_names.add(enum.name)
         self.enums.append(enum)
 
     def add_table(self, item):
-        table = FbsTable(item, self.namespace, self)
+        table = FbsTable(item[1], item[2:], self.namespace, self)
         self.tables.append(table)
         self.table_names.add(table.name)
         # record size in type lookup table, 0 if dynamically sized
@@ -1291,9 +1481,9 @@ class FbsFile():
         header.write("#pragma once\n")
         if self.generate_qobject:
             header.write( "#include <QObject> // base class\n")
-        header.write("#include <zerobuf/Zerobuf.h> // base class\n")
         header.write("#include <zerobuf/ConstAllocator.h> // static create\n")
         header.write("#include <zerobuf/Vector.h> // member\n")
+        header.write("#include <zerobuf/Zerobuf.h> // base class\n")
         header.write("#include <array> // member\n")
         header.write("#include <memory> // std::unique_ptr\n")
         header.write("\n")
@@ -1319,6 +1509,9 @@ class FbsFile():
         impl.write("\n")
 
         self.write_namespace_opening(impl)
+
+        for enum in self.enums:
+            enum.write_implementation(impl)
 
         for table in self.tables:
             table.write_implementation(impl)
