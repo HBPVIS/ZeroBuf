@@ -728,6 +728,11 @@ class DynamicMember(ClassMember):
         if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
             return [self.const_ref_getter(self.classname),
                     self.vector_dynamic_getter()]
+
+        if self.value_type.is_string:
+            return [self.const_ref_getter(self.classname),
+                    self.string_getter()]
+
         # Dynamic array of PODs
         return [self.const_ref_getter(self.classname),
                 self.vector_pod_getter()]
