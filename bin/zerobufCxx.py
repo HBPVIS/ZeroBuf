@@ -224,12 +224,12 @@ class ClassMember(object):
 
     def __init__(self, name, value_type):
         assert(isinstance(value_type, ValueType))
-        self.cxxname = name
+        self.name = name
         self.cxxName = name[0].upper() + str(name[1:])
         self.value_type = value_type
         self.allocator_offset = 0
-        self.qsignal_declaration = self.cxxname + "Changed();"
-        self.qsignal = self.cxxname + "Changed();"
+        self.qsignal_declaration = self.name + "Changed();"
+        self.qsignal = self.name + "Changed();"
 
     def write_typedefs(self, file):
         """Derived classes may implement this function to declare typedefs"""
@@ -283,20 +283,20 @@ class ClassMember(object):
         val_type = self.qualified_type(classname) if classname else self.get_cxxtype()
         return Function("const {0}&".format(val_type),
                         "get" + self.cxxName + "() const",
-                        "return _{0};".format(self.cxxname))
+                        "return _{0};".format(self.name))
 
     def ref_getter(self, classname=None):
         val_type = self.qualified_type(classname) if classname else self.get_cxxtype()
         return Function("{0}&".format(val_type),
                         "get" + self.cxxName + "()",
-                        "return _{0};".format(self.cxxname),
+                        "return _{0};".format(self.name),
                         DoxygenDoc(["Get a reference to the {0} dynamic member.".format(self.value_type.type),
                                     "WARNING: If the reference is used to modify the object, " +
                                     "notifyChanged() needs to be explicitly called afterwards."],
                                    [], "a reference to the {0} dynamic member.".format(self.value_type.type)))
 
     def ref_setter(self, qproperty=False):
-        current_value = "_{0}".format(self.cxxname)
+        current_value = "_{0}".format(self.name)
         return Function("void",
                         "set{0}( const {1}& value )".format(self.cxxName, self.get_cxxtype()),
                         (self.check_value_changed(current_value) if qproperty else "") +
@@ -312,8 +312,8 @@ class FixedSizeMember(ClassMember):
 
     def __init__(self, name, type):
         super(FixedSizeMember, self).__init__(name, type)
-        self.qsignal_declaration = self.cxxname + "Changed( {0} );".format(self.get_cxxtype())
-        self.qsignal = self.cxxname + "Changed( get{0}( ));".format(self.cxxName)
+        self.qsignal_declaration = self.name + "Changed( {0} );".format(self.get_cxxtype())
+        self.qsignal = self.name + "Changed( get{0}( ));".format(self.cxxName)
 
     def value_getter(self):
         return Function(self.get_cxxtype(),
@@ -355,35 +355,35 @@ class FixedSizeMember(ClassMember):
         return self.value_type.type
 
     def get_initializer(self):
-        return [self.cxxname, 1, self.value_type.type, self.allocator_offset, self.value_type.size]
+        return [self.name, 1, self.value_type.type, self.allocator_offset, self.value_type.size]
 
     def get_declaration(self):
-        return "{0} _{1};".format(self.value_type.type, self.cxxname)
+        return "{0} _{1};".format(self.value_type.type, self.name)
 
     def from_json(self):
         if self.value_type.is_zerobuf_type:
             return 'if( ::zerobuf::hasJSONField( json, "{0}" ))'\
                    '{1}    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, "{0}" ), _{0} );'.\
-                format(self.cxxname, NEXTLINE)
+                format(self.name, NEXTLINE)
         # convert enums to their name as a string
         if self.value_type.is_enum_type:
             return 'if( ::zerobuf::hasJSONField( json, "{2}" ))'\
                    '{3}    set{0}( {1}( string_to_{1}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, "{2}" )))));'.\
-                format(self.cxxName, self.value_type.type, self.cxxname, NEXTLINE)
+                format(self.cxxName, self.value_type.type, self.name, NEXTLINE)
         return 'if( ::zerobuf::hasJSONField( json, "{3}" ))'\
                '{4}    set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, "{3}" ))));'.\
-                format(self.cxxName, self.value_type.type, self.value_type.get_data_type(), self.cxxname, NEXTLINE)
+                format(self.cxxName, self.value_type.type, self.value_type.get_data_type(), self.name, NEXTLINE)
 
     def to_json(self):
         if self.value_type.is_zerobuf_type:
             return '::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, "{0}" ));'.\
-                format(self.cxxname)
+                format(self.name)
         # convert enums back from their name
         if self.value_type.is_enum_type:
             return '::zerobuf::toJSON( std::string( to_string( get{0}( ))), ::zerobuf::getJSONField( json, "{1}" ));'.\
-                format(self.cxxName, self.cxxname)
+                format(self.cxxName, self.name)
         return '::zerobuf::toJSON( {0}( get{1}( )), ::zerobuf::getJSONField( json, "{2}" ));'.\
-                format(self.value_type.get_data_type(), self.cxxName, self.cxxname)
+                format(self.value_type.get_data_type(), self.cxxName, self.name)
 
 
 class FixedSizeArray(ClassMember):
@@ -396,13 +396,13 @@ class FixedSizeArray(ClassMember):
 
         if self.nElems < 2:
             sys.exit( "Static array of size {0} for field {1} not supported".
-                      format(self.nElems, self.cxxname))
+                      format(self.nElems, self.name))
         if self.value_type.size == 0:
             sys.exit( "Static array of {0} dynamic elements not implemented".
                       format(self.nElems))
         if self.value_type.is_zerobuf_type:
             if self.value_type.size == 0:
-                sys.exit("Static arrays of empty ZeroBuf (field {0}) not supported".format(self.cxxname))
+                sys.exit("Static arrays of empty ZeroBuf (field {0}) not supported".format(self.name))
 
     def check_array_changed(self, dst_ptr):
         return "if( ::memcmp( {0}, {1}, {2} * sizeof( {3} )) == 0 )".\
@@ -525,20 +525,20 @@ class FixedSizeArray(ClassMember):
                        format(self.value_type.type, self.nElems, self.cxxName))
 
     def get_initializer(self):
-        return [self.cxxname, self.nElems, self.value_type.type, self.allocator_offset, self.value_type.size]
+        return [self.name, self.nElems, self.value_type.type, self.allocator_offset, self.value_type.size]
 
     def get_declaration(self):
-        return "{0} _{1};".format(self.cxxName, self.cxxname)
+        return "{0} _{1};".format(self.cxxName, self.name)
 
     def from_json(self):
-        fromJSON = 'if( ::zerobuf::hasJSONField( json, "{0}" ))'.format(self.cxxname)
+        fromJSON = 'if( ::zerobuf::hasJSONField( json, "{0}" ))'.format(self.name)
         fromJSON += NEXTLINE + "{"
-        fromJSON += NEXTLINE + '    const Json::Value& field = ::zerobuf::getJSONField( json, "{0}" );'.format(self.cxxname)
+        fromJSON += NEXTLINE + '    const Json::Value& field = ::zerobuf::getJSONField( json, "{0}" );'.format(self.name)
 
         if self.value_type.is_zerobuf_type and not self.value_type.is_enum_type:
             for i in range(0, self.nElems):
                 fromJSON += NEXTLINE + "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( field, {1} ), _{0}[{1}] );".\
-                    format(self.cxxname, i)
+                    format(self.name, i)
         else:
             fromJSON += NEXTLINE + "    {0}* array = ({0}*)get{1}();".\
                 format(self.value_type.get_data_type(), self.cxxName)
@@ -557,12 +557,12 @@ class FixedSizeArray(ClassMember):
     def to_json(self):
         toJSON = "{"
         toJSON += NEXTLINE + '    Json::Value& field = ::zerobuf::getJSONField( json, "{0}" );'.\
-            format(self.cxxname)
+            format(self.name)
 
         if self.value_type.is_zerobuf_type and not self.value_type.is_enum_type:
             for i in range(0, self.nElems):
                 toJSON += NEXTLINE + "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0}[{1}] ), ::zerobuf::getJSONField( field, {1} ));".\
-                    format(self.cxxname, i)
+                    format(self.name, i)
         else:
             toJSON += NEXTLINE + "    const {0}* array = (const {0}*)get{1}();".\
                 format(self.value_type.get_data_type(), self.cxxName)
@@ -601,19 +601,19 @@ class DynamicZeroBufMember(ClassMember):
         return self.value_type.type
 
     def get_initializer(self):
-        return [self.cxxname, 1, self.value_type.type, self.dynamic_type_index, 0]
+        return [self.name, 1, self.value_type.type, self.dynamic_type_index, 0]
 
     def get_declaration(self):
-        return "{0} _{1};".format(self.value_type.type, self.cxxname)
+        return "{0} _{1};".format(self.value_type.type, self.name)
 
     def from_json(self):
         return 'if( ::zerobuf::hasJSONField( json, "{0}" ))'\
                '{1}    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, "{0}" ), _{0} );'.\
-            format(self.cxxname, NEXTLINE)
+            format(self.name, NEXTLINE)
 
     def to_json(self):
         return '::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, "{0}" ));'.\
-            format(self.cxxname)
+            format(self.name)
 
 
 class DynamicMember(ClassMember):
@@ -626,11 +626,11 @@ class DynamicMember(ClassMember):
 
         if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
             if self.value_type.size == 0:
-                sys.exit("Dynamic arrays of empty ZeroBuf (field {0}) not supported".format(self.cxxname))
+                sys.exit("Dynamic arrays of empty ZeroBuf (field {0}) not supported".format(self.name))
 
         if self.value_type.is_string:
-            self.qsignal_declaration = self.cxxname + "Changed( QString );"
-            self.qsignal = self.cxxname + "Changed( QString::fromLatin1( get{0}().data( )));".format(self.cxxName)
+            self.qsignal_declaration = self.name + "Changed( QString );"
+            self.qsignal = self.name + "Changed( QString::fromLatin1( get{0}().data( )));".format(self.cxxName)
 
     def vector_dynamic_getter(self):
         return Function(self.vector_type(),
@@ -659,7 +659,7 @@ class DynamicMember(ClassMember):
 
     def check_c_array_changed(self):
         return "if( ::memcmp( _{0}.data(), value, size * sizeof( {1} )) == 0 )".\
-               format(self.cxxname, self.value_type.type) + NEXTLINE +\
+               format(self.name, self.value_type.type) + NEXTLINE +\
                "    return;" + NEXTLINE
 
     def c_pointer_setter(self, qproperty=False):
@@ -679,7 +679,7 @@ class DynamicMember(ClassMember):
         return Function(self.vector_type(),
                         "get{0}Vector() const".format(self.cxxName),
                         "return {0}( _{1}.data(), _{1}.data() + _{1}.size( ));".\
-                        format(self.vector_type(), self.cxxname))
+                        format(self.vector_type(), self.name))
 
     def vector_pod_setter(self, qproperty=False):
         current_value = "get{0}Vector()".format(self.cxxName)
@@ -792,10 +792,10 @@ class DynamicMember(ClassMember):
         return "{0}::{1}".format(classname, self.cxxName)
 
     def get_initializer(self):
-        return [self.cxxname, 0, self.cxxName, self.dynamic_type_index, self.value_type.size]
+        return [self.name, 0, self.cxxName, self.dynamic_type_index, self.value_type.size]
 
     def get_declaration(self):
-        return "{0} _{1};".format(self.cxxName, self.cxxname)
+        return "{0} _{1};".format(self.cxxName, self.name)
 
     def write_typedefs(self, file):
         next_line_indent(file)
@@ -806,21 +806,21 @@ class DynamicMember(ClassMember):
         if self.value_type.is_string:
             return 'if( ::zerobuf::hasJSONField( json, "{1}" ))'\
                    '{2}    set{0}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, "{1}" )));'\
-                   .format(self.cxxName, self.cxxname, NEXTLINE)
+                   .format(self.cxxName, self.name, NEXTLINE)
         if self.value_type.is_byte_type:
             return 'if( ::zerobuf::hasJSONField( json, "{0}" ))'\
                    '{1}    _{0}.fromJSONBinary( ::zerobuf::getJSONField( json, "{0}" ));'\
-                   .format(self.cxxname, NEXTLINE)
+                   .format(self.name, NEXTLINE)
         return 'if( ::zerobuf::hasJSONField( json, "{0}" ))'\
                '{1}    _{0}.fromJSON( ::zerobuf::getJSONField( json, "{0}" ));'\
-               .format(self.cxxname, NEXTLINE)
+               .format(self.name, NEXTLINE)
 
     def to_json(self):
         if self.value_type.is_string:
-            return '::zerobuf::toJSON( get{0}String(), ::zerobuf::getJSONField( json, "{1}" ));'.format(self.cxxName, self.cxxname)
+            return '::zerobuf::toJSON( get{0}String(), ::zerobuf::getJSONField( json, "{1}" ));'.format(self.cxxName, self.name)
         if self.value_type.is_byte_type:
-            return '_{0}.toJSONBinary( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.cxxname)
-        return '_{0}.toJSON( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.cxxname)
+            return '_{0}.toJSONBinary( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.name)
+        return '_{0}.toJSON( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.name)
 
 
 class FbsEnum():
@@ -1091,7 +1091,7 @@ class FbsTable():
         memberArgs = []
         setters = []
         for member in self.all_members:
-            valueName = member.cxxname + 'Value'
+            valueName = member.name + 'Value'
             memberArgs.append("const {0}& {1}".format(member.get_cxxtype(), valueName))
             setters.append("set{0}( {1} );".format(member.cxxName, valueName))
         functions.append(Function(None,
@@ -1354,7 +1354,7 @@ class FbsTable():
         # Recursive compaction
         compact = ''
         for dynamic_member in self.dynamic_members:
-            compact += "    _{0}.compact( threshold );\n".format(dynamic_member.cxxname)
+            compact += "    _{0}.compact( threshold );\n".format(dynamic_member.name)
         compact += "    ::zerobuf::Zerobuf::compact( threshold );"
         compact = compact[4:]
         return Function("void", "compact( float threshold = 0.1f ) final", compact)
@@ -1368,7 +1368,7 @@ class FbsTable():
 
     def get_move_statics(self):
         movers = ''
-        # [cxxname, nElems, cxxtype, offset|index, elemSize]
+        # [name, nElems, cxxtype, offset|index, elemSize]
         for initializer in self.initializers:
             if initializer[1] == 1: # single member
                 if initializer[4] == 0: # dynamic member
@@ -1391,7 +1391,7 @@ class FbsTable():
 
     def get_move_operator(self):
         movers = ''
-        # [cxxname, nElems, cxxtype, offset|index, elem_size]
+        # [name, nElems, cxxtype, offset|index, elem_size]
         for initializer in self.initializers:
             if initializer[1] == 0: # dynamic array
                 movers += "    _{0}.reset( getAllocator( ));\n".format(initializer[0])
@@ -1401,7 +1401,7 @@ class FbsTable():
 
     def get_move_initializer(self):
         initializers = ''
-        # [cxxname, nElems, cxxtype, offset|index, elem_size]
+        # [name, nElems, cxxtype, offset|index, elem_size]
         for initializer in self.initializers:
             if initializer[1] == 0: # dynamic array
                 initializers += "    , _{0}( getAllocator(), {1} )\n".format(initializer[0], initializer[3])
@@ -1413,7 +1413,7 @@ class FbsTable():
     def get_initializer_list(self):
         initializers = ''
 
-        # [cxxname, nElems, cxxtype, offset, elem_size]
+        # [name, nElems, cxxtype, offset, elem_size]
         for initializer in self.initializers:
             if initializer[1] == 0: # dynamic array
                 initializers += "    , _{0}( getAllocator(), {1} )\n".format(initializer[0], initializer[3])
