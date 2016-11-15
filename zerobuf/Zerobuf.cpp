@@ -132,7 +132,16 @@ bool Zerobuf::_fromJSON( const std::string& string )
         return false;
     }
 
-    _parseJSON( json );
+    try
+    {
+        _parseJSON( json );
+    }
+    catch( const std::exception& e )
+    {
+        std::cerr << "Error applying JSON: " << e.what() << std::endl;
+        return false;
+    }
+
     compact();
     return true;
 }
