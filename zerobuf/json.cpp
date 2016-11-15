@@ -86,6 +86,11 @@ void toJSONBinary( const uint8_t* data, const size_t size, Json::Value& json )
     json = Json::Value( base64_encode( data, uint32_t( size )));
 }
 
+bool hasJSONField( const Json::Value& json, const std::string& field )
+{
+    return json.isMember( field );
+}
+
 const Json::Value& getJSONField( const Json::Value& json,
                                  const std::string& field )
 {

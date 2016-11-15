@@ -2,6 +2,8 @@
 
 # git master
 
+* [68](https://github.com/HBPVIS/ZeroBuf/pull/68):
+  Support partial JSON updates
 * [67](https://github.com/HBPVIS/ZeroBuf/pull/67):
   * Fix compilation error when having multiple FBS enums in one namespace
   * Maintain order of FBS fields in JSON schema
