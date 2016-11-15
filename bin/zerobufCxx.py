@@ -362,14 +362,17 @@ class FixedSizeMember(ClassMember):
 
     def from_json(self):
         if self.value_type.is_zerobuf_type:
-            return '::zerobuf::fromJSON( ::zerobuf::getJSONField( json, "{0}" ), _{0} );'.\
-                format(self.cxxname)
+            return 'if( ::zerobuf::hasJSONField( json, "{0}" ))'\
+                   '{1}    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, "{0}" ), _{0} );'.\
+                format(self.cxxname, NEXTLINE)
         # convert enums to their name as a string
         if self.value_type.is_enum_type:
-            return 'set{0}( {1}( string_to_{1}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, "{2}" )))));'.\
-                format(self.cxxName, self.value_type.type, self.cxxname)
-        return 'set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, "{3}" ))));'.\
-                format(self.cxxName, self.value_type.type, self.value_type.get_data_type(), self.cxxname)
+            return 'if( ::zerobuf::hasJSONField( json, "{2}" ))'\
+                   '{3}    set{0}( {1}( string_to_{1}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, "{2}" )))));'.\
+                format(self.cxxName, self.value_type.type, self.cxxname, NEXTLINE)
+        return 'if( ::zerobuf::hasJSONField( json, "{3}" ))'\
+               '{4}    set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, "{3}" ))));'.\
+                format(self.cxxName, self.value_type.type, self.value_type.get_data_type(), self.cxxname, NEXTLINE)
 
     def to_json(self):
         if self.value_type.is_zerobuf_type:
@@ -528,8 +531,9 @@ class FixedSizeArray(ClassMember):
         return "{0} _{1};".format(self.cxxName, self.cxxname)
 
     def from_json(self):
-        fromJSON = "{"
-        fromJSON += NEXTLINE + '   const Json::Value& field = ::zerobuf::getJSONField( json, "{0}" );'.format(self.cxxname)
+        fromJSON = 'if( ::zerobuf::hasJSONField( json, "{0}" ))'.format(self.cxxname)
+        fromJSON += NEXTLINE + "{"
+        fromJSON += NEXTLINE + '    const Json::Value& field = ::zerobuf::getJSONField( json, "{0}" );'.format(self.cxxname)
 
         if self.value_type.is_zerobuf_type and not self.value_type.is_enum_type:
             for i in range(0, self.nElems):
@@ -603,8 +607,9 @@ class DynamicZeroBufMember(ClassMember):
         return "{0} _{1};".format(self.value_type.type, self.cxxname)
 
     def from_json(self):
-        return '::zerobuf::fromJSON( ::zerobuf::getJSONField( json, "{0}" ), _{0} );'.\
-            format(self.cxxname)
+        return 'if( ::zerobuf::hasJSONField( json, "{0}" ))'\
+               '{1}    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, "{0}" ), _{0} );'.\
+            format(self.cxxname, NEXTLINE)
 
     def to_json(self):
         return '::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, "{0}" ));'.\
@@ -799,10 +804,16 @@ class DynamicMember(ClassMember):
 
     def from_json(self):
         if self.value_type.is_string:
-            return 'set{0}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, "{1}" )));'.format(self.cxxName, self.cxxname)
+            return 'if( ::zerobuf::hasJSONField( json, "{1}" ))'\
+                   '{2}    set{0}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, "{1}" )));'\
+                   .format(self.cxxName, self.cxxname, NEXTLINE)
         if self.value_type.is_byte_type:
-            return '_{0}.fromJSONBinary( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.cxxname)
-        return '_{0}.fromJSON( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.cxxname)
+            return 'if( ::zerobuf::hasJSONField( json, "{0}" ))'\
+                   '{1}    _{0}.fromJSONBinary( ::zerobuf::getJSONField( json, "{0}" ));'\
+                   .format(self.cxxname, NEXTLINE)
+        return 'if( ::zerobuf::hasJSONField( json, "{0}" ))'\
+               '{1}    _{0}.fromJSON( ::zerobuf::getJSONField( json, "{0}" ));'\
+               .format(self.cxxname, NEXTLINE)
 
     def to_json(self):
         if self.value_type.is_string:

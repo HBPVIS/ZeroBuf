@@ -13,6 +13,8 @@ namespace zerobuf
 {
 /** @cond IGNORE functions used by generated JSON code. Needed to keep jsoncpp
  * and base64 API internal */
+ZEROBUF_API bool hasJSONField( const Json::Value& json,
+                               const std::string& field );
 ZEROBUF_API const Json::Value& getJSONField( const Json::Value& json,
                                              const std::string& field );
 ZEROBUF_API Json::Value& getJSONField( Json::Value& json,

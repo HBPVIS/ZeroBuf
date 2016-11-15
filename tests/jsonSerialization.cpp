@@ -205,6 +205,18 @@ BOOST_AUTO_TEST_CASE(zerobufFromJSON)
     checkTestObject( object );
 }
 
+BOOST_AUTO_TEST_CASE(zerobufFromPartialJSON)
+{
+    test::TestSchema object( getTestObject( ));
+    BOOST_CHECK_EQUAL( object.getIntvalue(), 42 );
+    object.fromJSON( "{ \"intvalue\" : 4242 }" );
+    BOOST_CHECK_EQUAL( object.getIntvalue(), 4242 );
+
+    // reset intvalue back and check no other value was modified
+    object.setIntvalue( 42 );
+    checkTestObject( object );
+}
+
 BOOST_AUTO_TEST_CASE(enum_string_conversion)
 {
     test::TestEnum testEnum = test::TestEnum::FIRST;
