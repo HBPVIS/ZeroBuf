@@ -26,8 +26,14 @@ enum TestEnum : uint {
   THIRD_UNDERSCORE
 }
 
+enum AnotherTestEnum : uint {
+  one,
+  two
+}
+
 table TestEnumTable {
   value: TestEnum;
+  another: AnotherTestEnum;
 }
 
 table TestSchema {
