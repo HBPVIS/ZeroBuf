@@ -366,7 +366,7 @@ class FixedSizeMember(ClassMember):
                 format(self.cxxname)
         # convert enums to their name as a string
         if self.value_type.is_enum_type:
-            return 'set{0}( {1}( from_string( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, "{2}" )))));'.\
+            return 'set{0}( {1}( string_to_{1}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, "{2}" )))));'.\
                 format(self.cxxName, self.value_type.type, self.cxxname)
         return 'set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, "{3}" ))));'.\
                 format(self.cxxName, self.value_type.type, self.value_type.get_data_type(), self.cxxname)
@@ -850,7 +850,7 @@ class FbsEnum():
         strs = []
         for enumValue in self.values:
             strs.append('if( val == "{1}" ) return {0}::{1};'.format(self.name, enumValue))
-        return Function(self.name, 'from_string( const std::string& val )',
+        return Function(self.name, 'string_to_{0}( const std::string& val )'.format(self.name),
                         '{0}{1}throw std::runtime_error( "{2}" );'
                         .format(NEXTLINE.join(strs), NEXTLINE, 'Cannot convert string to enum {0}'.format(self.name)), split=True)
 

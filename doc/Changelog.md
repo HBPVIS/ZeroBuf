@@ -2,6 +2,8 @@
 
 # git master
 
+* [67](https://github.com/HBPVIS/ZeroBuf/pull/67):
+  Fix compilation error when having multiple FBS enums in one namespace
 * [65](https://github.com/HBPVIS/ZeroBuf/pull/65):
   * JSON schema generated from FBS, available in ZeroBuf::getSchema() and ZeroBuf::ZEROBUF_SCHEMA
   * enum class for enums instead of 'old' enums; breaks existing enum names

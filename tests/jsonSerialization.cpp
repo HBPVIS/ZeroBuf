@@ -209,11 +209,20 @@ BOOST_AUTO_TEST_CASE(enum_string_conversion)
 {
     test::TestEnum testEnum = test::TestEnum::FIRST;
     BOOST_CHECK_EQUAL( test::to_string( testEnum ), "FIRST" );
-    testEnum = test::from_string( "SECOND" );
+    testEnum = test::string_to_TestEnum( "SECOND" );
     BOOST_CHECK_EQUAL( testEnum, test::TestEnum::SECOND );
     BOOST_CHECK_NO_THROW( std::cout << testEnum << std::endl );
 
-    BOOST_CHECK_THROW( test::from_string( "wrong" ), std::runtime_error );
+    BOOST_CHECK_THROW( test::string_to_TestEnum( "wrong" ), std::runtime_error );
+
+    test::AnotherTestEnum anotherTestEnum = test::AnotherTestEnum::one;
+    BOOST_CHECK_EQUAL( test::to_string( anotherTestEnum ), "one" );
+    anotherTestEnum = test::string_to_AnotherTestEnum( "two" );
+    BOOST_CHECK_EQUAL( anotherTestEnum, test::AnotherTestEnum::two );
+    BOOST_CHECK_NO_THROW( std::cout << anotherTestEnum << std::endl );
+
+    BOOST_CHECK_THROW( test::string_to_AnotherTestEnum( "wrong" ),
+                       std::runtime_error );
 }
 
 BOOST_AUTO_TEST_CASE(json_schema_empty)
@@ -299,6 +308,13 @@ BOOST_AUTO_TEST_CASE(json_schema_enum)
                        "\"additionalProperties\": false, "
                        "\"description\": \"Class TestEnumTable of namespace ['test']\", "
                        "\"properties\": {"
+                         "\"another\": {"
+                           "\"$schema\": \"http://json-schema.org/schema#\", "
+                           "\"additionalProperties\": false, "
+                           "\"description\": \"Enum AnotherTestEnum of type uint\", "
+                           "\"enum\": [\"one\", \"two\"], "
+                           "\"title\": \"AnotherTestEnum\", "
+                           "\"type\": \"string\"}, "
                          "\"value\": {"
                            "\"$schema\": \"http://json-schema.org/schema#\", "
                            "\"additionalProperties\": false, "
