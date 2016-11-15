@@ -13,7 +13,7 @@ import json
 import os
 import re
 import sys
-from collections import namedtuple
+from collections import namedtuple, OrderedDict
 
 TypeDescription = namedtuple("TypeDescription", "size cxxtype")
 DEFAULT_TYPES = {"int" : TypeDescription(4, "int32_t"),
@@ -826,14 +826,14 @@ class FbsEnum():
         self.from_string = self.from_string()
         self.ostream = self.ostream()
 
-        self.json_schema = {}
+        self.json_schema = OrderedDict()
         self.json_schema['$schema'] = 'http://json-schema.org/schema#'
         self.json_schema['title'] = self.name
         self.json_schema['description'] = 'Enum {0} of type {1}'\
                                           .format(self.name, self.type)
         self.json_schema['type'] = 'string'
-        self.json_schema['enum'] = self.values
         self.json_schema['additionalProperties'] = False
+        self.json_schema['enum'] = self.values
 
     def to_string(self):
         strs = []
@@ -880,7 +880,7 @@ class FbsEnum():
 
 def _add_base64_string(property):
     property['type'] = 'string'
-    property['media'] = {}
+    property['media'] = OrderedDict()
     property['media']['binaryEncoding'] = 'base64'
 
 class JsonSchemaProperties():
@@ -890,7 +890,7 @@ class JsonSchemaProperties():
 
     def __init__(self, fbsFile):
         self.fbsFile = fbsFile
-        self.properties = {}
+        self.properties = OrderedDict()
 
     def _table_schema(self, cxxtype):
         return next(x for x in self.fbsFile.tables if x.name == cxxtype).json_schema
@@ -902,7 +902,7 @@ class JsonSchemaProperties():
         self.properties[name] = self._table_schema(cxxtype)
 
     def dynamic_member(self, name, cxxtype, fbs_type):
-        property = {}
+        property = OrderedDict()
         self.properties[name] = property
 
         is_byte_type = fbs_type == "byte" or fbs_type == "ubyte"
@@ -918,7 +918,7 @@ class JsonSchemaProperties():
                 property['items'] = self._table_schema(cxxtype)
             else:
                 # POD array
-                property['items'] = {}
+                property['items'] = OrderedDict()
                 property['items']['type'] = fbs_to_json_type(fbs_type)
 
     def fixed_size_member(self, name, cxxtype, fbs_type):
@@ -930,12 +930,12 @@ class JsonSchemaProperties():
         elif is_enum_type:
             self.properties[name] = self._enum_schema(cxxtype)
         else:
-            property = {}
+            property = OrderedDict()
             property['type'] = fbs_to_json_type(fbs_type)
             self.properties[name] = property
 
     def fixed_size_array(self, name, fbs_type, elem_count):
-        property = {}
+        property = OrderedDict()
         self.properties[name] = property
 
         is_byte_type = fbs_type == "byte" or fbs_type == "ubyte"
@@ -943,7 +943,7 @@ class JsonSchemaProperties():
             _add_base64_string(property)
         else:
             property['type'] = 'array'
-            property['items'] = {}
+            property['items'] = OrderedDict()
             property['items']['type'] = fbs_to_json_type(fbs_type)
             property['minItems'] = elem_count
             property['maxItems'] = elem_count
@@ -965,7 +965,7 @@ class FbsTable():
         self.md5 = hashlib.md5()
         self.generate_qobject = fbsFile.generate_qobject
 
-        self.json_schema = {}
+        self.json_schema = OrderedDict()
         self.json_schema['$schema'] = 'http://json-schema.org/schema#'
         self.json_schema['title'] = self.name
         self.json_schema['description'] = 'Class {0} of namespace {1}'\
@@ -1146,7 +1146,7 @@ class FbsTable():
         functions.append(Function('std::string', 'getSchema() const final',
                                   'return ZEROBUF_SCHEMA();', split=True))
         functions.append(Function('std::string', 'ZEROBUF_SCHEMA()',
-                                  'return "{0}";'.format(json.dumps(self.json_schema, sort_keys=True).replace('"', '\\"')),
+                                  'return "{0}";'.format(json.dumps(self.json_schema).replace('"', '\\"')),
                                   static=True, split=True))
         functions.append(Function('std::string', 'getTypeName() const final',
                                   'return "{0}";'.format(zerobufName), split=False))
