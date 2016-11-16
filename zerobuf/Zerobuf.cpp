@@ -120,8 +120,7 @@ Data Zerobuf::_toBinary() const
 bool Zerobuf::_fromJSON( const std::string& string )
 {
     if( !_allocator )
-        throw std::runtime_error(
-            "Can't convert empty Zerobuf object from JSON" );
+        return true;
 
     Json::Value json;
     Json::Reader reader;
