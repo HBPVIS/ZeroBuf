@@ -2,6 +2,10 @@
 
 # git master
 
+* [71](https://github.com/HBPVIS/ZeroBuf/pull/71):
+  Fix update of ZeroBuf objects stored in a ZeroBuf vector after toJSON()
+* [69](https://github.com/HBPVIS/ZeroBuf/pull/69):
+  Allow empty ZeroBufs with empty JSON payload from HTTP server PUT requests
 * [68](https://github.com/HBPVIS/ZeroBuf/pull/68):
   Support partial JSON updates
 * [67](https://github.com/HBPVIS/ZeroBuf/pull/67):
