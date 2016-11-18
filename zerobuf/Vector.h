@@ -213,7 +213,7 @@ Vector< T >::operator[] ( const size_t index ) const
 
     while( _zerobufs.size() < index + 1 )
         _zerobufs.emplace_back( AllocatorPtr(
-            new ConstDynamicSubAllocator( *_alloc, _index, _zerobufs.size(),
+            new DynamicSubAllocator( *_alloc, _index, _zerobufs.size(),
                                           _getElementSize< T >( ))));
     return _zerobufs[ index ];
 }

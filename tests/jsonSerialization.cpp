@@ -217,6 +217,23 @@ BOOST_AUTO_TEST_CASE(zerobufFromPartialJSON)
     checkTestObject( object );
 }
 
+// Before pull-request #71, updating a zerobuf object in a ZeroBuf vector was
+// not possible if toJSON() was called before due to creating const Allocators
+// for the vector objects.
+BOOST_AUTO_TEST_CASE(zerobufVectorFromJSON)
+{
+    test::TestNestedZerobuf object;
+    test::TestNested nested( 1, 2 );
+    object.getNested().push_back( nested );
+
+    std::string json = object.toJSON();
+    object.getNested()[0].setIntvalue( 5 );
+
+    BOOST_CHECK( object.fromJSON( json ));
+    BOOST_CHECK_EQUAL( object.getNested().size(), 1 );
+    BOOST_CHECK_EQUAL( object.getNested()[0].getIntvalue(), 1 );
+}
+
 BOOST_AUTO_TEST_CASE(enum_string_conversion)
 {
     test::TestEnum testEnum = test::TestEnum::FIRST;
