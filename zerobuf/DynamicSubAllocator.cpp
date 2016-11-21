@@ -37,7 +37,10 @@ template<> uint8_t* DynamicSubAllocatorBase< const Allocator >::getData()
 
 template< class A > const uint8_t* DynamicSubAllocatorBase< A >::getData() const
 {
-    return _parent.template getDynamic< uint8_t >( _header ) + _element * _size;
+    // need explicit const allocator to not drift to mutable getDynamic()
+    // in case parent allocator is of type ConstAllocator.
+    const auto& parent = const_cast< const A& >( _parent );
+    return parent.template getDynamic< uint8_t >( _header ) + _element * _size;
 }
 
 template< class A >

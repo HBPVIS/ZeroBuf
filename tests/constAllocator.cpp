@@ -35,3 +35,16 @@ BOOST_AUTO_TEST_CASE(create)
 
     BOOST_CHECK_EQUAL( object, *newObject );
 }
+
+BOOST_AUTO_TEST_CASE(zerobufVectorAccessFromConstAllocatorParent)
+{
+    test::TestNestedZerobuf object;
+    test::TestNested nested( 1, 2 );
+    object.getNested().push_back( nested );
+
+    const auto& binary = object.toBinary();
+    test::ConstTestNestedZerobufPtr constObject(
+              test::TestNestedZerobuf::create( binary.ptr.get(), binary.size ));
+    constObject->getNested()[0];
+}
+
