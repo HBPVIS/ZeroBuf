@@ -2,6 +2,8 @@
 
 # git master
 
+* [72](https://github.com/HBPVIS/ZeroBuf/pull/72):
+  Fix const-access for ZeroBuf vector on ConstAllocator parent, needed after #71
 * [71](https://github.com/HBPVIS/ZeroBuf/pull/71):
   Fix update of ZeroBuf objects stored in a ZeroBuf vector after toJSON()
 * [69](https://github.com/HBPVIS/ZeroBuf/pull/69):
