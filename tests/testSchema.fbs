@@ -27,8 +27,8 @@ enum TestEnum : uint {
 }
 
 enum AnotherTestEnum : uint {
-  one,
-  two
+  one = 1,
+  three = 3,
 }
 
 table TestEnumTable {
