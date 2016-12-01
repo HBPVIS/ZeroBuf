@@ -245,9 +245,11 @@ BOOST_AUTO_TEST_CASE(enum_string_conversion)
     BOOST_CHECK_THROW( test::string_to_TestEnum( "wrong" ), std::runtime_error );
 
     test::AnotherTestEnum anotherTestEnum = test::AnotherTestEnum::one;
+    BOOST_CHECK_EQUAL( int(test::AnotherTestEnum::one), 1 );
+    BOOST_CHECK_EQUAL( int(test::AnotherTestEnum::three), 3 );
     BOOST_CHECK_EQUAL( test::to_string( anotherTestEnum ), "one" );
-    anotherTestEnum = test::string_to_AnotherTestEnum( "two" );
-    BOOST_CHECK_EQUAL( anotherTestEnum, test::AnotherTestEnum::two );
+    anotherTestEnum = test::string_to_AnotherTestEnum( "three" );
+    BOOST_CHECK_EQUAL( anotherTestEnum, test::AnotherTestEnum::three );
     BOOST_CHECK_NO_THROW( std::cout << anotherTestEnum << std::endl );
 
     BOOST_CHECK_THROW( test::string_to_AnotherTestEnum( "wrong" ),
@@ -352,6 +354,6 @@ BOOST_AUTO_TEST_CASE(json_schema_enum)
                            "\"description\": \"Enum AnotherTestEnum of type uint\", "
                            "\"type\": \"string\", "
                            "\"additionalProperties\": false, "
-                           "\"enum\": [\"one\", \"two\"]}}}"
+                           "\"enum\": [\"one\", \"three\"]}}}"
                        );
 }

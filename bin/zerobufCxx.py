@@ -77,7 +77,9 @@ def create_FBS_parser():
                          Suppress( ';' ))
 
     # enum EventDirection : ubyte { Subscriber, Publisher, Both }
-    fbsEnumValue = ( Word( alphanums+"_" ) + Suppress( Optional( ',' )))
+    fbsEnumValue = Group( ( Word( alphanums+"_" ) +
+                   ZeroOrMore(Suppress('=') + Or(Word(nums))) +
+                   Suppress( Optional( ',' ))))
     fbsEnum = Group( Keyword( "enum" ) + Word( alphanums ) + Suppress( ':' ) +
                     fbsBaseType + Suppress( '{' ) + OneOrMore( fbsEnumValue ) +
                     Suppress( '}' ))
@@ -844,12 +846,12 @@ class FbsEnum():
                                           .format(self.name, self.type)
         self.json_schema['type'] = 'string'
         self.json_schema['additionalProperties'] = False
-        self.json_schema['enum'] = self.values
+        self.json_schema['enum'] = [i[0] for i in self.values]
 
     def to_string(self):
         strs = []
         for enumValue in self.values:
-            strs.append('case {0}::{1}: return std::string( "{1}" );'.format(self.name, enumValue))
+            strs.append('case {0}::{1}: return std::string( "{1}" );'.format(self.name, enumValue[0]))
         return Function('std::string',
                         'to_string( const {0}& val )'.format(self.name),
                         'switch( val ){0}{{'
@@ -860,7 +862,7 @@ class FbsEnum():
     def from_string(self):
         strs = []
         for enumValue in self.values:
-            strs.append('if( val == "{1}" ) return {0}::{1};'.format(self.name, enumValue))
+            strs.append('if( val == "{1}" ) return {0}::{1};'.format(self.name, enumValue[0]))
         return Function(self.name, 'string_to_{0}( const std::string& val )'.format(self.name),
                         '{0}{1}throw std::runtime_error( "{2}" );'
                         .format(NEXTLINE.join(strs), NEXTLINE, 'Cannot convert string to enum {0}'.format(self.name)), split=True)
@@ -875,7 +877,8 @@ class FbsEnum():
         file.write("enum class " + self.name + "\n{")
         for enumValue in self.values:
             next_line_indent(file)
-            file.write(enumValue + ",")
+            value = ' = '.join(enumValue)
+            file.write(value + ",")
         header.write("\n};\n")
 
         self.to_string.write_declaration(file)

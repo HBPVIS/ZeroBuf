@@ -2,6 +2,8 @@
 
 # git master
 
+* [73](https://github.com/HBPVIS/ZeroBuf/pull/73):
+  Support assignment of enum values in FBS
 * [72](https://github.com/HBPVIS/ZeroBuf/pull/72):
   Fix const-access for ZeroBuf vector on ConstAllocator parent, needed after #71
 * [71](https://github.com/HBPVIS/ZeroBuf/pull/71):
