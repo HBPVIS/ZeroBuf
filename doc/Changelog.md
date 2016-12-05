@@ -2,6 +2,8 @@
 
 # git master
 
+# Release 0.4 (09-12-2016)
+
 * [73](https://github.com/HBPVIS/ZeroBuf/pull/73):
   Support assignment of enum values in FBS
 * [72](https://github.com/HBPVIS/ZeroBuf/pull/72):
@@ -16,7 +18,8 @@
   * Fix compilation error when having multiple FBS enums in one namespace
   * Maintain order of FBS fields in JSON schema
 * [65](https://github.com/HBPVIS/ZeroBuf/pull/65):
-  * JSON schema generated from FBS, available in ZeroBuf::getSchema() and ZeroBuf::ZEROBUF_SCHEMA
+  * JSON schema generated from FBS, available in ZeroBuf::getSchema() and
+    ZeroBuf::ZEROBUF_SCHEMA
   * enum class for enums instead of 'old' enums; breaks existing enum names
   * fix wrong JSON value for empty arrays (was 'null', is '[]' now)
 

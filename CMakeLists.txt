@@ -11,6 +11,7 @@ include(GitExternal)
 
 set(ZEROBUF_DEB_DEPENDS python-pyparsing)
 
+set(CHOOSE_PYTHON_IGNORE_BOOST ON)
 include(Common)
 
 set(COMMON_PROJECT_DOMAIN eu.humanbrainproject)
