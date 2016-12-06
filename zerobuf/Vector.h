@@ -46,7 +46,8 @@ public:
 
     /** @return The pointer to the current allocation of the vector */
     const T* data() const
-        { return const_cast< const Allocator* >( _alloc )->template getDynamic< T >( _index ); }
+        { return const_cast< const Allocator* >
+                ( _alloc )->template getDynamic< T >( _index ); }
 
     /** @return true if the two vectors of builtins are identical. */
     bool operator == ( const Vector& rhs ) const;
@@ -81,7 +82,7 @@ public:
     /** Insert a Zerobuf-derived element at the end of the vector. */
     template< class Q = T > void
     push_back( const typename std::enable_if<
-                                  std::is_base_of<Zerobuf,Q>::value, Q>::type&);
+                                 std::is_base_of<Zerobuf,Q>::value, Q>::type& );
 
     /** @internal */
     void reset( Allocator& alloc ) { _alloc = &alloc; _zerobufs.clear(); }
@@ -89,25 +90,45 @@ public:
     /** Remove unused memory from vector and all members. */
     void compact( float ) { /* NOP: elements are static and clear frees */ }
 
-    /** Update this vector from its JSON representation. */
+    /** Update this vector of ZeroBufs from its JSON representation. */
     template< class Q = T > void
     fromJSON( const Json::Value& json, const typename std::enable_if<
                   std::is_base_of< Zerobuf, Q >::value, Q >::type* = nullptr );
 
-    /** Update this vector from its JSON representation. */
+    /** Update this vector of enums from its JSON representation. */
     template< class Q = T > void
     fromJSON( const Json::Value& json, const typename std::enable_if<
-                  !std::is_base_of< Zerobuf, Q >::value, Q >::type* = nullptr );
+                  std::is_enum< Q >::value, Q >::type* = nullptr );
 
-    /** @return the JSON representation of this vector. */
+    /** Update this vector of arithmetics from its JSON representation. */
+    template< class Q = T > void
+    fromJSON( const Json::Value& json, const typename std::enable_if<
+                  std::is_arithmetic< Q >::value, Q >::type* = nullptr );
+
+    /** Update this vector of uint128_t from its JSON representation. */
+    template< class Q = T > void
+    fromJSON( const Json::Value& json, const typename std::enable_if<
+            std::is_same< Q, servus::uint128_t >::value, Q >::type* = nullptr );
+
+    /** @return the JSON representation of this vector of ZeroBufs. */
     template< class Q = T > void
     toJSON( Json::Value& json, const typename std::enable_if<
              std::is_base_of< Zerobuf, Q >::value, Q >::type* = nullptr ) const;
 
-    /** @return the JSON representation of this vector. */
+    /** @return the JSON representation of this vector of enums. */
     template< class Q = T > void
     toJSON( Json::Value& json, const typename std::enable_if<
-            !std::is_base_of< Zerobuf, Q >::value, Q >::type* = nullptr ) const;
+                std::is_enum< Q >::value, Q >::type* = nullptr ) const;
+
+    /** @return the JSON representation of this vector of arithmetics. */
+    template< class Q = T > void
+    toJSON( Json::Value& json, const typename std::enable_if<
+                std::is_arithmetic< Q >::value, Q >::type* = nullptr ) const;
+
+    /** @return the JSON representation of this vector of uint128_t. */
+    template< class Q = T > void
+    toJSON( Json::Value& json, const typename std::enable_if<
+      std::is_same< Q, servus::uint128_t >::value, Q >::type* = nullptr ) const;
 
     /** Update this vector from its JSON, base64-encoded representation. */
     template< class Q = T > void
@@ -267,7 +288,33 @@ void Vector< T >::fromJSON( const Json::Value& json,
 
 template< class T > template< class Q > inline
 void Vector< T >::fromJSON( const Json::Value& json,
-    const typename std::enable_if<!std::is_base_of<Zerobuf,Q>::value, Q>::type*)
+    const typename std::enable_if<std::is_enum< Q>::value, Q>::type*)
+{
+    const size_t size_ = getJSONSize( json );
+    T* array = reinterpret_cast< T* >(
+        _alloc->updateAllocation( _index, false /*no copy*/, size_*sizeof( T)));
+
+    for( size_t i = 0; i < size_; ++i )
+        array[i] = string_to_enum< T >( zerobuf::fromJSON< std::string >
+                                        ( getJSONField( json, i )));
+}
+
+template< class T > template< class Q > inline
+void Vector< T >::fromJSON( const Json::Value& json,
+    const typename std::enable_if<std::is_arithmetic< Q>::value, Q>::type*)
+{
+    const size_t size_ = getJSONSize( json );
+    T* array = reinterpret_cast< T* >(
+        _alloc->updateAllocation( _index, false /*no copy*/, size_*sizeof( T)));
+
+    for( size_t i = 0; i < size_; ++i )
+        array[i] = zerobuf::fromJSON< T >( getJSONField( json, i ));
+}
+
+template< class T > template< class Q > inline
+void Vector< T >::fromJSON( const Json::Value& json,
+    const typename std::enable_if< std::is_same< Q,
+                            servus::uint128_t >::value, Q>::type*)
 {
     const size_t size_ = getJSONSize( json );
     T* array = reinterpret_cast< T* >(
@@ -290,7 +337,28 @@ Vector< T >::toJSON( Json::Value& json, const typename std::enable_if<
 
 template< class T > template< class Q > inline void
 Vector< T >::toJSON( Json::Value& json, const typename std::enable_if<
-                       !std::is_base_of< Zerobuf, Q >::value, Q >::type* ) const
+                       std::is_enum< Q >::value, Q >::type* ) const
+{
+    const size_t size_ = size();
+    zerobuf::emptyJSONArray( json ); // return [] instead of null if array is empty
+    for( size_t i = 0; i < size_; ++i )
+        zerobuf::toJSON( enum_to_string< T >( (*this)[i] ),
+                         getJSONField( json, i ));
+}
+
+template< class T > template< class Q > inline void
+Vector< T >::toJSON( Json::Value& json, const typename std::enable_if<
+                       std::is_arithmetic< Q >::value, Q >::type* ) const
+{
+    const size_t size_ = size();
+    zerobuf::emptyJSONArray( json ); // return [] instead of null if array is empty
+    for( size_t i = 0; i < size_; ++i )
+        zerobuf::toJSON( (*this)[i], getJSONField( json, i ));
+}
+
+template< class T > template< class Q > inline void
+Vector< T >::toJSON( Json::Value& json, const typename std::enable_if<
+                 std::is_same< Q, servus::uint128_t >::value, Q >::type* ) const
 {
     const size_t size_ = size();
     zerobuf::emptyJSONArray( json ); // return [] instead of null if array is empty

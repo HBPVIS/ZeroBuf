@@ -34,6 +34,9 @@ using servus::uint128_t;
 typedef uint8_t byte_t; //!< alias type for base64 encoded fields
 
 typedef servus::Serializable::Data Data;
+
+template< typename T > std::string enum_to_string( const T& );
+template< typename T > T string_to_enum( const std::string& );
 }
 
 namespace Json

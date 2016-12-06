@@ -534,47 +534,58 @@ class FixedSizeArray(ClassMember):
 
     def from_json(self):
         fromJSON = 'if( ::zerobuf::hasJSONField( json, "{0}" ))'.format(self.name)
-        fromJSON += NEXTLINE + "{"
+        fromJSON += NEXTLINE + '{'
         fromJSON += NEXTLINE + '    const Json::Value& field = ::zerobuf::getJSONField( json, "{0}" );'.format(self.name)
 
-        if self.value_type.is_zerobuf_type and not self.value_type.is_enum_type:
+        if self.value_type.is_zerobuf_type:
             for i in range(0, self.nElems):
-                fromJSON += NEXTLINE + "    ::zerobuf::fromJSON( ::zerobuf::getJSONField( field, {1} ), _{0}[{1}] );".\
+                fromJSON += NEXTLINE + '    ::zerobuf::fromJSON( ::zerobuf::getJSONField( field, {1} ), _{0}[{1}] );'.\
                     format(self.name, i)
         else:
-            fromJSON += NEXTLINE + "    {0}* array = ({0}*)get{1}();".\
+            fromJSON += NEXTLINE + '    {0}* array = ({0}*)get{1}();'.\
                 format(self.value_type.get_data_type(), self.cxxName)
 
             if self.value_type.is_byte_type:
-                fromJSON += NEXTLINE + "    const std::string& decoded = ::zerobuf::fromJSONBinary( field );"
-                fromJSON += NEXTLINE + "    ::memcpy( array, decoded.data(), std::min( decoded.length(), size_t( {0}ull )));".format(self.nElems)
+                fromJSON += NEXTLINE + '    const std::string& decoded = ::zerobuf::fromJSONBinary( field );'
+                fromJSON += NEXTLINE + '    ::memcpy( array, decoded.data(), std::min( decoded.length(), size_t( {0}ull )));'.format(self.nElems)
+            elif self.value_type.is_enum_type:
+                for i in range(0, self.nElems):
+                    # convert strings back to enum/int values
+                    fromJSON += NEXTLINE + '    array[{0}] = {1}( string_to_{2}('\
+                        '::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( field, {0} ))));'.\
+                        format(i, self.value_type.get_data_type(), self.value_type.type)
             else:
                 for i in range(0, self.nElems):
-                    fromJSON += NEXTLINE + "    array[{0}] = ::zerobuf::fromJSON< {1} >( ::zerobuf::getJSONField( field, {0} ));".\
+                    fromJSON += NEXTLINE + '    array[{0}] = ::zerobuf::fromJSON< {1} >( ::zerobuf::getJSONField( field, {0} ));'.\
                         format(i, self.value_type.get_data_type())
 
-        fromJSON += NEXTLINE + "}"
+        fromJSON += NEXTLINE + '}'
         return fromJSON
 
     def to_json(self):
-        toJSON = "{"
+        toJSON = '{'
         toJSON += NEXTLINE + '    Json::Value& field = ::zerobuf::getJSONField( json, "{0}" );'.\
             format(self.name)
 
-        if self.value_type.is_zerobuf_type and not self.value_type.is_enum_type:
+        if self.value_type.is_zerobuf_type:
             for i in range(0, self.nElems):
-                toJSON += NEXTLINE + "    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0}[{1}] ), ::zerobuf::getJSONField( field, {1} ));".\
-                    format(self.name, i)
+                toJSON += NEXTLINE + '    ::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0}[{1}] ),'\
+                    '::zerobuf::getJSONField( field, {1} ));'.format(self.name, i)
         else:
-            toJSON += NEXTLINE + "    const {0}* array = (const {0}*)get{1}();".\
+            toJSON += NEXTLINE + '    const {0}* array = (const {0}*)get{1}();'.\
                 format(self.value_type.get_data_type(), self.cxxName)
 
             if self.value_type.is_byte_type:
-                toJSON += NEXTLINE + "    ::zerobuf::toJSONBinary( array, {0}, field );".format(self.nElems)
+                toJSON += NEXTLINE + '    ::zerobuf::toJSONBinary( array, {0}, field );'.format(self.nElems)
+            elif self.value_type.is_enum_type:
+                for i in range(0, self.nElems):
+                    # convert enum values to strings
+                    toJSON += NEXTLINE + '    ::zerobuf::toJSON( to_string( {0}( array[{1}] )),'\
+                      '::zerobuf::getJSONField( field, {1} ));'.format(self.value_type.type, i)
             else:
                 for i in range(0, self.nElems):
-                    toJSON += NEXTLINE + "    ::zerobuf::toJSON( array[{0}], ::zerobuf::getJSONField( field, {0} ));".format(i)
-        toJSON += NEXTLINE + "}"
+                    toJSON += NEXTLINE + '    ::zerobuf::toJSON( array[{0}], ::zerobuf::getJSONField( field, {0} ));'.format(i)
+        toJSON += NEXTLINE + '}'
         return toJSON
 
 
@@ -867,6 +878,18 @@ class FbsEnum():
                         '{0}{1}throw std::runtime_error( "{2}" );'
                         .format(NEXTLINE.join(strs), NEXTLINE, 'Cannot convert string to enum {0}'.format(self.name)), split=True)
 
+    def enum_to_string(self, namespaces):
+        """ Specialization for zerobuf::to_string() used in Vector.h """
+        return Function('template<> std::string',
+                        'enum_to_string( const {0}::{1}& val )'.format(namespaces, self.name),
+                        'return {0}::to_string( val );'.format(namespaces), split=True)
+
+    def string_to_enum(self, namespaces):
+        """ Specialization for zerobuf::string_to_enum() used in Vector.h """
+        return Function('template<> {0}::{1}'.format(namespaces, self.name),
+                        'string_to_enum( const std::string& val )',
+                        'return {0}::string_to_{1}( val );'.format(namespaces, self.name), split=True)
+
     def ostream(self):
         return Function('std::ostream&',
                         'operator << ( std::ostream& os, const {0}& val )'.format(self.name),
@@ -890,6 +913,16 @@ class FbsEnum():
         self.to_string.write_implementation(file)
         self.from_string.write_implementation(file)
         self.ostream.write_implementation(file)
+
+    def write_string_conversion_declaration(self, file, namespaces):
+        """ Declarations for zerobuf::to_string() and zerobuf::string_to_enum() """
+        self.enum_to_string(namespaces).write_declaration(file)
+        self.string_to_enum(namespaces).write_declaration(file)
+
+    def write_string_conversion_implementation(self, file, namespaces):
+        """ Definitions for zerobuf::to_string() and zerobuf::string_to_enum() """
+        self.enum_to_string(namespaces).write_implementation(file)
+        self.string_to_enum(namespaces).write_implementation(file)
 
 
 def _add_base64_string(property):
@@ -927,9 +960,13 @@ class JsonSchemaProperties():
         else:
             property['type'] = 'array'
             is_zerobuf_type = cxxtype in self.fbsFile.table_names
+            is_enum_type = cxxtype in self.fbsFile.enum_names
             if is_zerobuf_type:
                 # array of ZeroBuf objects
                 property['items'] = self._table_schema(cxxtype)
+            elif is_enum_type:
+                # array of enums
+                property['items'] = self._enum_schema(cxxtype)
             else:
                 # POD array
                 property['items'] = OrderedDict()
@@ -948,7 +985,7 @@ class JsonSchemaProperties():
             property['type'] = fbs_to_json_type(fbs_type)
             self.properties[name] = property
 
-    def fixed_size_array(self, name, fbs_type, elem_count):
+    def fixed_size_array(self, name, cxxtype, fbs_type, elem_count):
         property = OrderedDict()
         self.properties[name] = property
 
@@ -957,10 +994,21 @@ class JsonSchemaProperties():
             _add_base64_string(property)
         else:
             property['type'] = 'array'
-            property['items'] = OrderedDict()
-            property['items']['type'] = fbs_to_json_type(fbs_type)
             property['minItems'] = elem_count
             property['maxItems'] = elem_count
+
+            is_zerobuf_type = cxxtype in self.fbsFile.table_names
+            is_enum_type = cxxtype in self.fbsFile.enum_names
+            if is_zerobuf_type:
+                # array of ZeroBuf objects
+                property['items'] = self._table_schema(cxxtype)
+            elif is_enum_type:
+                # array of enums
+                property['items'] = self._enum_schema(cxxtype)
+            else:
+                # POD/enum array
+                property['items'] = OrderedDict()
+                property['items']['type'] = fbs_to_json_type(fbs_type)
 
 
 class FbsTable():
@@ -1042,7 +1090,7 @@ class FbsTable():
                 else:
                     elem_count = int(attrib[4])
                     member = FixedSizeArray(name, value_type, elem_count, self.name)
-                    json_schema.fixed_size_array(name, fbs_type, elem_count)
+                    json_schema.fixed_size_array(name, cxxtype, fbs_type, elem_count)
                 self.static_members.append(member)
 
             self.all_members.append(member)
@@ -1518,6 +1566,12 @@ class FbsFile():
 
         self.write_namespace_closing(header)
 
+        # Write enum string_conversions at the end of file in zerobuf namespace
+        header.write("namespace zerobuf\n{")
+        for enum in self.enums:
+            enum.write_string_conversion_declaration(header, '::'.join(self.namespace))
+        header.write("\n}\n\n")
+
     def write_implementation(self, impl):
         """Write the C++ implementation file."""
 
@@ -1537,6 +1591,12 @@ class FbsFile():
 
         impl.write("\n")
         self.write_namespace_closing(impl)
+
+        # Write enum string_conversions at the end of file in zerobuf namespace
+        impl.write("namespace zerobuf\n{\n")
+        for enum in self.enums:
+            enum.write_string_conversion_implementation(impl, '::'.join(self.namespace))
+        impl.write("\n}\n\n")
 
 
 if __name__ == "__main__":
