@@ -66,7 +66,10 @@ test::TestSchema getTestObject()
     object.setEnumeration( test::TestEnum::SECOND );
     const std::vector<test::TestEnum> testEnums = { test::TestEnum::FIRST,
                                                     test::TestEnum::SECOND };
-    object.setEnumerations( testEnums );
+    object.setEnumarray( testEnums );
+
+    object.getEnumdynamic().push_back( test::TestEnum::SECOND );
+    object.getEnumdynamic().push_back( test::TestEnum::THIRD_UNDERSCORE );
 
     int32_t intMagic = 42;
     uint32_t uintMagic = 4200;
@@ -140,9 +143,16 @@ void checkTestObject( const test::TestSchema& object )
 
     const std::vector<test::TestEnum> testEnums = { test::TestEnum::FIRST,
                                                     test::TestEnum::SECOND };
-    const std::vector<test::TestEnum>& result = object.getEnumerationsVector();
+    const std::vector<test::TestEnum>& result = object.getEnumarrayVector();
     BOOST_CHECK_EQUAL_COLLECTIONS( testEnums.begin(), testEnums.end(),
                                    result.begin(), result.end( ));
+
+    const std::vector<test::TestEnum> testEnumDynamic =
+        { test::TestEnum::SECOND, test::TestEnum::THIRD_UNDERSCORE };
+
+    const std::vector<test::TestEnum>& result2 = object.getEnumdynamicVector();
+    BOOST_CHECK_EQUAL_COLLECTIONS( testEnumDynamic.begin(), testEnumDynamic.end(),
+                                   result2.begin(), result2.end( ));
 
     checkTestObject( object.getNested( ));
 

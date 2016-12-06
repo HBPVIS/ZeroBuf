@@ -96,7 +96,8 @@ table TestSchema {
   boolvalue: bool;
   stringvalue: string;
   enumeration: TestEnum;
-  enumerations: [TestEnum:2];
+  enumarray: [TestEnum:2];
+  enumdynamic: [TestEnum];
   nested: TestNested;
   nestedarray: [TestNested:4];
   nesteddynamic: [TestNested];
