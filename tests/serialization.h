@@ -1,5 +1,5 @@
 
-/* Copyright (c) 2015-2016, Human Brain Project
+/* Copyright (c) 2015-2017, Human Brain Project
  *                          Daniel Nachbaur <danielnachbaur@epfl.ch>
  */
 
@@ -51,15 +51,15 @@ test::TestSchema getTestObject()
     SETVALUES(::zerobuf::byte_t, Ubyte);
     SETVALUES(uint16_t, Ushort);
     SETVALUES(uint64_t, Ulong);
-    SETVALUES(uint8_t, Uint8_t);
-    SETVALUES(uint16_t, Uint16_t);
-    SETVALUES(uint32_t, Uint32_t);
-    SETVALUES(uint64_t, Uint64_t);
-    SETVALUES(::zerobuf::uint128_t, Uint128_t);
-    SETVALUES(int8_t, Int8_t);
-    SETVALUES(int16_t, Int16_t);
-    SETVALUES(int32_t, Int32_t);
-    SETVALUES(int64_t, Int64_t);
+    SETVALUES(uint8_t, Uint8T);
+    SETVALUES(uint16_t, Uint16T);
+    SETVALUES(uint32_t, Uint32T);
+    SETVALUES(uint64_t, Uint64T);
+    SETVALUES(::zerobuf::uint128_t, Uint128T);
+    SETVALUES(int8_t, Int8T);
+    SETVALUES(int16_t, Int16T);
+    SETVALUES(int32_t, Int32T);
+    SETVALUES(int64_t, Int64T);
     object.setBoolvalue( true );
     object.setStringvalue( "testmessage" );
 
@@ -128,15 +128,15 @@ void checkTestObject( const test::TestSchema& object )
     TESTVALUES(::zerobuf::byte_t, Ubyte);
     TESTVALUES(uint16_t, Ushort);
     TESTVALUES(uint64_t, Ulong);
-    TESTVALUES(uint8_t, Uint8_t);
-    TESTVALUES(uint16_t, Uint16_t);
-    TESTVALUES(uint32_t, Uint32_t);
-    TESTVALUES(uint64_t, Uint64_t);
-    TESTVALUES(::zerobuf::uint128_t, Uint128_t);
-    TESTVALUES(int8_t, Int8_t);
-    TESTVALUES(int16_t, Int16_t);
-    TESTVALUES(int32_t, Int32_t);
-    TESTVALUES(int64_t, Int64_t);
+    TESTVALUES(uint8_t, Uint8T);
+    TESTVALUES(uint16_t, Uint16T);
+    TESTVALUES(uint32_t, Uint32T);
+    TESTVALUES(uint64_t, Uint64T);
+    TESTVALUES(::zerobuf::uint128_t, Uint128T);
+    TESTVALUES(int8_t, Int8T);
+    TESTVALUES(int16_t, Int16T);
+    TESTVALUES(int32_t, Int32T);
+    TESTVALUES(int64_t, Int64T);
     BOOST_CHECK( object.getBoolvalue( ));
     BOOST_CHECK_EQUAL( object.getStringvalueString(), "testmessage" );
     BOOST_CHECK_EQUAL( object.getEnumeration(), test::TestEnum::SECOND );

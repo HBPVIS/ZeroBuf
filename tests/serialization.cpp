@@ -1,5 +1,5 @@
 
-/* Copyright (c) 2015-2016, Human Brain Project
+/* Copyright (c) 2015-2017, Human Brain Project
  *                          Daniel Nachbaur <daniel.nachbaur@epfl.ch>
  *                          Stefan.Eilemann@epfl.ch
  */
@@ -114,15 +114,15 @@ BOOST_AUTO_TEST_CASE(movedVector)
     schema.getUbytedynamic().clear();
     schema.getUshortdynamic().clear();
     schema.getUlongdynamic().clear();
-    schema.getUint8_tdynamic().clear();
-    schema.getUint16_tdynamic().clear();
-    schema.getUint32_tdynamic().clear();
-    schema.getUint64_tdynamic().clear();
-    schema.getUint128_tdynamic().clear();
-    schema.getInt8_tdynamic().clear();
-    schema.getInt16_tdynamic().clear();
-    schema.getInt32_tdynamic().clear();
-    schema.getInt64_tdynamic().clear();
+    schema.getUint8Tdynamic().clear();
+    schema.getUint16Tdynamic().clear();
+    schema.getUint32Tdynamic().clear();
+    schema.getUint64Tdynamic().clear();
+    schema.getUint128Tdynamic().clear();
+    schema.getInt8Tdynamic().clear();
+    schema.getInt16Tdynamic().clear();
+    schema.getInt32Tdynamic().clear();
+    schema.getInt64Tdynamic().clear();
     schema.getNesteddynamic().clear();
 
     // realloc on existing zerobufs
@@ -171,15 +171,15 @@ BOOST_AUTO_TEST_CASE(compact)
     schema.getUbytedynamic().clear();
     schema.getUshortdynamic().clear();
     schema.getUlongdynamic().clear();
-    schema.getUint8_tdynamic().clear();
-    schema.getUint16_tdynamic().clear();
-    schema.getUint32_tdynamic().clear();
-    schema.getUint64_tdynamic().clear();
-    schema.getUint128_tdynamic().clear();
-    schema.getInt8_tdynamic().clear();
-    schema.getInt16_tdynamic().clear();
-    schema.getInt32_tdynamic().clear();
-    schema.getInt64_tdynamic().clear();
+    schema.getUint8Tdynamic().clear();
+    schema.getUint16Tdynamic().clear();
+    schema.getUint32Tdynamic().clear();
+    schema.getUint64Tdynamic().clear();
+    schema.getUint128Tdynamic().clear();
+    schema.getInt8Tdynamic().clear();
+    schema.getInt16Tdynamic().clear();
+    schema.getInt32Tdynamic().clear();
+    schema.getInt64Tdynamic().clear();
     schema.getNesteddynamic().clear();
     schema.getNestedMember().getName().clear();
 

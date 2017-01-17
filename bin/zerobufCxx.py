@@ -226,8 +226,11 @@ class ClassMember(object):
 
     def __init__(self, name, value_type):
         assert(isinstance(value_type, ValueType))
-        self.name = name
-        self.cxxName = name[0].upper() + str(name[1:])
+        # create camelCase from (potential) snake_case property name for C++
+        self.name = re.sub(r'_([a-z])', lambda m: m.group(1).upper(), name)
+        # Keep snake_case for JSON
+        self.json_name = name
+        self.cxxName = self.name[0].upper() + str(self.name[1:])
         self.value_type = value_type
         self.allocator_offset = 0
         self.qsignal_declaration = self.name + "Changed();"
@@ -365,27 +368,27 @@ class FixedSizeMember(ClassMember):
     def from_json(self):
         if self.value_type.is_zerobuf_type:
             return 'if( ::zerobuf::hasJSONField( json, "{0}" ))'\
-                   '{1}    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, "{0}" ), _{0} );'.\
-                format(self.name, NEXTLINE)
+                   '{1}    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, "{0}" ), _{2} );'.\
+                format(self.json_name, NEXTLINE, self.name)
         # convert enums to their name as a string
         if self.value_type.is_enum_type:
             return 'if( ::zerobuf::hasJSONField( json, "{2}" ))'\
                    '{3}    set{0}( {1}( string_to_{1}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, "{2}" )))));'.\
-                format(self.cxxName, self.value_type.type, self.name, NEXTLINE)
+                format(self.cxxName, self.value_type.type, self.json_name, NEXTLINE)
         return 'if( ::zerobuf::hasJSONField( json, "{3}" ))'\
                '{4}    set{0}( {1}( ::zerobuf::fromJSON< {2} >( ::zerobuf::getJSONField( json, "{3}" ))));'.\
-                format(self.cxxName, self.value_type.type, self.value_type.get_data_type(), self.name, NEXTLINE)
+                format(self.cxxName, self.value_type.type, self.value_type.get_data_type(), self.json_name, NEXTLINE)
 
     def to_json(self):
         if self.value_type.is_zerobuf_type:
-            return '::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, "{0}" ));'.\
-                format(self.name)
+            return '::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, "{1}" ));'.\
+                format(self.name, self.json_name)
         # convert enums back from their name
         if self.value_type.is_enum_type:
             return '::zerobuf::toJSON( std::string( to_string( get{0}( ))), ::zerobuf::getJSONField( json, "{1}" ));'.\
-                format(self.cxxName, self.name)
+                format(self.cxxName, self.json_name)
         return '::zerobuf::toJSON( {0}( get{1}( )), ::zerobuf::getJSONField( json, "{2}" ));'.\
-                format(self.value_type.get_data_type(), self.cxxName, self.name)
+                format(self.value_type.get_data_type(), self.cxxName, self.json_name)
 
 
 class FixedSizeArray(ClassMember):
@@ -398,13 +401,13 @@ class FixedSizeArray(ClassMember):
 
         if self.nElems < 2:
             sys.exit( "Static array of size {0} for field {1} not supported".
-                      format(self.nElems, self.name))
+                      format(self.nElems, self.json_name))
         if self.value_type.size == 0:
             sys.exit( "Static array of {0} dynamic elements not implemented".
                       format(self.nElems))
         if self.value_type.is_zerobuf_type:
             if self.value_type.size == 0:
-                sys.exit("Static arrays of empty ZeroBuf (field {0}) not supported".format(self.name))
+                sys.exit("Static arrays of empty ZeroBuf (field {0}) not supported".format(self.json_name))
 
     def check_array_changed(self, dst_ptr):
         return "if( ::memcmp( {0}, {1}, {2} * sizeof( {3} )) == 0 )".\
@@ -533,9 +536,9 @@ class FixedSizeArray(ClassMember):
         return "{0} _{1};".format(self.cxxName, self.name)
 
     def from_json(self):
-        fromJSON = 'if( ::zerobuf::hasJSONField( json, "{0}" ))'.format(self.name)
+        fromJSON = 'if( ::zerobuf::hasJSONField( json, "{0}" ))'.format(self.json_name)
         fromJSON += NEXTLINE + '{'
-        fromJSON += NEXTLINE + '    const Json::Value& field = ::zerobuf::getJSONField( json, "{0}" );'.format(self.name)
+        fromJSON += NEXTLINE + '    const Json::Value& field = ::zerobuf::getJSONField( json, "{0}" );'.format(self.json_name)
 
         if self.value_type.is_zerobuf_type:
             for i in range(0, self.nElems):
@@ -565,7 +568,7 @@ class FixedSizeArray(ClassMember):
     def to_json(self):
         toJSON = '{'
         toJSON += NEXTLINE + '    Json::Value& field = ::zerobuf::getJSONField( json, "{0}" );'.\
-            format(self.name)
+            format(self.json_name)
 
         if self.value_type.is_zerobuf_type:
             for i in range(0, self.nElems):
@@ -621,12 +624,12 @@ class DynamicZeroBufMember(ClassMember):
 
     def from_json(self):
         return 'if( ::zerobuf::hasJSONField( json, "{0}" ))'\
-               '{1}    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, "{0}" ), _{0} );'.\
-            format(self.name, NEXTLINE)
+               '{1}    ::zerobuf::fromJSON( ::zerobuf::getJSONField( json, "{0}" ), _{2} );'.\
+            format(self.json_name, NEXTLINE, self.name)
 
     def to_json(self):
-        return '::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, "{0}" ));'.\
-            format(self.name)
+        return '::zerobuf::toJSON( static_cast< const ::zerobuf::Zerobuf& >( _{0} ), ::zerobuf::getJSONField( json, "{1}" ));'.\
+            format(self.name, self.json_name)
 
 
 class DynamicMember(ClassMember):
@@ -639,7 +642,7 @@ class DynamicMember(ClassMember):
 
         if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
             if self.value_type.size == 0:
-                sys.exit("Dynamic arrays of empty ZeroBuf (field {0}) not supported".format(self.name))
+                sys.exit("Dynamic arrays of empty ZeroBuf (field {0}) not supported".format(self.json_name))
 
         if self.value_type.is_string:
             self.qsignal_declaration = self.name + "Changed( QString );"
@@ -819,21 +822,21 @@ class DynamicMember(ClassMember):
         if self.value_type.is_string:
             return 'if( ::zerobuf::hasJSONField( json, "{1}" ))'\
                    '{2}    set{0}( ::zerobuf::fromJSON< std::string >( ::zerobuf::getJSONField( json, "{1}" )));'\
-                   .format(self.cxxName, self.name, NEXTLINE)
+                   .format(self.cxxName, self.json_name, NEXTLINE)
         if self.value_type.is_byte_type:
             return 'if( ::zerobuf::hasJSONField( json, "{0}" ))'\
-                   '{1}    _{0}.fromJSONBinary( ::zerobuf::getJSONField( json, "{0}" ));'\
-                   .format(self.name, NEXTLINE)
+                   '{1}    _{2}.fromJSONBinary( ::zerobuf::getJSONField( json, "{0}" ));'\
+                   .format(self.json_name, NEXTLINE, self.name)
         return 'if( ::zerobuf::hasJSONField( json, "{0}" ))'\
-               '{1}    _{0}.fromJSON( ::zerobuf::getJSONField( json, "{0}" ));'\
-               .format(self.name, NEXTLINE)
+               '{1}    _{2}.fromJSON( ::zerobuf::getJSONField( json, "{0}" ));'\
+               .format(self.json_name, NEXTLINE, self.name)
 
     def to_json(self):
         if self.value_type.is_string:
-            return '::zerobuf::toJSON( get{0}String(), ::zerobuf::getJSONField( json, "{1}" ));'.format(self.cxxName, self.name)
+            return '::zerobuf::toJSON( get{0}String(), ::zerobuf::getJSONField( json, "{1}" ));'.format(self.cxxName, self.json_name)
         if self.value_type.is_byte_type:
-            return '_{0}.toJSONBinary( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.name)
-        return '_{0}.toJSON( ::zerobuf::getJSONField( json, "{0}" ));'.format(self.name)
+            return '_{0}.toJSONBinary( ::zerobuf::getJSONField( json, "{1}" ));'.format(self.name, self.json_name)
+        return '_{0}.toJSON( ::zerobuf::getJSONField( json, "{1}" ));'.format(self.name, self.json_name)
 
 
 class FbsEnum():
