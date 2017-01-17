@@ -2,6 +2,9 @@
 
 # git master
 
+* [77](https://github.com/HBPVIS/ZeroBuf/pull/77):
+  Create CamelCase names for C++ functions from potential snake_case names
+
 # Release 0.4 (09-12-2016)
 
 * [73](https://github.com/HBPVIS/ZeroBuf/pull/73):
