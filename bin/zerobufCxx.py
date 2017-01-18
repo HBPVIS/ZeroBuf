@@ -295,10 +295,10 @@ class ClassMember(object):
         return Function("{0}&".format(val_type),
                         "get" + self.cxxName + "()",
                         "return _{0};".format(self.name),
-                        DoxygenDoc(["Get a reference to the {0} dynamic member.".format(self.value_type.type),
-                                    "WARNING: If the reference is used to modify the object, " +
+                        DoxygenDoc(["Get a reference to the {0} dynamic member.".format(self.cxxName),
+                                    "@warning: If the reference is used to modify the object, " +
                                     "notifyChanged() needs to be explicitly called afterwards."],
-                                   [], "a reference to the {0} dynamic member.".format(self.value_type.type)))
+                                   [], "a reference to the {0} dynamic member.".format(self.cxxName)))
 
     def ref_setter(self, qproperty=False):
         current_value = "_{0}".format(self.name)
@@ -307,9 +307,9 @@ class ClassMember(object):
                         (self.check_value_changed(current_value) if qproperty else "") +
                         "{0} = value;".format(current_value) + NEXTLINE +
                         "notifyChanged();" + self.emit_value_changed(qproperty),
-                        DoxygenDoc(["Set the value of the {0} member.".format(self.value_type.type),
-                                    "notifyChanged() is internally called after the change has been done."],
-                                   ["value the {0} value to be set in the current object".format(self.value_type.type)]))
+                        DoxygenDoc(["Set the value of {0}.".format(self.cxxName),
+                                    "notifyChanged() is internally called after the object has been copied."],
+                                   ["value the {0} value to be set".format(self.cxxName)]))
 
 
 class FixedSizeMember(ClassMember):
@@ -334,9 +334,9 @@ class FixedSizeMember(ClassMember):
                         (self.check_value_changed(current_value) if qproperty else "") +
                         "{0} = value;".format(current_value) + NEXTLINE +
                         "notifyChanged();" + self.emit_value_changed(qproperty),
-                        DoxygenDoc(["Set the value of the {0} fixed size member.".format(self.value_type.type),
+                        DoxygenDoc(["Set the {0} value.".format(self.cxxName),
                                     "notifyChanged() is internally called after the change has been done."],
-                                   ["value the {0} value to be set in the current object".format(self.value_type.type)]))
+                                   ["value the {0} value".format(self.cxxName)]))
 
     def getters(self):
         if self.value_type.is_zerobuf_type:
@@ -427,10 +427,10 @@ class FixedSizeArray(ClassMember):
                         "get" + self.cxxName + "()",
                         "return getAllocator().template getItemPtr< {0} >( {1} );".\
                         format(self.value_type.type, self.allocator_offset),
-                        DoxygenDoc(["Get a pointer to the {0} fixed size array object.".format(self.value_type.type),
-                                    "WARNING: If the pointer is used to modify the object, " +
+                        DoxygenDoc(["Get a pointer to the {0} fixed size array.".format(self.cxxName),
+                                    "@warning: If the pointer is used to modify the object, " +
                                    "notifyChanged() needs to be explicitly called afterwards."],
-                                   [], "a pointer to the {0} fixed size array object({0}*).".format(self.value_type.type)))
+                                   [], "a pointer to the {0} fixed size array object ({1}*).".format(self.cxxName, self.value_type.type)))
 
     def const_ptr_getter(self):
         return Function("const {0}*".format(self.value_type.type),
@@ -453,9 +453,9 @@ class FixedSizeArray(ClassMember):
                         "::memcpy( {0}, {1}, {2} * sizeof( {3} ));".\
                         format(self.data_ptr(), src_ptr, self.nElems, self.value_type.type) + NEXTLINE +
                         "notifyChanged();" + self.emit_value_changed(qproperty),
-                        DoxygenDoc(["Set the value of the {0} fixed size array object from a {0}*.".format(self.value_type.type),
-                                    "notifyChanged() is internally called after the change has been done."],
-                                   ["value a {0}-length {1} array with the data to be set in the current object".format(self.nElems, self.value_type.type)]))
+                        DoxygenDoc(["Set the value of the {0} fixed size array from a {1}*.".format(self.cxxName, self.value_type.type),
+                                    "notifyChanged() is internally called after the data has been copied."],
+                                   ["value a {0}-length {1} array with the data to be set".format(self.nElems, self.value_type.type)]))
 
     def vector_setter(self, qproperty=False):
         src_ptr = "value.data()"
@@ -467,9 +467,9 @@ class FixedSizeArray(ClassMember):
                         "::memcpy( {0}, {1}, value.size() * sizeof( {3} ));".\
                         format(self.data_ptr(), src_ptr, self.nElems, self.value_type.type) + NEXTLINE +
                         "notifyChanged();" + self.emit_value_changed(qproperty),
-                        DoxygenDoc(["Set the value of the {0} fixed size array object from a {0} std::vector.".format(self.value_type.type),
+                        DoxygenDoc(["Set the value of the {0} fixed size array object from a std::vector< {1} >.".format(self.cxxName, self.value_type.type),
                                     "notifyChanged() is internally called after the change has been done."],
-                                   ["value a std::vector< {0} > with the data to be set in the current object".format(self.value_type.type)]))
+                                   ["value a std::vector< {0} > with the data to be set".format(self.value_type.type)]))
 
     def getters(self):
         if self.value_type.is_zerobuf_type:
@@ -669,9 +669,9 @@ class DynamicMember(ClassMember):
                         "for( const " + self.value_type.type + "& data : value )" + NEXTLINE +
                         "    dynamic.push_back( data );" + NEXTLINE +
                         "notifyChanged();" + self.emit_value_changed(qproperty),
-                        DoxygenDoc(["Set the value of the {0} dynamic object from a {0} std::vector.".format(self.value_type.type),
-                                    "notifyChanged() is internally called after the change has been done."],
-                                   ["value a std::vector< {0} > object with the data to be set in the current object".format(self.value_type.type)]))
+                        DoxygenDoc(["Set the value of {0} dynamic array from a std::vector< {1} >.".format(self.cxxName, self.value_type.type),
+                                    "notifyChanged() is internally called after the data has been copied."],
+                                   ["value a std::vector< {0} > object with the data to be set".format(self.value_type.type)]))
 
     def check_c_array_changed(self):
         return "if( ::memcmp( _{0}.data(), value, size * sizeof( {1} )) == 0 )".\
@@ -686,9 +686,9 @@ class DynamicMember(ClassMember):
                         "_copyZerobufArray( value, size * sizeof( {0} ), {1} );".\
                         format(self.value_type.type, self.dynamic_type_index) + NEXTLINE +
                         "notifyChanged();" + self.emit_value_changed(qproperty),
-                        DoxygenDoc(["Set the value of the {0} dynamic object from a {0}* and size.".format(self.value_type.type),
-                                    "notifyChanged() is internally called after the change has been done."],
-                                   ["value a pointer to the data to be set in the current object".format(self.value_type.type),
+                        DoxygenDoc(["Set the value of the {0} dynamic object from a {1}* and size.".format(self.cxxName, self.value_type.type),
+                                    "notifyChanged() is internally called after the data has been copied."],
+                                   ["value a {0}* to the data to be set in the current object".format(self.value_type.type),
                                     "size the size of the data to be set"]))
 
     def vector_pod_getter(self):
@@ -705,9 +705,9 @@ class DynamicMember(ClassMember):
                         "_copyZerobufArray( value.data(), value.size() * sizeof( {0} ), {1} );".\
                         format(self.value_type.type, self.dynamic_type_index) + NEXTLINE +
                         "notifyChanged();" + self.emit_value_changed(qproperty),
-                        DoxygenDoc(["Set the value of the {0} dynamic object from a {0} std::vector.".format(self.value_type.type),
-                                    "notifyChanged() is internally called after the change has been done."],
-                                    ["value a std::vector< {0} > object with the data to be set in the current object".format(self.value_type.type)]))
+                        DoxygenDoc(["Set the value of the {0} dynamic object from a std::vector< {1} >.".format(self.cxxName, self.value_type.type),
+                                    "notifyChanged() is internally called after the data has been copied."],
+                                    ["value a std::vector< {0} > object with the data to be set".format(self.value_type.type)]))
 
     def string_getter(self):
         return Function("std::string",
@@ -725,9 +725,9 @@ class DynamicMember(ClassMember):
                         "_copyZerobufArray( value.c_str(), value.length(), {0} );".\
                         format(self.dynamic_type_index) + NEXTLINE +
                         "notifyChanged();" + self.emit_value_changed(qproperty),
-                        DoxygenDoc(["Set the value of the {0} dynamic object from a std::string.".format(self.value_type.type),
-                                    "notifyChanged() is internally called after the change has been done."],
-                                   ["value a std::string with the data to be set in the current object"]))
+                        DoxygenDoc(["Set the value of the {0} dynamic object from a std::string.".format(self.cxxName),
+                                    "notifyChanged() is internally called after the data has been copied."],
+                                   ["value a std::string with the data to be set"]))
 
     def getters(self):
         if self.value_type.is_zerobuf_type: # Dynamic array of (static) Zerobufs
