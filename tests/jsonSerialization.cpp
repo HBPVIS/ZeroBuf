@@ -259,102 +259,151 @@ BOOST_AUTO_TEST_CASE(enum_string_conversion)
 
 BOOST_AUTO_TEST_CASE(json_schema_empty)
 {
-    BOOST_CHECK_EQUAL( test::TestEmpty::ZEROBUF_SCHEMA(),
-                       "{\"$schema\": \"http://json-schema.org/schema#\", "
-                       "\"title\": \"TestEmpty\", "
-                       "\"description\": \"Class TestEmpty of namespace ['test']\", "
-                       "\"type\": \"object\", "
-                       "\"additionalProperties\": false}");
+    const auto expected = R"({
+    "$schema": "http://json-schema.org/schema#",
+    "title": "TestEmpty",
+    "description": "Class TestEmpty of namespace ['test']",
+    "type": "object",
+    "additionalProperties": false
+})";
+    BOOST_CHECK_EQUAL( test::TestEmpty::ZEROBUF_SCHEMA(), expected );
 }
 
 BOOST_AUTO_TEST_CASE(json_schema_nested)
 {
-    BOOST_CHECK_EQUAL( test::TestNested::ZEROBUF_SCHEMA(),
-                       "{\"$schema\": \"http://json-schema.org/schema#\", "
-                       "\"title\": \"TestNested\", "
-                       "\"description\": \"Class TestNested of namespace ['test']\", "
-                       "\"type\": \"object\", "
-                       "\"additionalProperties\": false, "
-                       "\"properties\": {"
-                         "\"intvalue\": {\"type\": \"integer\"}, "
-                         "\"uintvalue\": {\"type\": \"integer\"}}}" );
+    const auto expected = R"({
+    "$schema": "http://json-schema.org/schema#",
+    "title": "TestNested",
+    "description": "Class TestNested of namespace ['test']",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "intvalue": {
+            "type": "integer"
+        },
+        "uintvalue": {
+            "type": "integer"
+        }
+    }
+})";
+    BOOST_CHECK_EQUAL( test::TestNested::ZEROBUF_SCHEMA(), expected );
 }
 
 BOOST_AUTO_TEST_CASE(json_schema_dynamic)
 {
-    BOOST_CHECK_EQUAL( test::TestDynamic::ZEROBUF_SCHEMA(),
-                       "{\"$schema\": \"http://json-schema.org/schema#\", "
-                       "\"title\": \"TestDynamic\", "
-                       "\"description\": \"Class TestDynamic of namespace ['test']\", "
-                       "\"type\": \"object\", "
-                       "\"additionalProperties\": false, "
-                       "\"properties\": {"
-                         "\"intvalue\": {\"type\": \"integer\"}, "
-                         "\"name\": {\"type\": \"string\"}}}");
+    const auto expected = R"({
+    "$schema": "http://json-schema.org/schema#",
+    "title": "TestDynamic",
+    "description": "Class TestDynamic of namespace ['test']",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "intvalue": {
+            "type": "integer"
+        },
+        "name": {
+            "type": "string"
+        }
+    }
+})";
+    BOOST_CHECK_EQUAL( test::TestDynamic::ZEROBUF_SCHEMA(), expected );
 }
 
 BOOST_AUTO_TEST_CASE(json_schema_nested_zerobuf)
 {
-    BOOST_CHECK_EQUAL( test::TestNestedZerobuf::ZEROBUF_SCHEMA(),
-                       "{\"$schema\": \"http://json-schema.org/schema#\", "
-                       "\"title\": \"TestNestedZerobuf\", "
-                       "\"description\": \"Class TestNestedZerobuf of namespace ['test']\", "
-                       "\"type\": \"object\", "
-                       "\"additionalProperties\": false, "
-                       "\"properties\": {"
-                         "\"nest\": {"
-                           "\"$schema\": \"http://json-schema.org/schema#\", "
-                           "\"title\": \"TestNested\", "
-                           "\"description\": \"Class TestNested of namespace ['test']\", "
-                           "\"type\": \"object\", "
-                           "\"additionalProperties\": false, "
-                           "\"properties\": {"
-                             "\"intvalue\": {\"type\": \"integer\"}, "
-                             "\"uintvalue\": {\"type\": \"integer\"}}}, "
-                         "\"dynamic\": {"
-                           "\"$schema\": \"http://json-schema.org/schema#\", "
-                           "\"title\": \"TestDynamic\", "
-                           "\"description\": \"Class TestDynamic of namespace ['test']\", "
-                           "\"type\": \"object\", "
-                           "\"additionalProperties\": false, "
-                           "\"properties\": {"
-                             "\"intvalue\": {\"type\": \"integer\"}, "
-                             "\"name\": {\"type\": \"string\"}}}, "
-                         "\"nested\": {"
-                           "\"type\": \"array\", "
-                           "\"items\": {"
-                             "\"$schema\": \"http://json-schema.org/schema#\", "
-                             "\"title\": \"TestNested\", "
-                             "\"description\": \"Class TestNested of namespace ['test']\", "
-                             "\"type\": \"object\", "
-                             "\"additionalProperties\": false, "
-                             "\"properties\": {"
-                               "\"intvalue\": {\"type\": \"integer\"}, "
-                               "\"uintvalue\": {\"type\": \"integer\"}}}}}}" );
+    const auto expected = R"({
+    "$schema": "http://json-schema.org/schema#",
+    "title": "TestNestedZerobuf",
+    "description": "Class TestNestedZerobuf of namespace ['test']",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "nest": {
+            "$schema": "http://json-schema.org/schema#",
+            "title": "TestNested",
+            "description": "Class TestNested of namespace ['test']",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "intvalue": {
+                    "type": "integer"
+                },
+                "uintvalue": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dynamic": {
+            "$schema": "http://json-schema.org/schema#",
+            "title": "TestDynamic",
+            "description": "Class TestDynamic of namespace ['test']",
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "intvalue": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "nested": {
+            "type": "array",
+            "items": {
+                "$schema": "http://json-schema.org/schema#",
+                "title": "TestNested",
+                "description": "Class TestNested of namespace ['test']",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "intvalue": {
+                        "type": "integer"
+                    },
+                    "uintvalue": {
+                        "type": "integer"
+                    }
+                }
+            }
+        }
+    }
+})";
+    BOOST_CHECK_EQUAL( test::TestNestedZerobuf::ZEROBUF_SCHEMA(), expected );
 }
 
 BOOST_AUTO_TEST_CASE(json_schema_enum)
 {
-    BOOST_CHECK_EQUAL( test::TestEnumTable::ZEROBUF_SCHEMA(),
-                       "{\"$schema\": \"http://json-schema.org/schema#\", "
-                       "\"title\": \"TestEnumTable\", "
-                       "\"description\": \"Class TestEnumTable of namespace ['test']\", "
-                       "\"type\": \"object\", "
-                       "\"additionalProperties\": false, "
-                       "\"properties\": {"
-                         "\"value\": {"
-                           "\"$schema\": \"http://json-schema.org/schema#\", "
-                           "\"title\": \"TestEnum\", "
-                           "\"description\": \"Enum TestEnum of type uint\", "
-                           "\"type\": \"string\", "
-                           "\"additionalProperties\": false, "
-                           "\"enum\": [\"FIRST\", \"SECOND\", \"THIRD_UNDERSCORE\"]}, "
-                         "\"another\": {"
-                           "\"$schema\": \"http://json-schema.org/schema#\", "
-                           "\"title\": \"AnotherTestEnum\", "
-                           "\"description\": \"Enum AnotherTestEnum of type uint\", "
-                           "\"type\": \"string\", "
-                           "\"additionalProperties\": false, "
-                           "\"enum\": [\"one\", \"three\"]}}}"
-                       );
+    const auto expected = R"({
+    "$schema": "http://json-schema.org/schema#",
+    "title": "TestEnumTable",
+    "description": "Class TestEnumTable of namespace ['test']",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "value": {
+            "$schema": "http://json-schema.org/schema#",
+            "title": "TestEnum",
+            "description": "Enum TestEnum of type uint",
+            "type": "string",
+            "additionalProperties": false,
+            "enum": [
+                "FIRST",
+                "SECOND",
+                "THIRD_UNDERSCORE"
+            ]
+        },
+        "another": {
+            "$schema": "http://json-schema.org/schema#",
+            "title": "AnotherTestEnum",
+            "description": "Enum AnotherTestEnum of type uint",
+            "type": "string",
+            "additionalProperties": false,
+            "enum": [
+                "one",
+                "three"
+            ]
+        }
+    }
+})";
+    BOOST_CHECK_EQUAL( test::TestEnumTable::ZEROBUF_SCHEMA(), expected );
 }

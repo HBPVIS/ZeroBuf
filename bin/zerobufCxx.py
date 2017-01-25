@@ -1211,7 +1211,7 @@ class FbsTable():
         functions.append(Function('std::string', 'getSchema() const final',
                                   'return ZEROBUF_SCHEMA();', split=True))
         functions.append(Function('std::string', 'ZEROBUF_SCHEMA()',
-                                  'return "{0}";'.format(json.dumps(self.json_schema).replace('"', '\\"')),
+                                  'return R"({0})";'.format(json.dumps(self.json_schema, indent=4).replace(', ', ',')),
                                   static=True, split=True))
         functions.append(Function('std::string', 'getTypeName() const final',
                                   'return "{0}";'.format(zerobufName), split=False))

@@ -2,6 +2,8 @@
 
 # git master
 
+* [78](https://github.com/HBPVIS/ZeroBuf/pull/78):
+  Pretty-format generated JSON schemas
 * [77](https://github.com/HBPVIS/ZeroBuf/pull/77):
   Create CamelCase names for C++ functions from potential snake_case names
 
