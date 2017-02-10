@@ -25,6 +25,40 @@ template< class T >
 class Vector
 {
 public:
+    /** Forward iterator for Vector< T > */
+    class Iterator : public std::iterator< std::forward_iterator_tag, T >
+    {
+    public:
+        Iterator( Vector< T >& vector, size_t index )
+            : _vector( vector )
+            , _index( index )
+        {}
+
+        bool operator ==( const Iterator& rhs ) const
+            { return _index == rhs._index; }
+        bool operator !=( const Iterator& rhs ) const
+            { return _index != rhs._index; }
+
+        Iterator& operator++()
+        {
+            ++_index;
+            return *this;
+        }
+
+        const T& operator*() const
+            { return _vector[_index]; }
+
+        T& operator*()
+            { return _vector[_index]; }
+
+    private:
+        Vector< T >& _vector;
+        size_t _index;
+    };
+
+    using iterator = Iterator;
+    using const_iterator = Iterator;
+
     /** @internal
      * @param alloc The parent allocator that contains the data.
      * @param index Index of the vector in the parent allocator dynamic storage
@@ -49,10 +83,25 @@ public:
         { return const_cast< const Allocator* >
                 ( _alloc )->template getDynamic< T >( _index ); }
 
+    /** Resize the vector to new size; keeps elements untouched. */
+    void resize( size_t size );
+
     /** @return true if the two vectors of builtins are identical. */
     bool operator == ( const Vector& rhs ) const;
     /** @return false if the two vectors are identical. */
     bool operator != ( const Vector& rhs ) const;
+
+    /** @return an immutable iterator to the first element. */
+    const_iterator begin() const;
+
+    /** @return an immutable iterator to the past-the-end element. */
+    const_iterator end() const;
+
+    /** @return a mutable iterator to the first element. */
+    iterator begin();
+
+    /** @return a mutable iterator to the past-the-end element. */
+    iterator end();
 
     /** @return a builtin const element */
     template< class Q = T >
@@ -150,8 +199,6 @@ private:
     Vector( const Vector&& rhs ) = delete;
 
     size_t _getSize() const { return _alloc->getDynamicSize( _index ); }
-    void _resize( const size_t size_ )
-       { _alloc->updateAllocation( _index, true /*copy*/, size_ ); }
     void copyBuffer( uint8_t* data, size_t size );
 
     template< class Q = T > size_t _getElementSize(
@@ -180,6 +227,34 @@ template< class T > inline void Vector< T >::clear()
 {
     _alloc->updateAllocation( _index, false, 0 );
     _zerobufs.clear();
+}
+
+template< class T > inline void Vector< T >::resize( const size_t size_ )
+{
+    _alloc->updateAllocation( _index, true /*copy*/,
+                              size_ * _getElementSize< T >( ));
+}
+
+template< class T > inline
+typename Vector< T >::const_iterator Vector< T >::begin() const
+{
+    return const_iterator( *this, 0 );
+}
+
+template< class T > inline
+typename Vector< T >::const_iterator Vector< T >::end() const
+{
+    return const_iterator( *this, size( ));
+}
+
+template< class T > inline typename Vector< T >::iterator Vector< T >::begin()
+{
+    return iterator( *this, 0 );
+}
+
+template< class T > inline typename Vector< T >::iterator Vector< T >::end()
+{
+    return iterator( *this, size( ));
 }
 
 template< class T > inline
