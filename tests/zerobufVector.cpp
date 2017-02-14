@@ -44,6 +44,8 @@ BOOST_AUTO_TEST_CASE(const_iterate)
 
     object.getNesteddynamic().push_back( test::TestNested( 1, 2 ));
     object.getNesteddynamic().push_back( test::TestNested( 1, 3 ));
-    for( const auto& nested : object.getNesteddynamic( ))
+
+    const auto& constObject = object;
+    for( const auto& nested : constObject.getNesteddynamic( ))
         BOOST_CHECK_EQUAL( nested.getIntvalue(), 1 );
 }
