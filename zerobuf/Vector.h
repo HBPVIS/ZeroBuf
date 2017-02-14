@@ -26,10 +26,11 @@ class Vector
 {
 public:
     /** Forward iterator for Vector< T > */
-    class Iterator : public std::iterator< std::forward_iterator_tag, T >
+    template< class U >
+    class Iterator : public std::iterator< std::forward_iterator_tag, U >
     {
     public:
-        Iterator( Vector< T >& vector, size_t index )
+        Iterator( U& vector, const size_t index )
             : _vector( vector )
             , _index( index )
         {}
@@ -45,19 +46,23 @@ public:
             return *this;
         }
 
-        const T& operator*() const
+        const typename U::element_type& operator*() const
             { return _vector[_index]; }
 
-        T& operator*()
+        template< class Q = U,
+                  typename =
+                     typename std::enable_if<!std::is_const< Q >::value>::type >
+        typename U::element_type& operator*()
             { return _vector[_index]; }
 
     private:
-        Vector< T >& _vector;
+        U& _vector;
         size_t _index;
     };
 
-    using iterator = Iterator;
-    using const_iterator = Iterator;
+    using element_type = T;
+    using iterator = Iterator< Vector< T >>;
+    using const_iterator = Iterator< const Vector< T >>;
 
     /** @internal
      * @param alloc The parent allocator that contains the data.
