@@ -2,6 +2,8 @@
 
 # git master
 
+* [79](https://github.com/HBPVIS/ZeroBuf/pull/79):
+  Add to zerobuf::Vector: resize(), begin(), end()
 * [78](https://github.com/HBPVIS/ZeroBuf/pull/78):
   Pretty-format generated JSON schemas
 * [77](https://github.com/HBPVIS/ZeroBuf/pull/77):
