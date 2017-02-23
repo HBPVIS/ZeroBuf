@@ -13,81 +13,88 @@ namespace zerobuf
 {
 namespace
 {
-template< class A >
-void _initializeAllocation( A& alloc, const size_t index, const size_t size )
+template <class A>
+void _initializeAllocation(A& alloc, const size_t index, const size_t size)
 {
-    if( alloc.getDynamicOffset( index ) == 0 )
-        alloc.updateAllocation( index, false /*no copy*/, size );
+    if (alloc.getDynamicOffset(index) == 0)
+        alloc.updateAllocation(index, false /*no copy*/, size);
 }
 
-template<>
-void _initializeAllocation( const Allocator&, const size_t, const size_t ) {}
-
-}
-
-template< class A >
-NonMovingSubAllocatorBase< A >::NonMovingSubAllocatorBase(
-    A& parent, const size_t index, const size_t numDynamic,
-    const size_t staticSize )
-    : NonMovingBaseAllocator( staticSize, numDynamic )
-    , _parent( parent )
-    , _index( index )
+template <>
+void _initializeAllocation(const Allocator&, const size_t, const size_t)
 {
-    _initializeAllocation( parent, index, staticSize );
+}
 }
 
-template< class A > NonMovingSubAllocatorBase< A >::~NonMovingSubAllocatorBase()
-{}
-
-template< class A > uint8_t* NonMovingSubAllocatorBase< A >::getData()
+template <class A>
+NonMovingSubAllocatorBase<A>::NonMovingSubAllocatorBase(A& parent,
+                                                        const size_t index,
+                                                        const size_t numDynamic,
+                                                        const size_t staticSize)
+    : NonMovingBaseAllocator(staticSize, numDynamic)
+    , _parent(parent)
+    , _index(index)
 {
-    return _parent.getData() + _parent.getDynamicOffset( _index );
+    _initializeAllocation(parent, index, staticSize);
 }
 
-template<> uint8_t* NonMovingSubAllocatorBase< const Allocator >::getData()
+template <class A>
+NonMovingSubAllocatorBase<A>::~NonMovingSubAllocatorBase()
 {
-    throw std::runtime_error( "Non-const access on const allocator" );
 }
 
-template< class A >
-const uint8_t* NonMovingSubAllocatorBase< A >::getData() const
+template <class A>
+uint8_t* NonMovingSubAllocatorBase<A>::getData()
 {
-    return const_cast< const A& >( _parent ).getData() + _parent.getDynamicOffset( _index );
+    return _parent.getData() + _parent.getDynamicOffset(_index);
 }
 
-template< class A > size_t NonMovingSubAllocatorBase< A >::getSize() const
+template <>
+uint8_t* NonMovingSubAllocatorBase<const Allocator>::getData()
 {
-    return _parent.getDynamicSize( _index );
+    throw std::runtime_error("Non-const access on const allocator");
 }
 
-template< class A >
-void NonMovingSubAllocatorBase< A >::copyBuffer( const void* data,
-                                                 const size_t size )
+template <class A>
+const uint8_t* NonMovingSubAllocatorBase<A>::getData() const
 {
-    void* to = _parent.updateAllocation( _index, false /*no copy*/, size );
-    ::memcpy( to, data, size );
+    return const_cast<const A&>(_parent).getData() +
+           _parent.getDynamicOffset(_index);
 }
 
-template<> void
-NonMovingSubAllocatorBase< const Allocator >::copyBuffer( const void*,
-                                                          const size_t )
+template <class A>
+size_t NonMovingSubAllocatorBase<A>::getSize() const
 {
-    throw std::runtime_error( "Non-const access on const allocator" );
+    return _parent.getDynamicSize(_index);
 }
 
-template< class A >
-void NonMovingSubAllocatorBase< A >::_resize( const size_t newSize )
+template <class A>
+void NonMovingSubAllocatorBase<A>::copyBuffer(const void* data,
+                                              const size_t size)
 {
-    _parent.updateAllocation( _index, true /*copy*/, newSize );
+    void* to = _parent.updateAllocation(_index, false /*no copy*/, size);
+    ::memcpy(to, data, size);
 }
 
-template<>
-void NonMovingSubAllocatorBase< const Allocator >::_resize( const size_t )
+template <>
+void NonMovingSubAllocatorBase<const Allocator>::copyBuffer(const void*,
+                                                            const size_t)
 {
-    throw std::runtime_error( "Non-const access on const allocator" );
+    throw std::runtime_error("Non-const access on const allocator");
 }
 
-template class NonMovingSubAllocatorBase< Allocator >;
-template class NonMovingSubAllocatorBase< const Allocator >;
+template <class A>
+void NonMovingSubAllocatorBase<A>::_resize(const size_t newSize)
+{
+    _parent.updateAllocation(_index, true /*copy*/, newSize);
+}
 
+template <>
+void NonMovingSubAllocatorBase<const Allocator>::_resize(const size_t)
+{
+    throw std::runtime_error("Non-const access on const allocator");
+}
+
+template class NonMovingSubAllocatorBase<Allocator>;
+template class NonMovingSubAllocatorBase<const Allocator>;
 }

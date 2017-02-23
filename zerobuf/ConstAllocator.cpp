@@ -7,14 +7,14 @@
 
 namespace zerobuf
 {
-
-ConstAllocator::ConstAllocator( const uint8_t* data, size_t size )
+ConstAllocator::ConstAllocator(const uint8_t* data, size_t size)
     : Allocator()
-    , _data( data )
-    , _size( size )
-{}
+    , _data(data)
+    , _size(size)
+{
+}
 
 ConstAllocator::~ConstAllocator()
-{}
-
+{
+}
 }

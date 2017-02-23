@@ -12,38 +12,37 @@
 
 namespace zerobuf
 {
-
-NonMovingAllocator::NonMovingAllocator( const size_t staticSize,
-                                        const size_t numDynamic )
-    : NonMovingBaseAllocator( staticSize, numDynamic )
-    , _data( (uint8_t*)::calloc( 1, staticSize ))
-    , _size( staticSize )
-{}
+NonMovingAllocator::NonMovingAllocator(const size_t staticSize,
+                                       const size_t numDynamic)
+    : NonMovingBaseAllocator(staticSize, numDynamic)
+    , _data((uint8_t*)::calloc(1, staticSize))
+    , _size(staticSize)
+{
+}
 
 NonMovingAllocator::~NonMovingAllocator()
 {
-    ::free( _data );
+    ::free(_data);
 }
 
-void NonMovingAllocator::copyBuffer( const void* data, size_t size )
+void NonMovingAllocator::copyBuffer(const void* data, size_t size)
 {
-    _resize( size );
-    ::memcpy( _data, data, size );
+    _resize(size);
+    ::memcpy(_data, data, size);
 }
 
-void NonMovingAllocator::_resize( const size_t size )
+void NonMovingAllocator::_resize(const size_t size)
 {
-    _data = (uint8_t*)::realloc( _data, size );
-    if( size > _size )
+    _data = (uint8_t*)::realloc(_data, size);
+    if (size > _size)
     {
-        // realloc does not guarantee that additional memory is zero-filled
+// realloc does not guarantee that additional memory is zero-filled
 #ifdef _WIN32
-        ::memset( _data + _size, 0, size - _size );
+        ::memset(_data + _size, 0, size - _size);
 #else
-        ::bzero( _data + _size, size - _size );
+        ::bzero(_data + _size, size - _size);
 #endif
     }
     _size = size;
 }
-
 }
