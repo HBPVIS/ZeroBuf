@@ -6,9 +6,9 @@
 #ifndef ZEROBUF_TYPES_H
 #define ZEROBUF_TYPES_H
 
-#include <servus/types.h>
-#include <servus/serializable.h> // nested Data class
 #include <memory>
+#include <servus/serializable.h> // nested Data class
+#include <servus/types.h>
 
 /**
  * Zero-copy, zero-serialize, zero-hassle protocol buffers.
@@ -25,18 +25,21 @@ class Allocator;
 class NonMovingAllocator;
 class NonMovingBaseAllocator;
 class Zerobuf;
-template< class T > class Vector;
+template <class T>
+class Vector;
 
-typedef std::unique_ptr< Allocator > AllocatorPtr;
-typedef std::unique_ptr< const Allocator > ConstAllocatorPtr;
+typedef std::unique_ptr<Allocator> AllocatorPtr;
+typedef std::unique_ptr<const Allocator> ConstAllocatorPtr;
 
 using servus::uint128_t;
 typedef uint8_t byte_t; //!< alias type for base64 encoded fields
 
 typedef servus::Serializable::Data Data;
 
-template< typename T > std::string enum_to_string( const T& );
-template< typename T > T string_to_enum( const std::string& );
+template <typename T>
+std::string enum_to_string(const T&);
+template <typename T>
+T string_to_enum(const std::string&);
 }
 
 namespace Json

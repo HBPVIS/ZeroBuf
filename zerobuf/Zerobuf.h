@@ -7,16 +7,15 @@
 #ifndef ZEROBUF_ZEROBUF_H
 #define ZEROBUF_ZEROBUF_H
 
-#include <zerobuf/api.h>
-#include <zerobuf/Allocator.h> // MSVC needs it for std::unique_ptr
-#include <zerobuf/types.h>
-#include <zerobuf/json.h> // friend
 #include <servus/serializable.h> // base class
-#include <servus/uint128_t.h> // used inline in operator <<
+#include <servus/uint128_t.h>    // used inline in operator <<
+#include <zerobuf/Allocator.h>   // MSVC needs it for std::unique_ptr
+#include <zerobuf/api.h>
+#include <zerobuf/json.h> // friend
+#include <zerobuf/types.h>
 
 namespace zerobuf
 {
-
 /**
  * Base class for all Zerobuf serializable objects.
  *
@@ -45,65 +44,64 @@ public:
      *
      * @param threshold the compaction threshold
      */
-    ZEROBUF_API virtual void compact( float threshold = 0.1f );
+    ZEROBUF_API virtual void compact(float threshold = 0.1f);
 
     /** Assignment operator. */
-    ZEROBUF_API Zerobuf& operator = ( const Zerobuf& rhs );
+    ZEROBUF_API Zerobuf& operator=(const Zerobuf& rhs);
 
     /** Move ctor. */
-    ZEROBUF_API Zerobuf( Zerobuf&& rhs );
+    ZEROBUF_API Zerobuf(Zerobuf&& rhs);
 
     /** Move operator. May copy data if zerobuf is not movable */
-    ZEROBUF_API Zerobuf& operator = ( Zerobuf&& rhs );
+    ZEROBUF_API Zerobuf& operator=(Zerobuf&& rhs);
 
     /** @return true if both objects contain the same data */
-    ZEROBUF_API bool operator == ( const Zerobuf& rhs ) const;
+    ZEROBUF_API bool operator==(const Zerobuf& rhs) const;
 
     /** @return true if both objects contain different data */
-    ZEROBUF_API bool operator != ( const Zerobuf& rhs ) const;
+    ZEROBUF_API bool operator!=(const Zerobuf& rhs) const;
 
     /** @internal */
-    ZEROBUF_API void reset( AllocatorPtr allocator );
+    ZEROBUF_API void reset(AllocatorPtr allocator);
 
     /** @internal Check consistency of zerobuf */
     ZEROBUF_API void check() const;
 
 protected:
-    ZEROBUF_API explicit Zerobuf( AllocatorPtr alloc ); // takes ownership of alloc
+    ZEROBUF_API explicit Zerobuf(AllocatorPtr alloc); // takes ownership of
+                                                      // alloc
 
     /** Called if any data in this object has changed. */
     ZEROBUF_API virtual void notifyChanged() {}
-
     // used by generated ZeroBuf objects
     ZEROBUF_API const Allocator& getAllocator() const;
     ZEROBUF_API Allocator& getAllocator();
 
-    ZEROBUF_API void _copyZerobufArray( const void* data, size_t size,
-                                        size_t arrayNum );
+    ZEROBUF_API void _copyZerobufArray(const void* data, size_t size,
+                                       size_t arrayNum);
 
-    ZEROBUF_API virtual void _parseJSON( const Json::Value& json );
-    ZEROBUF_API virtual void _createJSON( Json::Value& json ) const;
-    ZEROBUF_API friend void fromJSON( const Json::Value&,Zerobuf& );
-    ZEROBUF_API friend void toJSON( const Zerobuf&, Json::Value& );
+    ZEROBUF_API virtual void _parseJSON(const Json::Value& json);
+    ZEROBUF_API virtual void _createJSON(Json::Value& json) const;
+    ZEROBUF_API friend void fromJSON(const Json::Value&, Zerobuf&);
+    ZEROBUF_API friend void toJSON(const Zerobuf&, Json::Value&);
 
-    ZEROBUF_API bool _fromBinary( const void* data, const size_t size ) override;
+    ZEROBUF_API bool _fromBinary(const void* data, const size_t size) override;
 
 private:
     AllocatorPtr _allocator;
 
     Zerobuf() = delete;
-    Zerobuf( const Zerobuf& zerobuf ) = delete;
+    Zerobuf(const Zerobuf& zerobuf) = delete;
 
     ZEROBUF_API Data _toBinary() const final;
-    ZEROBUF_API bool _fromJSON( const std::string& json ) final;
+    ZEROBUF_API bool _fromJSON(const std::string& json) final;
     ZEROBUF_API std::string _toJSON() const final;
 };
 
-inline std::ostream& operator << ( std::ostream& os, const Zerobuf& zerobuf )
+inline std::ostream& operator<<(std::ostream& os, const Zerobuf& zerobuf)
 {
     return os << "\"" << zerobuf.getTypeName() << "\" : " << zerobuf.toJSON();
 }
-
 }
 
 #endif

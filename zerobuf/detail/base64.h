@@ -1,4 +1,4 @@
-/* 
+/*
    base64.cpp and base64.h
 
    Copyright (C) 2004-2008 René Nyffenegger
@@ -27,5 +27,5 @@
 
 #include <string>
 
-std::string base64_encode(unsigned char const* , unsigned int len);
+std::string base64_encode(unsigned char const*, unsigned int len);
 std::string base64_decode(std::string const& s);
