@@ -1,4 +1,4 @@
-# Copyright (c) 2015-2016 Human Brain Project
+# Copyright (c) 2015-2017 Human Brain Project
 #                         Stefan.Eilemann@epfl.ch
 #
 # Function to generate zerobuf C++ headers for fbs schemas
@@ -35,7 +35,7 @@ function(zerobuf_generate_cxx Name OutputDir)
     add_custom_command(
       COMMAND ${PYTHON_EXECUTABLE} ${ZEROBUF_CXX}
       ARGS -o "${OutputDir}" -e ${ZEROBUF_SOURCE_EXTENSION} ${ZEROBUF_EXTRA_ARGS} ${FILE}
-      COMMENT "Building zerobuf C++ headers for ${FILE} in ${OutputDir}"
+      COMMENT "Building ZeroBuf C++ class for ${FILE} in ${OutputDir}"
       DEPENDS ${FILE} ${ZEROBUF_CXX}
       OUTPUT ${ZEROBUF_HEADER} ${ZEROBUF_SOURCE}
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
