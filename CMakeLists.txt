@@ -7,7 +7,9 @@ set(ZeroBuf_VERSION_ABI 4)
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/CMake
   ${PROJECT_SOURCE_DIR}/zerobuf/share/zerobuf/CMake
   ${CMAKE_SOURCE_DIR}/CMake/common)
-include(GitExternal)
+if(NOT EXISTS ${CMAKE_SOURCE_DIR}/CMake/common/Common.cmake)
+  message(FATAL_ERROR "CMake/common missing, run: git submodule update --init")
+endif()
 
 set(ZEROBUF_DEB_DEPENDS python-pyparsing)
 
