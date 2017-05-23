@@ -20,6 +20,6 @@ before_install:
 script:
   - mkdir $BUILD_TYPE
   - cd $BUILD_TYPE
-  - cmake -GNinja -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+  - cmake -GNinja -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCLONE_SUBPROJECTS=ON ..
   - ninja all && ninja $PROJECT_NAME-tests && ninja install
 

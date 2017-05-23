@@ -1,13 +1,17 @@
 # Changelog {#Changelog}
 
-# git master
+# Release 0.5 (23-05-2017)
 
+* [80](https://github.com/HBPVIS/ZeroBuf/pull/80):
+  Fix const ZeroBuf vector iterator
 * [79](https://github.com/HBPVIS/ZeroBuf/pull/79):
   Add to zerobuf::Vector: resize(), begin(), end()
 * [78](https://github.com/HBPVIS/ZeroBuf/pull/78):
   Pretty-format generated JSON schemas
 * [77](https://github.com/HBPVIS/ZeroBuf/pull/77):
   Create CamelCase names for C++ functions from potential snake_case names
+* [75](https://github.com/HBPVIS/ZeroBuf/pull/75):
+  Handle dynamic arrays of enums, fix JSON schemas for enum arrays
 
 # Release 0.4 (09-12-2016)
 
