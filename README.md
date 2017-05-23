@@ -13,6 +13,10 @@ shortcomings:
 * Usable, random read and write access to the the data members
 * Zero copy of the data used by the (C++) implementation from and to the network
 
+# List of RFCs
+
+* [Python wrapping using JSON](@ref pythonjson)
+
 # Features
 
 * Storage of (u)int[8,16,32,64,128]_t, float, double and enum single elements,
