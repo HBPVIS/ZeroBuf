@@ -15,6 +15,8 @@ import re
 import sys
 from collections import namedtuple, OrderedDict
 
+inline_implementation = False
+
 TypeDescription = namedtuple("TypeDescription", "size cxxtype")
 DEFAULT_TYPES = {"int" : TypeDescription(4, "int32_t"),
                  "uint" : TypeDescription(4, "uint32_t"),
@@ -198,14 +200,24 @@ class Function():
     def write_implementation(self, file, classname=None, extra_op = ""):
         if not self.split_implementation:
             return
-
+        has_final = re.compile(r" final$").match(self.function)
+        
         impl_function = re.sub(r" final$", "", self.function) # remove ' final' keyword
         impl_function = re.sub(r" = [0-9\.f]+ ", " ", impl_function) # remove default params
 
         next_line(file)
+
+        global inline_implementation
+        
         if self.ret_val: # '{}'-less body
-            file.write('{0} {1}{2}\n{{'.format(self.ret_val,
-                (classname + '::') if classname else '', impl_function))
+            add_before_inline = ""
+            add_after_inline = ""
+            if inline_implementation is True:
+                add_before_inline = "inline " if not (self.ret_val.startswith("template<>") or has_final) else ""
+                add_after_inline = "inline " if self.ret_val.startswith("template<>") and not (has_final) else ""
+            
+            file.write('{0}{1} {2}{3}{4}\n{{'.format(add_before_inline, self.ret_val, 
+                add_after_inline, (classname + '::') if classname else '', impl_function))
             next_line_indent(file)
             file.write(self.body)
             if extra_op:
@@ -214,7 +226,10 @@ class Function():
             next_line(file)
             file.write('}')
         else:      # ctor '[initializer list]{ body }'
-            file.write('{0}{1}'.format((classname + '::') if classname else '',
+            add_inline = ""
+            if inline_implementation is True:
+                add_inline = "inline "
+            file.write('{0}{1}{2}'.format(add_inline, (classname + '::') if classname else '',
                                         impl_function))
             next_line_indent(file)
             file.write(self.body)
