@@ -15,8 +15,6 @@ import re
 import sys
 from collections import namedtuple, OrderedDict
 
-inline_implementation = False
-
 TypeDescription = namedtuple("TypeDescription", "size cxxtype")
 DEFAULT_TYPES = {"int" : TypeDescription(4, "int32_t"),
                  "uint" : TypeDescription(4, "uint32_t"),
@@ -206,8 +204,6 @@ class Function():
         impl_function = re.sub(r" = [0-9\.f]+ ", " ", impl_function) # remove default params
 
         next_line(file)
-
-        global inline_implementation
         
         if self.ret_val: # '{}'-less body
             add_before_inline = ""
