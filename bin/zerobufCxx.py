@@ -208,7 +208,7 @@ class Function():
         if self.ret_val: # '{}'-less body
             add_before_inline = ""
             add_after_inline = ""
-            if inline_implementation is True:
+            if inline_implementation:
                 add_before_inline = "inline " if not (self.ret_val.startswith("template<>") or has_final) else ""
                 add_after_inline = "inline " if self.ret_val.startswith("template<>") and not (has_final) else ""
             
@@ -223,7 +223,7 @@ class Function():
             file.write('}')
         else:      # ctor '[initializer list]{ body }'
             add_inline = ""
-            if inline_implementation is True:
+            if inline_implementation:
                 add_inline = "inline "
             file.write('{0}{1}{2}'.format(add_inline, (classname + '::') if classname else '',
                                         impl_function))
