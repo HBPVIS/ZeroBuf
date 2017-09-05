@@ -33,8 +33,8 @@ uint8_t* NonMovingBaseAllocator::_moveAllocation(const size_t index,
     uint8_t* base = getData();
 
     if (copy && offset > 0)
-        ::memcpy(base + newOffset, base + offset,
-                 std::min(size, uint64_t(newSize)));
+        ::memmove(base + newOffset, base + offset,
+                  std::min(size, uint64_t(newSize)));
 
     offset = newOffset;
     size = newSize;
