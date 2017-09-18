@@ -2,24 +2,44 @@ notifications:
   email:
     on_success: never
 language: cpp
+matrix:
+  include:
+    - os: linux
+      dist: trusty
+      sudo: required
+      env: BUILD_TYPE=Debug
+    - os: linux
+      dist: trusty
+      sudo: required
+      env:  BUILD_TYPE=Release
+    - os: osx
+      env: BUILD_TYPE=Debug
+    - os: osx
+      env: BUILD_TYPE=Release
 sudo: false
-os:
-  - osx
 env:
   global:
     - NINJA_STATUS="[%p %u/%t@%o %r]"
     - PROJECT_NAME=${PWD##*/}
-  matrix:
-  - BUILD_TYPE=Debug
-  - BUILD_TYPE=Release
+addons:
+  apt:
+    packages:
+      - cppcheck
+      - clang-format-3.8
+      - doxygen
+      - ninja-build
+      - libboost-all-dev
+      - python3-pyparsing
 before_install:
-  - brew update
-  - brew outdated cmake || brew upgrade cmake
-  - brew install cppcheck doxygen ninja
-  - pip install pyparsing
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew outdated cmake || brew upgrade cmake; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install cppcheck doxygen ninja clang-format; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then pip install pyparsing; fi
 script:
   - mkdir $BUILD_TYPE
   - cd $BUILD_TYPE
-  - cmake -GNinja -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCLONE_SUBPROJECTS=ON ..
-  - ninja all && ninja $PROJECT_NAME-tests && ninja install
-
+  - cmake -GNinja -DCLONE_SUBPROJECTS=ON -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_BUILD_TYPE=$BUILD_TYPE ..
+  - ninja all && ninja $PROJECT_NAME-tests && ninja $PROJECT_NAME-smoketests
+  - find . -name '*.[hc]' -o -name '*.[hci]pp' -o -name '*.frag' -o -name '*.vert' -o -name '*.ispc' -o -name '*.ih' | grep -v 'CMake/common' | grep -v 'cppnetlib/' | xargs clang-format -style=file -fallback-style=none -i
+  - git diff
+  - git diff-index --quiet HEAD --
