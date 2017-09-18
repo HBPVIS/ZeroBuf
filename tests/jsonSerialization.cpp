@@ -219,6 +219,11 @@ BOOST_AUTO_TEST_CASE(zerobufFromPartialJSON)
     // reset intvalue back and check no other value was modified
     object.setIntvalue(42);
     checkTestObject(object);
+
+    // test shortening a vector
+    object.fromJSON("{ \"ushortdynamic\" : [ 1, 1, 2 ] }");
+    BOOST_CHECK_EQUAL(object.getUshortdynamic().size(), 3);
+    BOOST_CHECK_EQUAL(object.getUshortdynamic()[2], 2);
 }
 
 // Before pull-request #71, updating a zerobuf object in a ZeroBuf vector was
