@@ -1625,8 +1625,8 @@ bool OurReader::readToken(Token& token)
         {
             token.type_ = tokenString;
             ok = readStringSingleQuote();
-            break;
         } // else continue
+        break;
     case '/':
         token.type_ = tokenComment;
         ok = readComment();
